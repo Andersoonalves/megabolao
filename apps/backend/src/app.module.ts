@@ -8,6 +8,7 @@ import { RolesGuard } from './modules/auth/roles.guard';
 import { PrismaModule } from './modules/prisma/prisma.module';
 import { SupabaseModule } from './modules/supabase/supabase.module';
 import { TenantModule } from './modules/tenant/tenant.module';
+import { BolaoModule } from './modules/bolao/bolao.module';
 
 @Module({
   imports: [
@@ -16,7 +17,8 @@ import { TenantModule } from './modules/tenant/tenant.module';
     PrismaModule,
     AuthModule,
     TenantModule,
-    // Próximos: BolaoModule, ParticipanteModule, SorteioModule, etc.
+    BolaoModule,
+    // Próximos: ParticipanteModule, SorteioModule, etc.
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

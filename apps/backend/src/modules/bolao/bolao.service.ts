@@ -1,0 +1,311 @@
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { Bolao, CategoriaPremiacao, Prisma } from '@prisma/client';
+import { CategoriaTipo, PaginatedResponse } from '@nossobolao/shared-types';
+import { arredondarMonetario } from '@nossobolao/shared-utils';
+import { PrismaService } from '../prisma/prisma.service';
+import { BusinessException } from '../../common/exceptions/business.exception';
+import { PaginationDto } from '../../common/dto/pagination.dto';
+import { CreateBolaoDto } from './dto/create-bolao.dto';
+import { UpdateBolaoDto } from './dto/update-bolao.dto';
+import { UpdateCategoriasDto } from './dto/update-categorias.dto';
+import { CreateCategoriaDto } from './dto/create-categoria.dto';
+
+type BolaoComCategorias = Bolao & { categoriasPremiacao: CategoriaPremiacao[] };
+
+export interface CategoriaResponse {
+  id: string;
+  nome: string;
+  tipo: CategoriaTipo;
+  acertosAlvo: number | null;
+  sorteioReferencia: number | null;
+  percentual: number;
+  acumulaSemGanhador: boolean;
+  valorAcumuladoAnterior: number;
+  ordem: number;
+}
+
+export interface BolaoResponse {
+  id: string;
+  tenantId: string;
+  nome: string;
+  status: string;
+  valorCota: number;
+  dataInicio: string | null;
+  dataTermino: string | null;
+  totalCotasAtivas: number;
+  valorBrutoArrecadado: number;
+  categorias: CategoriaResponse[];
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
+@Injectable()
+export class BolaoService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async create(tenantId: string | null, dto: CreateBolaoDto): Promise<BolaoResponse> {
+    this.assertTenantId(tenantId);
+    this.validarCategorias(dto.categorias);
+
+    const bolao = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.bolao.create({
+        data: {
+          tenantId,
+          nome: dto.nome,
+          valorCota: dto.valorCota,
+          dataInicio: dto.dataInicio ? new Date(dto.dataInicio) : null,
+          dataTermino: dto.dataTermino ? new Date(dto.dataTermino) : null,
+        },
+      });
+
+      await tx.categoriaPremiacao.createMany({
+        data: dto.categorias.map((c, i) => ({
+          tenantId,
+          bolaoId: created.id,
+          nome: c.nome,
+          tipo: c.tipo,
+          acertosAlvo: c.acertosAlvo ?? null,
+          sorteioReferencia: c.sorteioReferencia ?? null,
+          percentual: c.percentual,
+          acumulaSemGanhador: c.acumulaSemGanhador ?? false,
+          ordem: c.ordem ?? i + 1,
+        })),
+      });
+
+      return tx.bolao.findFirstOrThrow({
+        where: { id: created.id },
+        include: { categoriasPremiacao: { orderBy: { ordem: 'asc' } } },
+      });
+    });
+
+    return this.toResponse(bolao);
+  }
+
+  async findAll(tenantId: string | null, { page = 1, perPage = 20 }: PaginationDto): Promise<PaginatedResponse<BolaoResponse>> {
+    this.assertTenantId(tenantId);
+    const skip = (page - 1) * perPage;
+
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.bolao.findMany({
+        where: { tenantId },
+        include: { categoriasPremiacao: { orderBy: { ordem: 'asc' } } },
+        skip,
+        take: perPage,
+        orderBy: { criadoEm: 'desc' },
+      }),
+      this.prisma.bolao.count({ where: { tenantId } }),
+    ]);
+
+    return {
+      data: data.map((b) => this.toResponse(b as BolaoComCategorias)),
+      total,
+      page,
+      perPage,
+      totalPages: Math.ceil(total / perPage),
+    };
+  }
+
+  async findById(tenantId: string | null, id: string): Promise<BolaoResponse> {
+    this.assertTenantId(tenantId);
+    return this.toResponse(await this.findOrFail(tenantId, id));
+  }
+
+  async update(tenantId: string | null, id: string, dto: UpdateBolaoDto): Promise<BolaoResponse> {
+    this.assertTenantId(tenantId);
+    const bolao = await this.findOrFail(tenantId, id);
+
+    if (bolao.status !== 'A_SER_INICIADO') {
+      throw new BusinessException(
+        'STATUS_INVALIDO',
+        'Bolão só pode ser editado quando está A_SER_INICIADO',
+        [{ code: 'STATUS_INVALIDO', message: `Status atual: ${bolao.status}` }],
+      );
+    }
+
+    const updated = await this.prisma.bolao.update({
+      where: { id },
+      data: {
+        ...(dto.nome !== undefined && { nome: dto.nome }),
+        ...(dto.valorCota !== undefined && { valorCota: dto.valorCota }),
+        ...(dto.dataInicio !== undefined && { dataInicio: dto.dataInicio ? new Date(dto.dataInicio) : null }),
+        ...(dto.dataTermino !== undefined && { dataTermino: dto.dataTermino ? new Date(dto.dataTermino) : null }),
+      },
+      include: { categoriasPremiacao: { orderBy: { ordem: 'asc' } } },
+    });
+
+    return this.toResponse(updated as BolaoComCategorias);
+  }
+
+  async updateCategorias(tenantId: string | null, bolaoId: string, dto: UpdateCategoriasDto): Promise<BolaoResponse> {
+    this.assertTenantId(tenantId);
+    const bolao = await this.findOrFail(tenantId, bolaoId);
+
+    if (bolao.status !== 'A_SER_INICIADO') {
+      throw new BusinessException(
+        'STATUS_INVALIDO',
+        'Categorias só podem ser alteradas quando bolão está A_SER_INICIADO',
+      );
+    }
+
+    this.validarCategorias(dto.categorias);
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      await tx.categoriaPremiacao.deleteMany({ where: { bolaoId, tenantId } });
+
+      await tx.categoriaPremiacao.createMany({
+        data: dto.categorias.map((c, i) => ({
+          tenantId,
+          bolaoId,
+          nome: c.nome,
+          tipo: c.tipo,
+          acertosAlvo: c.acertosAlvo ?? null,
+          sorteioReferencia: c.sorteioReferencia ?? null,
+          percentual: c.percentual,
+          acumulaSemGanhador: c.acumulaSemGanhador ?? false,
+          ordem: c.ordem ?? i + 1,
+        })),
+      });
+
+      return tx.bolao.findFirstOrThrow({
+        where: { id: bolaoId },
+        include: { categoriasPremiacao: { orderBy: { ordem: 'asc' } } },
+      });
+    });
+
+    return this.toResponse(updated as BolaoComCategorias);
+  }
+
+  async iniciar(tenantId: string | null, id: string): Promise<BolaoResponse> {
+    this.assertTenantId(tenantId);
+    const bolao = await this.findOrFail(tenantId, id);
+
+    if (bolao.status !== 'A_SER_INICIADO') {
+      throw new BusinessException(
+        'STATUS_INVALIDO',
+        `Bolão deve estar A_SER_INICIADO para iniciar. Status atual: ${bolao.status}`,
+      );
+    }
+
+    const updated = await this.prisma.bolao.update({
+      where: { id },
+      data: { status: 'EM_ANDAMENTO' },
+      include: { categoriasPremiacao: { orderBy: { ordem: 'asc' } } },
+    });
+
+    return this.toResponse(updated as BolaoComCategorias);
+  }
+
+  async finalizar(tenantId: string | null, id: string): Promise<BolaoResponse> {
+    this.assertTenantId(tenantId);
+    const bolao = await this.findOrFail(tenantId, id);
+
+    if (bolao.status !== 'EM_ANDAMENTO') {
+      throw new BusinessException(
+        'STATUS_INVALIDO',
+        `Bolão deve estar EM_ANDAMENTO para finalizar. Status atual: ${bolao.status}`,
+      );
+    }
+
+    const updated = await this.prisma.bolao.update({
+      where: { id },
+      data: { status: 'FINALIZADO' },
+      include: { categoriasPremiacao: { orderBy: { ordem: 'asc' } } },
+    });
+
+    return this.toResponse(updated as BolaoComCategorias);
+  }
+
+  async delete(tenantId: string | null, id: string): Promise<void> {
+    this.assertTenantId(tenantId);
+    const bolao = await this.findOrFail(tenantId, id);
+
+    if (bolao.status !== 'A_SER_INICIADO') {
+      throw new BusinessException(
+        'STATUS_INVALIDO',
+        'Bolão só pode ser excluído quando está A_SER_INICIADO',
+      );
+    }
+
+    await this.prisma.bolao.delete({ where: { id } });
+  }
+
+  // ── Helpers privados ──────────────────────────────────────────────────────
+
+  private async findOrFail(tenantId: string, id: string): Promise<BolaoComCategorias> {
+    const bolao = await this.prisma.bolao.findFirst({
+      where: { id, tenantId },
+      include: { categoriasPremiacao: { orderBy: { ordem: 'asc' } } },
+    });
+
+    if (!bolao) {
+      throw new NotFoundException({
+        statusCode: 404,
+        error: 'BOLAO_NAO_ENCONTRADO',
+        message: `Bolão ${id} não encontrado`,
+        details: [],
+      });
+    }
+
+    return bolao as BolaoComCategorias;
+  }
+
+  private validarCategorias(categorias: CreateCategoriaDto[]): void {
+    const soma = arredondarMonetario(categorias.reduce((acc, c) => acc + c.percentual, 0));
+    if (soma !== 100) {
+      throw new BusinessException(
+        'SOMA_PERCENTUAIS_INVALIDA',
+        `Soma dos percentuais deve ser exatamente 100%. Atual: ${soma}%`,
+        [{ field: 'categorias', code: 'SOMA_PERCENTUAIS_INVALIDA', message: `Soma = ${soma}%` }],
+      );
+    }
+
+    for (const cat of categorias) {
+      if (cat.tipo === 'ACERTOS_EXATOS' && !cat.acertosAlvo) {
+        throw new BusinessException(
+          'ACERTOS_ALVO_OBRIGATORIO',
+          `Categoria "${cat.nome}" do tipo ACERTOS_EXATOS exige acertosAlvo`,
+          [{ field: 'acertosAlvo', code: 'ACERTOS_ALVO_OBRIGATORIO', message: 'Campo obrigatório para ACERTOS_EXATOS' }],
+        );
+      }
+      if (cat.tipo === 'MAIOR_PONTUACAO_SORTEIO' && !cat.sorteioReferencia) {
+        throw new BusinessException(
+          'SORTEIO_REFERENCIA_OBRIGATORIO',
+          `Categoria "${cat.nome}" do tipo MAIOR_PONTUACAO_SORTEIO exige sorteioReferencia`,
+          [{ field: 'sorteioReferencia', code: 'SORTEIO_REFERENCIA_OBRIGATORIO', message: 'Campo obrigatório para MAIOR_PONTUACAO_SORTEIO' }],
+        );
+      }
+    }
+  }
+
+  private assertTenantId(tenantId: string | null): asserts tenantId is string {
+    if (!tenantId) throw new ForbiddenException('TENANT_ID_OBRIGATORIO');
+  }
+
+  private toResponse(b: BolaoComCategorias): BolaoResponse {
+    const cotasAtivas = 0; // calculado no ParticipanteModule
+    return {
+      id: b.id,
+      tenantId: b.tenantId,
+      nome: b.nome,
+      status: b.status,
+      valorCota: (b.valorCota as unknown as Prisma.Decimal).toNumber(),
+      dataInicio: b.dataInicio ? b.dataInicio.toISOString().split('T')[0] : null,
+      dataTermino: b.dataTermino ? b.dataTermino.toISOString().split('T')[0] : null,
+      totalCotasAtivas: cotasAtivas,
+      valorBrutoArrecadado: 0,
+      categorias: b.categoriasPremiacao.map((c) => ({
+        id: c.id,
+        nome: c.nome,
+        tipo: c.tipo as CategoriaTipo,
+        acertosAlvo: c.acertosAlvo,
+        sorteioReferencia: c.sorteioReferencia,
+        percentual: (c.percentual as unknown as Prisma.Decimal).toNumber(),
+        acumulaSemGanhador: c.acumulaSemGanhador,
+        valorAcumuladoAnterior: (c.valorAcumuladoAnterior as unknown as Prisma.Decimal).toNumber(),
+        ordem: c.ordem,
+      })),
+      criadoEm: b.criadoEm.toISOString(),
+      atualizadoEm: b.atualizadoEm.toISOString(),
+    };
+  }
+}
