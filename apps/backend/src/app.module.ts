@@ -12,6 +12,7 @@ import { BolaoModule } from './modules/bolao/bolao.module';
 import { ParticipanteModule } from './modules/participante/participante.module';
 import { SorteioModule } from './modules/sorteio/sorteio.module';
 import { PremioModule } from './modules/premio/premio.module';
+import { WhatsAppModule } from './modules/whatsapp/whatsapp.module';
 
 @Module({
   imports: [
@@ -24,7 +25,8 @@ import { PremioModule } from './modules/premio/premio.module';
     ParticipanteModule,
     SorteioModule,
     PremioModule,
-    // Próximos: WhatsAppModule, GoogleDriveModule, RelatorioModule, PwaModule
+    WhatsAppModule,
+    // Próximos: GoogleDriveModule, RelatorioModule, PwaModule
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },
