@@ -13,6 +13,9 @@ import { ParticipanteModule } from './modules/participante/participante.module';
 import { SorteioModule } from './modules/sorteio/sorteio.module';
 import { PremioModule } from './modules/premio/premio.module';
 import { WhatsAppModule } from './modules/whatsapp/whatsapp.module';
+import { GoogleDriveModule } from './modules/google-drive/google-drive.module';
+import { RelatorioModule } from './modules/relatorio/relatorio.module';
+import { PwaModule } from './modules/pwa/pwa.module';
 
 @Module({
   imports: [
@@ -26,7 +29,10 @@ import { WhatsAppModule } from './modules/whatsapp/whatsapp.module';
     SorteioModule,
     PremioModule,
     WhatsAppModule,
-    // Próximos: GoogleDriveModule, RelatorioModule, PwaModule
+    GoogleDriveModule,
+    RelatorioModule,
+    PwaModule,
+    // Backend 100% concluído — próximo: Frontend Angular 21
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },
