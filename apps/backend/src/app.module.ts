@@ -10,6 +10,7 @@ import { SupabaseModule } from './modules/supabase/supabase.module';
 import { TenantModule } from './modules/tenant/tenant.module';
 import { BolaoModule } from './modules/bolao/bolao.module';
 import { ParticipanteModule } from './modules/participante/participante.module';
+import { SorteioModule } from './modules/sorteio/sorteio.module';
 
 @Module({
   imports: [
@@ -20,7 +21,8 @@ import { ParticipanteModule } from './modules/participante/participante.module';
     TenantModule,
     BolaoModule,
     ParticipanteModule,
-    // Próximos: SorteioModule, CalcAcertosJob, PremioModule, etc.
+    SorteioModule,
+    // Próximos: PremioModule, WhatsAppModule, etc.
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

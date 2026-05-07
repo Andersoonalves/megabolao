@@ -27,6 +27,15 @@ export function validarSomaPercentuais(percentuais: number[]): boolean {
   return soma === 100;
 }
 
+// ── Validação de bolas sorteadas (Mega-Sena: 6 números únicos, 1–60) ──────────
+
+export function validarBolasSorteadas(bolas: number[]): boolean {
+  if (bolas.length !== 6) return false;
+  const unicos = new Set(bolas);
+  if (unicos.size !== 6) return false;
+  return bolas.every((n) => Number.isInteger(n) && n >= 1 && n <= 60);
+}
+
 // ── Slug ──────────────────────────────────────────────────────────────────────
 
 export function gerarSlug(texto: string): string {
