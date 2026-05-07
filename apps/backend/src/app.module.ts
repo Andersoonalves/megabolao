@@ -5,14 +5,18 @@ import { AuthMiddleware } from './modules/auth/auth.middleware';
 import { AuthModule } from './modules/auth/auth.module';
 import { JwtAuthGuard } from './modules/auth/auth.guard';
 import { RolesGuard } from './modules/auth/roles.guard';
+import { PrismaModule } from './modules/prisma/prisma.module';
 import { SupabaseModule } from './modules/supabase/supabase.module';
+import { TenantModule } from './modules/tenant/tenant.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     SupabaseModule,
+    PrismaModule,
     AuthModule,
-    // Próximos módulos: TenantModule, BolaoModule, ParticipanteModule, etc.
+    TenantModule,
+    // Próximos: BolaoModule, ParticipanteModule, SorteioModule, etc.
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

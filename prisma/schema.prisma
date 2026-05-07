@@ -1,0 +1,260 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── ENUMs ─────────────────────────────────────────────────────
+
+enum TenantStatus {
+  ATIVO
+  INATIVO
+  SUSPENSO
+
+  @@map("tenant_status")
+}
+
+enum BolaoStatus {
+  A_SER_INICIADO
+  EM_ANDAMENTO
+  FINALIZADO
+
+  @@map("bolao_status")
+}
+
+enum PapelUsuario {
+  MASTER
+  ADMIN
+
+  @@map("papel_usuario")
+}
+
+enum CategoriaTipo {
+  TAXA_ADMINISTRATIVA
+  ACERTOS_EXATOS
+  MAIOR_PONTUACAO_SORTEIO
+  MAIOR_PONTUACAO_GERAL
+  MENOR_PONTUACAO_GERAL
+
+  @@map("categoria_tipo")
+}
+
+enum PagamentoStatus {
+  PENDENTE
+  PAGO
+  INATIVO
+
+  @@map("pagamento_status")
+}
+
+enum ResultadoStatus {
+  EM_ANDAMENTO
+  PREMIADO
+  NAO_PREMIADO
+
+  @@map("resultado_status")
+}
+
+enum MensagemTipo {
+  RESULTADO_SORTEIO
+  RANKING_PARCIAL
+  PREMIADOS
+  AVISO_ADMIN
+  MANUAL
+
+  @@map("mensagem_tipo")
+}
+
+enum MensagemStatus {
+  PENDENTE
+  ENVIADO
+  FALHA
+
+  @@map("mensagem_status")
+}
+
+// ── MODELS ─────────────────────────────────────────────────────
+
+model Tenant {
+  id                    String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nome                  String
+  slug                  String       @unique
+  status                TenantStatus @default(ATIVO)
+  taxaAdministrativaPct Decimal      @default(15.00) @db.Decimal(5, 2) @map("taxa_administrativa_pct")
+  branding              Json         @default("{}")
+  criadoEm              DateTime     @default(now()) @db.Timestamptz() @map("criado_em")
+  atualizadoEm          DateTime     @default(now()) @db.Timestamptz() @map("atualizado_em")
+
+  userProfiles        UserProfile[]
+  boloes              Bolao[]
+  categoriasPremiacao CategoriaPremiacao[]
+  cotas               Cota[]
+  sorteios            Sorteio[]
+  acertosSorteio      AcertoSorteio[]
+  premios             Premio[]
+  mensagens           MensagemWhatsapp[]
+
+  @@map("tenants")
+}
+
+model UserProfile {
+  id           String       @id @db.Uuid
+  tenantId     String?      @db.Uuid @map("tenant_id")
+  papel        PapelUsuario
+  celular      String?
+  criadoEm     DateTime     @default(now()) @db.Timestamptz() @map("criado_em")
+  atualizadoEm DateTime     @default(now()) @db.Timestamptz() @map("atualizado_em")
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id])
+
+  @@map("user_profiles")
+}
+
+model Bolao {
+  id           String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId     String      @db.Uuid @map("tenant_id")
+  nome         String
+  status       BolaoStatus @default(A_SER_INICIADO)
+  valorCota    Decimal     @db.Decimal(10, 2) @map("valor_cota")
+  dataInicio   DateTime?   @db.Date @map("data_inicio")
+  dataTermino  DateTime?   @db.Date @map("data_termino")
+  criadoEm     DateTime    @default(now()) @db.Timestamptz() @map("criado_em")
+  atualizadoEm DateTime    @default(now()) @db.Timestamptz() @map("atualizado_em")
+
+  tenant              Tenant               @relation(fields: [tenantId], references: [id])
+  categoriasPremiacao CategoriaPremiacao[]
+  cotas               Cota[]
+  sorteios            Sorteio[]
+  acertosSorteio      AcertoSorteio[]
+  premios             Premio[]
+  mensagens           MensagemWhatsapp[]
+
+  @@map("boloes")
+}
+
+model CategoriaPremiacao {
+  id                     String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId               String        @db.Uuid @map("tenant_id")
+  bolaoId                String        @db.Uuid @map("bolao_id")
+  nome                   String
+  tipo                   CategoriaTipo
+  acertosAlvo            Int?          @map("acertos_alvo")
+  sorteioReferencia      Int?          @map("sorteio_referencia")
+  percentual             Decimal       @db.Decimal(5, 2)
+  acumulaSemGanhador     Boolean       @default(false) @map("acumula_sem_ganhador")
+  valorAcumuladoAnterior Decimal       @default(0) @db.Decimal(12, 2) @map("valor_acumulado_anterior")
+  ordem                  Int           @default(0)
+  criadoEm               DateTime      @default(now()) @db.Timestamptz() @map("criado_em")
+  atualizadoEm           DateTime      @default(now()) @db.Timestamptz() @map("atualizado_em")
+
+  tenant  Tenant   @relation(fields: [tenantId], references: [id])
+  bolao   Bolao    @relation(fields: [bolaoId], references: [id])
+  premios Premio[]
+
+  @@map("categorias_premiacao")
+}
+
+model Cota {
+  id                       String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId                 String          @db.Uuid @map("tenant_id")
+  bolaoId                  String          @db.Uuid @map("bolao_id")
+  nomeIdentificacao        String          @map("nome_identificacao")
+  numeroCelular            String?         @map("numero_celular")
+  numeroSequencial         Int             @map("numero_sequencial")
+  palpites                 Int[]
+  statusPagamento          PagamentoStatus @default(PENDENTE) @map("status_pagamento")
+  dataConfirmacaoPagamento DateTime?       @db.Timestamptz() @map("data_confirmacao_pagamento")
+  totalAcertosAcumulados   Int             @default(0) @map("total_acertos_acumulados")
+  statusResultado          ResultadoStatus @default(EM_ANDAMENTO) @map("status_resultado")
+  criadoEm                 DateTime        @default(now()) @db.Timestamptz() @map("criado_em")
+  atualizadoEm             DateTime        @default(now()) @db.Timestamptz() @map("atualizado_em")
+
+  tenant         Tenant          @relation(fields: [tenantId], references: [id])
+  bolao          Bolao           @relation(fields: [bolaoId], references: [id])
+  acertosSorteio AcertoSorteio[]
+  premios        Premio[]
+
+  @@unique([tenantId, bolaoId, numeroSequencial])
+  @@map("cotas")
+}
+
+model Sorteio {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId         String   @db.Uuid @map("tenant_id")
+  bolaoId          String   @db.Uuid @map("bolao_id")
+  numeroConcurso   Int      @map("numero_concurso")
+  dataSorteio      DateTime @db.Date @map("data_sorteio")
+  bolasSorteadas   Int[]    @map("bolas_sorteadas")
+  sequenciaNoBolao Int      @map("sequencia_no_bolao")
+  ehPrimeiro       Boolean  @default(false) @map("eh_primeiro")
+  processado       Boolean  @default(false)
+  criadoEm         DateTime @default(now()) @db.Timestamptz() @map("criado_em")
+
+  tenant         Tenant          @relation(fields: [tenantId], references: [id])
+  bolao          Bolao           @relation(fields: [bolaoId], references: [id])
+  acertosSorteio AcertoSorteio[]
+
+  @@unique([tenantId, bolaoId, numeroConcurso])
+  @@map("sorteios")
+}
+
+model AcertoSorteio {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId  String   @db.Uuid @map("tenant_id")
+  bolaoId   String   @db.Uuid @map("bolao_id")
+  sorteioId String   @db.Uuid @map("sorteio_id")
+  cotaId    String   @db.Uuid @map("cota_id")
+  acertos   Int
+  criadoEm  DateTime @default(now()) @db.Timestamptz() @map("criado_em")
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id])
+  bolao   Bolao   @relation(fields: [bolaoId], references: [id])
+  sorteio Sorteio @relation(fields: [sorteioId], references: [id])
+  cota    Cota    @relation(fields: [cotaId], references: [id])
+
+  @@unique([sorteioId, cotaId])
+  @@map("acertos_sorteio")
+}
+
+model Premio {
+  id                   String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId             String          @db.Uuid @map("tenant_id")
+  bolaoId              String          @db.Uuid @map("bolao_id")
+  cotaId               String          @db.Uuid @map("cota_id")
+  categoriaPremiacaoId String          @db.Uuid @map("categoria_premiacao_id")
+  valorTotalCategoria  Decimal         @db.Decimal(12, 2) @map("valor_total_categoria")
+  valorPorGanhador     Decimal         @db.Decimal(12, 2) @map("valor_por_ganhador")
+  statusPagamento      PagamentoStatus @default(PENDENTE) @map("status_pagamento")
+  dataPagamento        DateTime?       @db.Timestamptz() @map("data_pagamento")
+  criadoEm             DateTime        @default(now()) @db.Timestamptz() @map("criado_em")
+  atualizadoEm         DateTime        @default(now()) @db.Timestamptz() @map("atualizado_em")
+
+  tenant             Tenant             @relation(fields: [tenantId], references: [id])
+  bolao              Bolao              @relation(fields: [bolaoId], references: [id])
+  cota               Cota               @relation(fields: [cotaId], references: [id])
+  categoriaPremiacao CategoriaPremiacao @relation(fields: [categoriaPremiacaoId], references: [id])
+
+  @@map("premios")
+}
+
+model MensagemWhatsapp {
+  id           String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId     String         @db.Uuid @map("tenant_id")
+  bolaoId      String?        @db.Uuid @map("bolao_id")
+  tipo         MensagemTipo
+  conteudo     String
+  grupoId      String?        @map("grupo_id")
+  status       MensagemStatus @default(PENDENTE)
+  tentativas   Int            @default(0)
+  erro         String?
+  criadoEm     DateTime       @default(now()) @db.Timestamptz() @map("criado_em")
+  atualizadoEm DateTime       @default(now()) @db.Timestamptz() @map("atualizado_em")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  bolao  Bolao? @relation(fields: [bolaoId], references: [id])
+
+  @@map("mensagens_whatsapp")
+}

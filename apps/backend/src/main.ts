@@ -4,6 +4,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, {
@@ -50,6 +51,8 @@ async function bootstrap(): Promise<void> {
       swaggerOptions: { persistAuthorization: true },
     });
   }
+
+  app.useGlobalFilters(new AllExceptionsFilter());
 
   await app.listen(port);
 
