@@ -1,5 +1,5 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { Bolao, CategoriaPremiacao, Prisma } from '@prisma/client';
+import { Bolao, CategoriaPremiacao, PagamentoStatus, Prisma } from '@prisma/client';
 import { CategoriaTipo, PaginatedResponse } from '@nossobolao/shared-types';
 import { arredondarMonetario } from '@nossobolao/shared-utils';
 import { PrismaService } from '../prisma/prisma.service';
@@ -10,7 +10,10 @@ import { UpdateBolaoDto } from './dto/update-bolao.dto';
 import { UpdateCategoriasDto } from './dto/update-categorias.dto';
 import { CreateCategoriaDto } from './dto/create-categoria.dto';
 
-type BolaoComCategorias = Bolao & { categoriasPremiacao: CategoriaPremiacao[] };
+type BolaoComTudo = Bolao & {
+  categoriasPremiacao: CategoriaPremiacao[];
+  _count: { cotas: number };
+};
 
 export interface CategoriaResponse {
   id: string;
@@ -74,7 +77,10 @@ export class BolaoService {
 
       return tx.bolao.findFirstOrThrow({
         where: { id: created.id },
-        include: { categoriasPremiacao: { orderBy: { ordem: 'asc' } } },
+        include: {
+          categoriasPremiacao: { orderBy: { ordem: 'asc' } },
+          _count: { select: { cotas: { where: { statusPagamento: PagamentoStatus.PAGO } } } },
+        },
       });
     });
 
@@ -88,7 +94,10 @@ export class BolaoService {
     const [data, total] = await this.prisma.$transaction([
       this.prisma.bolao.findMany({
         where: { tenantId },
-        include: { categoriasPremiacao: { orderBy: { ordem: 'asc' } } },
+        include: {
+          categoriasPremiacao: { orderBy: { ordem: 'asc' } },
+          _count: { select: { cotas: { where: { statusPagamento: PagamentoStatus.PAGO } } } },
+        },
         skip,
         take: perPage,
         orderBy: { criadoEm: 'desc' },
@@ -97,7 +106,7 @@ export class BolaoService {
     ]);
 
     return {
-      data: data.map((b) => this.toResponse(b as BolaoComCategorias)),
+      data: data.map((b) => this.toResponse(b as BolaoComTudo)),
       total,
       page,
       perPage,
@@ -130,10 +139,13 @@ export class BolaoService {
         ...(dto.dataInicio !== undefined && { dataInicio: dto.dataInicio ? new Date(dto.dataInicio) : null }),
         ...(dto.dataTermino !== undefined && { dataTermino: dto.dataTermino ? new Date(dto.dataTermino) : null }),
       },
-      include: { categoriasPremiacao: { orderBy: { ordem: 'asc' } } },
+      include: {
+          categoriasPremiacao: { orderBy: { ordem: 'asc' } },
+          _count: { select: { cotas: { where: { statusPagamento: PagamentoStatus.PAGO } } } },
+        },
     });
 
-    return this.toResponse(updated as BolaoComCategorias);
+    return this.toResponse(updated as BolaoComTudo);
   }
 
   async updateCategorias(tenantId: string | null, bolaoId: string, dto: UpdateCategoriasDto): Promise<BolaoResponse> {
@@ -168,11 +180,14 @@ export class BolaoService {
 
       return tx.bolao.findFirstOrThrow({
         where: { id: bolaoId },
-        include: { categoriasPremiacao: { orderBy: { ordem: 'asc' } } },
+        include: {
+          categoriasPremiacao: { orderBy: { ordem: 'asc' } },
+          _count: { select: { cotas: { where: { statusPagamento: PagamentoStatus.PAGO } } } },
+        },
       });
     });
 
-    return this.toResponse(updated as BolaoComCategorias);
+    return this.toResponse(updated as BolaoComTudo);
   }
 
   async iniciar(tenantId: string | null, id: string): Promise<BolaoResponse> {
@@ -189,10 +204,13 @@ export class BolaoService {
     const updated = await this.prisma.bolao.update({
       where: { id },
       data: { status: 'EM_ANDAMENTO' },
-      include: { categoriasPremiacao: { orderBy: { ordem: 'asc' } } },
+      include: {
+          categoriasPremiacao: { orderBy: { ordem: 'asc' } },
+          _count: { select: { cotas: { where: { statusPagamento: PagamentoStatus.PAGO } } } },
+        },
     });
 
-    return this.toResponse(updated as BolaoComCategorias);
+    return this.toResponse(updated as BolaoComTudo);
   }
 
   async finalizar(tenantId: string | null, id: string): Promise<BolaoResponse> {
@@ -209,10 +227,13 @@ export class BolaoService {
     const updated = await this.prisma.bolao.update({
       where: { id },
       data: { status: 'FINALIZADO' },
-      include: { categoriasPremiacao: { orderBy: { ordem: 'asc' } } },
+      include: {
+          categoriasPremiacao: { orderBy: { ordem: 'asc' } },
+          _count: { select: { cotas: { where: { statusPagamento: PagamentoStatus.PAGO } } } },
+        },
     });
 
-    return this.toResponse(updated as BolaoComCategorias);
+    return this.toResponse(updated as BolaoComTudo);
   }
 
   async delete(tenantId: string | null, id: string): Promise<void> {
@@ -231,10 +252,13 @@ export class BolaoService {
 
   // ── Helpers privados ──────────────────────────────────────────────────────
 
-  private async findOrFail(tenantId: string, id: string): Promise<BolaoComCategorias> {
+  private async findOrFail(tenantId: string, id: string): Promise<BolaoComTudo> {
     const bolao = await this.prisma.bolao.findFirst({
       where: { id, tenantId },
-      include: { categoriasPremiacao: { orderBy: { ordem: 'asc' } } },
+      include: {
+          categoriasPremiacao: { orderBy: { ordem: 'asc' } },
+          _count: { select: { cotas: { where: { statusPagamento: PagamentoStatus.PAGO } } } },
+        },
     });
 
     if (!bolao) {
@@ -246,7 +270,7 @@ export class BolaoService {
       });
     }
 
-    return bolao as BolaoComCategorias;
+    return bolao as BolaoComTudo;
   }
 
   private validarCategorias(categorias: CreateCategoriaDto[]): void {
@@ -281,18 +305,18 @@ export class BolaoService {
     if (!tenantId) throw new ForbiddenException('TENANT_ID_OBRIGATORIO');
   }
 
-  private toResponse(b: BolaoComCategorias): BolaoResponse {
-    const cotasAtivas = 0; // calculado no ParticipanteModule
+  private toResponse(b: BolaoComTudo): BolaoResponse {
+    const valorCota = (b.valorCota as unknown as Prisma.Decimal).toNumber();
     return {
       id: b.id,
       tenantId: b.tenantId,
       nome: b.nome,
       status: b.status,
-      valorCota: (b.valorCota as unknown as Prisma.Decimal).toNumber(),
+      valorCota,
       dataInicio: b.dataInicio ? b.dataInicio.toISOString().split('T')[0] : null,
       dataTermino: b.dataTermino ? b.dataTermino.toISOString().split('T')[0] : null,
-      totalCotasAtivas: cotasAtivas,
-      valorBrutoArrecadado: 0,
+      totalCotasAtivas: b._count.cotas,
+      valorBrutoArrecadado: arredondarMonetario(b._count.cotas * valorCota),
       categorias: b.categoriasPremiacao.map((c) => ({
         id: c.id,
         nome: c.nome,

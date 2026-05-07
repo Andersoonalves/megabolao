@@ -33,6 +33,7 @@ const makePrismaBolao = (overrides: Record<string, unknown> = {}) => ({
   dataTermino: null,
   criadoEm: new Date('2026-01-01T00:00:00Z'),
   atualizadoEm: new Date('2026-01-01T00:00:00Z'),
+  _count: { cotas: 0 },
   categoriasPremiacao: [
     {
       id: 'cat-1',

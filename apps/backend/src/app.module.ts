@@ -9,6 +9,7 @@ import { PrismaModule } from './modules/prisma/prisma.module';
 import { SupabaseModule } from './modules/supabase/supabase.module';
 import { TenantModule } from './modules/tenant/tenant.module';
 import { BolaoModule } from './modules/bolao/bolao.module';
+import { ParticipanteModule } from './modules/participante/participante.module';
 
 @Module({
   imports: [
@@ -18,7 +19,8 @@ import { BolaoModule } from './modules/bolao/bolao.module';
     AuthModule,
     TenantModule,
     BolaoModule,
-    // Próximos: ParticipanteModule, SorteioModule, etc.
+    ParticipanteModule,
+    // Próximos: SorteioModule, CalcAcertosJob, PremioModule, etc.
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },
