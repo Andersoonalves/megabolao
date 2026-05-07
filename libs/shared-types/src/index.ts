@@ -1,8 +1,7 @@
 // =============================================================================
 // NossoBolão — Shared Types
-// Este arquivo é parcialmente manual (ENUMs e interfaces base).
-// Os tipos de request/response são GERADOS pelo OpenAPI — não editar abaixo
-// da linha "// --- GERADO ---".
+// ENUMs e interfaces base: editar aqui.
+// Tipos de request/response: GERADOS pelo OpenAPI — não editar abaixo de "GERADO".
 // =============================================================================
 
 // ── ENUMs (espelham os tipos do banco) ───────────────────────────────────────
@@ -35,6 +34,12 @@ export type MensagemStatus = 'PENDENTE' | 'ENVIADO' | 'FALHA';
 
 // ── Interfaces de domínio ────────────────────────────────────────────────────
 
+export interface TenantBranding {
+  logoUrl?: string;
+  corPrimaria?: string;
+  nomeCustomizado?: string;
+}
+
 export interface Tenant {
   id: string;
   nome: string;
@@ -42,27 +47,6 @@ export interface Tenant {
   status: TenantStatus;
   taxaAdministrativaPct: number;
   branding: TenantBranding;
-  criadoEm: string;
-  atualizadoEm: string;
-}
-
-export interface TenantBranding {
-  logoUrl?: string;
-  corPrimaria?: string;
-  nomeCustomizado?: string;
-}
-
-export interface Bolao {
-  id: string;
-  tenantId: string;
-  nome: string;
-  status: BolaoStatus;
-  valorCota: number;
-  totalCotasAtivas: number;
-  valorBrutoArrecadado: number;
-  dataInicio?: string;
-  dataTermino?: string;
-  categorias: CategoriaPremiacao[];
   criadoEm: string;
   atualizadoEm: string;
 }
@@ -79,6 +63,21 @@ export interface CategoriaPremiacao {
   acumulaSemGanhador: boolean;
   valorAcumuladoAnterior: number;
   ordem: number;
+}
+
+export interface Bolao {
+  id: string;
+  tenantId: string;
+  nome: string;
+  status: BolaoStatus;
+  valorCota: number;
+  totalCotasAtivas: number;
+  valorBrutoArrecadado: number;
+  dataInicio?: string;
+  dataTermino?: string;
+  categorias: CategoriaPremiacao[];
+  criadoEm: string;
+  atualizadoEm: string;
 }
 
 export interface Cota {

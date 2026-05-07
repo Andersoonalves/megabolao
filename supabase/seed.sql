@@ -1,0 +1,70 @@
+-- Seed de desenvolvimento — dados do bolão real de referência
+
+INSERT INTO tenants (id, nome, slug, status, taxa_administrativa_pct, branding)
+VALUES (
+  '00000000-0000-0000-0000-000000000001',
+  'Bolão Principal',
+  'bolao-principal',
+  'ATIVO',
+  15.00,
+  '{"corPrimaria": "#1F4E79", "nomeCustomizado": "NossoBolão"}'
+);
+
+-- Bolão de referência (concursos 2994–2999)
+INSERT INTO boloes (id, tenant_id, nome, status, valor_cota, data_inicio, data_termino)
+VALUES (
+  '00000000-0000-0000-0000-000000000002',
+  '00000000-0000-0000-0000-000000000001',
+  'Bolão Mega-Sena Abril 2026',
+  'FINALIZADO',
+  30.00,
+  '2026-04-01',
+  '2026-04-23'
+);
+
+-- Categorias (soma = 100%)
+INSERT INTO categorias_premiacao
+  (tenant_id, bolao_id, nome, tipo, acertos_alvo, sorteio_referencia, percentual, acumula_sem_ganhador, ordem)
+VALUES
+  ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000002',
+   'Taxa Administrativa',    'TAXA_ADMINISTRATIVA',     NULL, NULL, 15, false, 1),
+  ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000002',
+   'Premio Principal',       'ACERTOS_EXATOS',            10, NULL, 55, false, 2),
+  ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000002',
+   'Mais Pontos 1o Sorteio', 'MAIOR_PONTUACAO_SORTEIO',  NULL,    1, 10, false, 3),
+  ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000002',
+   '09 Pontos',              'ACERTOS_EXATOS',             9, NULL, 10, true,  4),
+  ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000002',
+   'Menos Pontos',           'MENOR_PONTUACAO_GERAL',    NULL, NULL, 10, false, 5);
+
+-- Sorteios de referência
+INSERT INTO sorteios
+  (tenant_id, bolao_id, numero_concurso, data_sorteio, bolas_sorteadas, sequencia_no_bolao, eh_primeiro, processado)
+VALUES
+  ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000002',
+   2994, '2026-04-09', ARRAY[1,10,23,31,40,55], 1, true,  true),
+  ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000002',
+   2995, '2026-04-11', ARRAY[8,29,42,49,50,58], 2, false, true),
+  ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000002',
+   2996, '2026-04-14', ARRAY[7,9,27,38,49,52],  3, false, true),
+  ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000002',
+   2997, '2026-04-16', ARRAY[14,20,32,37,39,42],4, false, true),
+  ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000002',
+   2998, '2026-04-18', ARRAY[15,18,28,31,52,58],5, false, true),
+  ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000002',
+   2999, '2026-04-23', ARRAY[9,24,26,38,45,58], 6, false, true);
+
+-- Ganhador principal (cota 213)
+INSERT INTO cotas
+  (tenant_id, bolao_id, nome_identificacao, numero_sequencial, palpites,
+   status_pagamento, total_acertos_acumulados, status_resultado)
+VALUES (
+  '00000000-0000-0000-0000-000000000001',
+  '00000000-0000-0000-0000-000000000002',
+  'ADERSON AMORIM RODOVIARIA',
+  213,
+  ARRAY[1,7,8,14,15,23,26,32,42,55],
+  'PAGO',
+  10,
+  'PREMIADO'
+);

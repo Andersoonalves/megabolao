@@ -1,7 +1,7 @@
-import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import { PapelUsuario } from '@nossobolao/shared-types';
 import { SupabaseService } from '../supabase/supabase.service';
 import { AuthenticatedUser } from './interfaces/authenticated-user.interface';
-import { PapelUsuario } from '@nossobolao/shared-types';
 
 interface SupabaseUserMetadata {
   papel?: string;
@@ -15,13 +15,6 @@ export class AuthService {
 
   constructor(private readonly supabase: SupabaseService) {}
 
-  /**
-   * Valida um Bearer token do Supabase Auth.
-   * Retorna AuthenticatedUser com os dados extraídos do JWT.
-   *
-   * Usa o cliente admin (service_role) para evitar chamadas extras à API.
-   * O JWT é verificado localmente via SUPABASE_JWT_SECRET — sem latência de rede.
-   */
   async validateToken(token: string): Promise<AuthenticatedUser | null> {
     try {
       const { data, error } = await this.supabase.admin.auth.getUser(token);
@@ -35,13 +28,12 @@ export class AuthService {
       const meta = (user.user_metadata ?? {}) as SupabaseUserMetadata;
 
       const papel = meta.papel as PapelUsuario | undefined;
-      if (!papel || !['MASTER', 'ADMIN'].includes(papel)) {
-        // Sessão OTP do portal do participante — papel ausente é esperado
-        // Permite o acesso como participante (sem papel Admin/Master)
+      if (!papel || !(['MASTER', 'ADMIN'] as PapelUsuario[]).includes(papel)) {
+        // Sessão OTP do portal — papel ausente é esperado; RLS do Supabase governa acesso
         return {
           id: user.id,
           email: user.email ?? '',
-          papel: 'ADMIN', // valor dummy para portal — RLS do Supabase governa o acesso
+          papel: 'ADMIN',
           tenantId: meta.tenant_id ?? null,
           celular: meta.celular ?? null,
         };
@@ -60,13 +52,6 @@ export class AuthService {
     }
   }
 
-  /**
-   * Extrai o tenant_id resolvido do request.
-   * Para MASTER: usa o header X-Tenant-Id.
-   * Para ADMIN: usa o tenant_id do JWT.
-   *
-   * Lança ForbiddenException se o ADMIN não tiver tenant associado.
-   */
   resolveTenantId(user: AuthenticatedUser, headerTenantId?: string): string | null {
     if (user.papel === 'MASTER') return headerTenantId ?? null;
     return user.tenantId;

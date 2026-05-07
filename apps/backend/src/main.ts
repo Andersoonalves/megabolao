@@ -7,7 +7,6 @@ import { AppModule } from './app.module';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, {
-    // Logs estruturados — em produção substituir por Pino/Winston
     logger: ['error', 'warn', 'log', 'debug'],
   });
 
@@ -16,10 +15,8 @@ async function bootstrap(): Promise<void> {
   const port = config.get<number>('API_PORT', 3000);
   const corsOrigins = config.get<string>('CORS_ORIGINS', 'http://localhost:4200');
 
-  // Segurança
   app.use(helmet());
 
-  // CORS — em produção usa apenas os domínios listados em CORS_ORIGINS
   app.enableCors({
     origin: env === 'local' ? true : corsOrigins.split(','),
     credentials: true,
@@ -27,21 +24,18 @@ async function bootstrap(): Promise<void> {
     allowedHeaders: ['Authorization', 'Content-Type', 'X-Tenant-Id', 'X-Request-Id'],
   });
 
-  // Prefixo e versionamento
   app.setGlobalPrefix('api');
   app.enableVersioning({ type: VersioningType.URI, defaultVersion: '1' });
 
-  // Validação global via class-validator
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true,          // Remove campos não declarados no DTO
+      whitelist: true,
       forbidNonWhitelisted: true,
-      transform: true,          // Converte tipos automaticamente
+      transform: true,
       transformOptions: { enableImplicitConversion: true },
     }),
   );
 
-  // Swagger — apenas fora de produção
   if (env !== 'production') {
     const docConfig = new DocumentBuilder()
       .setTitle('NossoBolão API')
@@ -59,9 +53,9 @@ async function bootstrap(): Promise<void> {
 
   await app.listen(port);
 
-  console.log(`🚀 NossoBolão API rodando na porta ${port} [${env}]`);
+  console.log(`NossoBolão API porta ${port} [${env}]`);
   if (env !== 'production') {
-    console.log(`📖 Swagger: http://localhost:${port}/docs`);
+    console.log(`Swagger: http://localhost:${port}/docs`);
   }
 }
 

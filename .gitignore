@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.nx/cache/
+.nx/workspace-data/
+coverage/
+*.env
+!.env.example
+.DS_Store
+*.js.map
+tmp/

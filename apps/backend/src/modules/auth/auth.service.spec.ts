@@ -116,7 +116,7 @@ describe('AuthService', () => {
       // Act
       const result = await service.validateToken('any-token');
 
-      // Assert — o guard transforma null em UnauthorizedException; o service apenas retorna null
+      // Assert — guard transforma null em UnauthorizedException; service apenas retorna null
       expect(result).toBeNull();
     });
 
