@@ -11,6 +11,7 @@ import { TenantModule } from './modules/tenant/tenant.module';
 import { BolaoModule } from './modules/bolao/bolao.module';
 import { ParticipanteModule } from './modules/participante/participante.module';
 import { SorteioModule } from './modules/sorteio/sorteio.module';
+import { PremioModule } from './modules/premio/premio.module';
 
 @Module({
   imports: [
@@ -22,7 +23,8 @@ import { SorteioModule } from './modules/sorteio/sorteio.module';
     BolaoModule,
     ParticipanteModule,
     SorteioModule,
-    // Próximos: PremioModule, WhatsAppModule, etc.
+    PremioModule,
+    // Próximos: WhatsAppModule, GoogleDriveModule, RelatorioModule, PwaModule
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },
