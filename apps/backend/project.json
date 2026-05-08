@@ -5,31 +5,25 @@
   "projectType": "application",
   "targets": {
     "build": {
-      "executor": "@nx/nest:build",
+      "executor": "@nx/js:tsc",
       "outputs": ["{options.outputPath}"],
       "options": {
         "outputPath": "dist/apps/backend",
         "main": "apps/backend/src/main.ts",
         "tsConfig": "apps/backend/tsconfig.app.json",
         "assets": []
-      },
-      "configurations": {
-        "production": {
-          "optimization": true,
-          "extractLicenses": true,
-          "inspect": false
-        }
       }
     },
     "serve": {
-      "executor": "@nx/nest:serve",
+      "executor": "@nx/js:node",
       "defaultConfiguration": "development",
       "options": {
-        "buildTarget": "backend:build"
+        "buildTarget": "backend:build",
+        "watch": true
       },
       "configurations": {
         "development": { "buildTarget": "backend:build" },
-        "production": { "buildTarget": "backend:build:production" }
+        "production": { "buildTarget": "backend:build", "watch": false }
       }
     },
     "test": {

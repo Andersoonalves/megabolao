@@ -4,10 +4,11 @@ import { Public } from '../auth/decorators/public.decorator';
 import { PwaService } from './pwa.service';
 
 @ApiTags('pwa')
-@Controller()
+@Controller('pwa')
 export class PwaController {
   constructor(private readonly pwaService: PwaService) {}
 
+  // Servido em /api/v1/pwa/manifest.webmanifest — frontend Angular serve o próprio /manifest.webmanifest
   @Get('manifest.webmanifest')
   @Public()
   @Header('Content-Type', 'application/manifest+json')
@@ -16,9 +17,9 @@ export class PwaController {
     return this.pwaService.getManifest(tenantId);
   }
 
-  @Get('api/v1/pwa/config')
+  @Get('config')
   @Public()
-  @ApiOperation({ summary: 'Configuração de branding do tenant para o frontend' })
+  @ApiOperation({ summary: 'Branding do tenant para bootstrap do frontend' })
   getTenantConfig(@Headers('x-tenant-id') tenantId?: string) {
     return this.pwaService.getTenantConfig(tenantId);
   }
