@@ -99,8 +99,9 @@ export class TenantService {
     const updated = await this.prisma.tenant.update({
       where: { id },
       data: {
-        ...(dto.nome !== undefined && { nome: dto.nome }),
-        ...(dto.slug !== undefined && { slug: dto.slug }),
+        ...(dto.nome   !== undefined && { nome: dto.nome }),
+        ...(dto.slug   !== undefined && { slug: dto.slug }),
+        ...(dto.status !== undefined && { status: dto.status }),
         ...(dto.taxaAdministrativaPct !== undefined && {
           taxaAdministrativaPct: dto.taxaAdministrativaPct,
         }),

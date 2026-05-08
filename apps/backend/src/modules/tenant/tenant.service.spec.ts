@@ -154,6 +154,21 @@ describe('TenantService', () => {
   // ── update ─────────────────────────────────────────────────────────────────
 
   describe('update', () => {
+    it('atualiza status do tenant (ATIVO → SUSPENSO)', async () => {
+      // Arrange
+      const updated = makePrismaTenant({ status: 'SUSPENSO' });
+      mockPrisma.tenant.findUnique.mockResolvedValue(makePrismaTenant());
+      mockPrisma.tenant.update.mockResolvedValue(updated);
+
+      // Act
+      await service.update('tenant-uuid-1', { status: 'SUSPENSO' });
+
+      // Assert
+      expect(mockPrisma.tenant.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ status: 'SUSPENSO' }) }),
+      );
+    });
+
     it('atualiza tenant com sucesso', async () => {
       // Arrange
       const updated = makePrismaTenant({ nome: 'Novo Nome' });
