@@ -3,6 +3,7 @@ import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { NgTemplateOutlet } from '@angular/common';
 import { AuthService } from '../../services/auth.service';
 import { ShellService } from '../../services/shell.service';
+import { PwaBannerAdminComponent } from '../../../shared/components/pwa-banner/pwa-banner-admin.component';
 
 interface NavItem {
   section?: string;
@@ -36,9 +37,10 @@ const MASTER_NAV: NavItem[] = [
 @Component({
   selector: 'nb-admin-shell',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, NgTemplateOutlet],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, NgTemplateOutlet, PwaBannerAdminComponent],
   template: `
     <!-- Desktop: sidebar 240px | Main. Mobile: sidebar oculta, drawer -->
+    <nb-pwa-banner-admin />
     <div class="min-h-screen lg:grid" style="grid-template-columns: 240px 1fr">
 
       <!-- ── Sidebar (desktop sempre visível) ────────────────────────────────── -->
