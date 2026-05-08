@@ -374,8 +374,16 @@ export class NovoTenantComponent {
       );
       await this.router.navigate(['/tenants']);
     } catch (err: unknown) {
-      const msg = (err as { error?: { message?: string } })?.error?.message ?? 'Erro ao criar tenant. Verifique os dados e tente novamente.';
-      this.error.set(msg);
+      // HttpErrorResponse: err.error = corpo da resposta, err.status = código HTTP
+      type HttpErr = { error?: { message?: string; error?: string }; status?: number; message?: string };
+      const e = err as HttpErr;
+      const body = e.error?.message ?? e.error?.error ?? e.message ?? '';
+      const status = e.status ? ` [${e.status}]` : '';
+      console.error('Erro ao criar tenant:', err);
+      this.error.set(body
+        ? `${body}${status}`
+        : `Erro ao criar tenant${status}. Verifique se a API está rodando e se você tem permissão de Master.`
+      );
     } finally {
       this.loading.set(false);
     }
