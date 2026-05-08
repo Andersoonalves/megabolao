@@ -76,10 +76,16 @@ const STATIC_STATS: Record<string, Omit<TenantDisplay, keyof TenantResponse>> = 
         <span class="font-semibold">Visão geral</span>
       </div>
       <span class="font-display font-semibold text-[14px] sm:hidden">Plataforma</span>
-      <a routerLink="/tenants"
-         class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-800 text-white text-sm font-semibold rounded-[10px] no-underline transition-colors shadow-sm min-h-9">
-        + Novo tenant
-      </a>
+      <div class="flex gap-2">
+        <a routerLink="/tenants"
+           class="inline-flex items-center px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-sm font-semibold rounded-[10px] no-underline text-slate-700 transition-colors min-h-9 hidden sm:inline-flex">
+          Ver todos
+        </a>
+        <a routerLink="/tenants/novo"
+           class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-800 text-white text-sm font-semibold rounded-[10px] no-underline transition-colors shadow-sm min-h-9">
+          + Novo tenant
+        </a>
+      </div>
     </div>
 
     <!-- Page -->
