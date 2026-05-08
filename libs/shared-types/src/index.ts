@@ -149,5 +149,6 @@ export interface PaginatedResponse<T> {
 }
 
 // --- GERADO ---
-// Os tipos abaixo serão substituídos pelo output do openapi-typescript
-// ao rodar: npm run generate:types
+// Tipos derivados do OpenAPI — não editar manualmente.
+// Regenerar: npm run generate:types
+export * from './generated';
