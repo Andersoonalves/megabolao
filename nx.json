@@ -7,7 +7,9 @@
       "default",
       "!{projectRoot}/**/?(*.)+(spec|test).[jt]s?(x)",
       "!{projectRoot}/**/jest.config.[jt]s",
-      "!{projectRoot}/tsconfig.spec.json"
+      "!{projectRoot}/tsconfig.spec.json",
+      "!{projectRoot}/.eslintrc.json",
+      "!{projectRoot}/eslint.config.mjs"
     ],
     "sharedGlobals": []
   },
@@ -24,6 +26,20 @@
     "lint": {
       "inputs": ["default"],
       "cache": true
+    },
+    "@angular/build:application": {
+      "cache": true,
+      "dependsOn": ["^build"],
+      "inputs": ["production", "^production"]
+    },
+    "@nx/eslint:lint": {
+      "cache": true,
+      "inputs": [
+        "default",
+        "{workspaceRoot}/.eslintrc.json",
+        "{workspaceRoot}/.eslintignore",
+        "{workspaceRoot}/eslint.config.mjs"
+      ]
     }
   },
   "generators": {
@@ -34,11 +50,39 @@
         "e2eTestRunner": "playwright",
         "style": "none"
       },
-      "component": { "style": "none" },
-      "library": { "linter": "eslint", "unitTestRunner": "jest" }
+      "component": {
+        "style": "none"
+      },
+      "library": {
+        "linter": "eslint",
+        "unitTestRunner": "jest"
+      }
     },
     "@nx/nest": {
-      "application": { "linter": "eslint", "unitTestRunner": "jest" }
+      "application": {
+        "linter": "eslint",
+        "unitTestRunner": "jest"
+      }
+    },
+    "@nx/angular:application": {
+      "e2eTestRunner": "playwright",
+      "linter": "eslint",
+      "style": "css",
+      "unitTestRunner": "jest"
     }
-  }
+  },
+  "plugins": [
+    {
+      "plugin": "@nx/playwright/plugin",
+      "options": {
+        "targetName": "e2e"
+      }
+    },
+    {
+      "plugin": "@nx/eslint/plugin",
+      "options": {
+        "targetName": "lint"
+      }
+    }
+  ]
 }

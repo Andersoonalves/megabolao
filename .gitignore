@@ -9,3 +9,6 @@ coverage/
 .DS_Store
 *.js.map
 tmp/
+apps/frontend/design-prototypes/
+
+.angular
