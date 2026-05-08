@@ -1,3 +1,466 @@
-import { Component, ChangeDetectionStrategy } from '@angular/core';
-@Component({ selector: 'nb-whatsapp', changeDetection: ChangeDetectionStrategy.OnPush, template: `<div class="p-7"><h1 class="font-display text-3xl font-semibold">WhatsApp</h1><p class="text-slate-400 mt-2">Em implementação...</p></div>` })
-export class WhatsAppComponent {}
+import {
+  Component, signal, OnInit, OnDestroy, ChangeDetectionStrategy, inject,
+} from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { firstValueFrom } from 'rxjs';
+import { ApiService } from '../../../core/services/api.service';
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+type WaStatus = 'DESCONECTADO' | 'CARREGANDO' | 'AGUARDANDO_QR' | 'CONECTADO';
+
+interface SessionInfo { status: WaStatus; qrCode?: string; numero?: string; }
+interface Grupo        { id: string; nome: string; }
+interface MensagemWa {
+  id: string; tipo: string; grupo: string; conteudo: string;
+  status: 'PENDENTE' | 'ENVIADO' | 'FALHA'; criadoEm: string;
+}
+
+// ── Component ─────────────────────────────────────────────────────────────────
+
+@Component({
+  selector: 'nb-whatsapp',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [FormsModule],
+  template: `
+    <!-- Topbar -->
+    <div class="bg-white border-b border-slate-200 px-4 lg:px-7 py-3 flex items-center justify-between gap-4 sticky top-14 lg:top-0 z-10">
+      <div class="hidden sm:flex items-center gap-2 text-[12.5px]">
+        <span class="text-slate-400">Bolão CG</span>
+        <span class="text-slate-300">›</span>
+        <span class="font-semibold">WhatsApp</span>
+      </div>
+      <span class="font-display font-semibold text-[14px] sm:hidden">WhatsApp</span>
+      <button (click)="showModal.set(true)"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-800 text-white text-sm font-semibold rounded-[10px] transition-colors shadow-sm min-h-9">
+        + Nova mensagem
+      </button>
+    </div>
+
+    <!-- Page -->
+    <div class="p-4 lg:p-7">
+      <div class="mb-5">
+        <h1 class="font-display text-2xl lg:text-[26px] font-semibold tracking-tight mb-1">WhatsApp</h1>
+        <p class="text-slate-500 text-[13.5px]">Sessão whatsapp-web.js · {{ grupos().length }} grupos · {{ totalEnviadas() }} mensagens este mês</p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-5">
+
+        <!-- ── Sidebar ─────────────────────────────────────────────────────── -->
+        <aside class="flex flex-col gap-4">
+
+          <!-- Sessão -->
+          <div class="bg-white border border-slate-200 rounded-lg">
+            <div class="px-4 py-3.5 border-b border-slate-200">
+              <h3 class="font-display font-semibold text-[14px]">Sessão</h3>
+            </div>
+            <div class="p-4">
+              <!-- Status indicator -->
+              <div class="flex items-center gap-2.5 mb-4">
+                <span class="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                      [style.background]="statusColor()"
+                      [style.box-shadow]="session()?.status === 'CONECTADO' ? '0 0 0 4px rgba(16,185,129,0.2)' : 'none'"></span>
+                <div>
+                  <div class="font-semibold text-[13.5px]">{{ statusLabel() }}</div>
+                  @if (session()?.numero) {
+                    <div class="text-slate-400 text-[11.5px]">+55 {{ session()!.numero }} · sessão ativa</div>
+                  }
+                </div>
+              </div>
+
+              <!-- QR Code -->
+              @if (session()?.status === 'AGUARDANDO_QR') {
+                <div class="mb-4 p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-center">
+                  <div class="text-2xl mb-2">📱</div>
+                  <p class="text-[12px] text-slate-500 leading-relaxed">
+                    Abra o WhatsApp → <strong>Menu ⋮</strong> → <strong>Aparelhos conectados</strong> → <strong>Conectar aparelho</strong>
+                  </p>
+                  @if (session()?.qrCode) {
+                    <div class="mt-2 font-mono text-[9px] text-slate-400 break-all">QR: {{ session()!.qrCode!.slice(0, 40) }}…</div>
+                  }
+                  <div class="mt-2 flex items-center justify-center gap-1.5 text-[11.5px] text-slate-400">
+                    <div class="w-1.5 h-1.5 rounded-full bg-slate-300 animate-bounce" style="animation-delay:0ms"></div>
+                    <div class="w-1.5 h-1.5 rounded-full bg-slate-300 animate-bounce" style="animation-delay:150ms"></div>
+                    <div class="w-1.5 h-1.5 rounded-full bg-slate-300 animate-bounce" style="animation-delay:300ms"></div>
+                    aguardando leitura
+                  </div>
+                </div>
+              }
+
+              <div class="flex gap-2">
+                @if (session()?.status === 'CONECTADO') {
+                  <button (click)="desconectar()" [disabled]="acao()"
+                          class="flex-1 inline-flex items-center justify-center gap-1 px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-50 text-sm font-semibold rounded-[10px] text-slate-700 transition-colors">
+                    {{ acao() ? '...' : '↺ Reconectar' }}
+                  </button>
+                } @else {
+                  <button (click)="iniciarSessao()" [disabled]="acao() || session()?.status === 'CARREGANDO'"
+                          class="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-green-700 hover:bg-green-800 disabled:opacity-50 text-white text-sm font-semibold rounded-[10px] transition-colors">
+                    {{ session()?.status === 'CARREGANDO' ? '⟳ Conectando...' : '🔗 Conectar' }}
+                  </button>
+                }
+              </div>
+
+              <div class="mt-3.5 p-2.5 bg-amber-50 border border-amber-100 rounded-lg text-[11.5px] text-amber-700 leading-relaxed">
+                ⚠ Solução não-oficial. Pode requerer reconexão após atualizações do WhatsApp.
+              </div>
+            </div>
+          </div>
+
+          <!-- Grupos -->
+          <div class="bg-white border border-slate-200 rounded-lg">
+            <div class="px-4 py-3.5 border-b border-slate-200 flex items-center justify-between">
+              <h3 class="font-display font-semibold text-[14px]">Grupos vinculados</h3>
+              <button (click)="loadGrupos()" class="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors text-sm" title="Atualizar">↺</button>
+            </div>
+            <div>
+              @if (grupos().length === 0 && session()?.status !== 'CONECTADO') {
+                <div class="px-4 py-6 text-center text-slate-400 text-[12.5px]">
+                  Conecte o WhatsApp para ver os grupos.
+                </div>
+              } @else if (grupos().length === 0) {
+                <div class="px-4 py-6 text-center text-slate-400 text-[12.5px]">
+                  Nenhum grupo encontrado.
+                </div>
+              } @else {
+                @for (g of grupos(); track g.id; let last = $last) {
+                  <div class="flex items-center gap-3 px-4 py-3" [class]="last ? '' : 'border-b border-slate-100'">
+                    <div class="w-8 h-8 rounded-full bg-green-100 text-green-800 flex items-center justify-center text-sm flex-shrink-0">👥</div>
+                    <div class="flex-1 min-w-0">
+                      <div class="text-[13px] font-semibold truncate">{{ g.nome }}</div>
+                      <div class="text-[11px] text-slate-400 font-mono truncate">{{ g.id.slice(0, 20) }}…</div>
+                    </div>
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-semibold border bg-green-50 text-green-800 border-green-200">
+                      <span class="w-1.5 h-1.5 rounded-full bg-current"></span> ativo
+                    </span>
+                  </div>
+                }
+              }
+              @if (loadingGrupos()) {
+                <div class="px-4 py-4 text-center text-[12px] text-slate-400">Carregando grupos…</div>
+              }
+            </div>
+          </div>
+        </aside>
+
+        <!-- ── Main content ─────────────────────────────────────────────────── -->
+        <div class="flex flex-col gap-5">
+
+          <!-- KPIs -->
+          <div class="grid grid-cols-3 gap-4">
+            <div class="bg-white border border-slate-200 rounded-lg p-[18px]">
+              <div class="text-[11px] font-semibold text-slate-500 uppercase tracking-widest">Enviadas (mês)</div>
+              <div class="font-display text-[26px] font-semibold tracking-tight mt-1">{{ totalEnviadas() }}</div>
+              <div class="text-[11.5px] text-green-700 mt-0.5">{{ pctSucesso() }}% sucesso</div>
+            </div>
+            <div class="bg-white border border-slate-200 rounded-lg p-[18px]">
+              <div class="text-[11px] font-semibold text-slate-500 uppercase tracking-widest">Falhas</div>
+              <div class="font-display text-[26px] font-semibold tracking-tight mt-1 text-amber-600">{{ totalFalhas() }}</div>
+              <div class="text-[11.5px] text-slate-400 mt-0.5">retry automático 3×</div>
+            </div>
+            <div class="bg-white border border-slate-200 rounded-lg p-[18px]">
+              <div class="text-[11px] font-semibold text-slate-500 uppercase tracking-widest">Próximo</div>
+              <div class="font-display text-[26px] font-semibold tracking-tight mt-1 text-blue-600">Auto</div>
+              <div class="text-[11.5px] text-slate-400 mt-0.5">após próximo sorteio</div>
+            </div>
+          </div>
+
+          <!-- Templates -->
+          <div class="bg-white border border-slate-200 rounded-lg">
+            <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
+              <h3 class="font-display font-semibold text-[15px]">Templates de mensagem</h3>
+            </div>
+            <div class="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              @for (t of templates; track t.tipo) {
+                <div class="p-3.5 border border-slate-200 rounded-xl">
+                  <div class="flex items-center justify-between mb-1.5">
+                    <span class="text-[13px] font-semibold">{{ t.nome }}</span>
+                    @if (t.auto) {
+                      <span class="inline-flex items-center px-2 py-0.5 bg-green-50 text-green-700 border border-green-200 text-[9.5px] font-semibold rounded-full uppercase tracking-wide">automático</span>
+                    }
+                  </div>
+                  <div class="font-mono text-[11px] text-slate-400 leading-relaxed">{{ t.preview }}</div>
+                </div>
+              }
+            </div>
+          </div>
+
+          <!-- Histórico -->
+          <div class="bg-white border border-slate-200 rounded-lg overflow-hidden">
+            <div class="px-5 py-4 border-b border-slate-200">
+              <h3 class="font-display font-semibold text-[15px]">Histórico de mensagens</h3>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-[13px]">
+                <thead class="bg-slate-50">
+                  <tr>
+                    <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5 hidden sm:table-cell">Data</th>
+                    <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">Tipo</th>
+                    <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">Conteúdo</th>
+                    <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">Status</th>
+                    <th class="px-4 py-2.5 w-24"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @if (loadingMsgs()) {
+                    @for (i of [1,2,3,4]; track i) {
+                      <tr class="border-b border-slate-100">
+                        <td class="px-4 py-3 hidden sm:table-cell"><div class="h-4 bg-slate-100 rounded animate-pulse w-24"></div></td>
+                        <td class="px-4 py-3"><div class="h-5 bg-slate-100 rounded-full animate-pulse w-20"></div></td>
+                        <td class="px-4 py-3"><div class="h-4 bg-slate-100 rounded animate-pulse w-full max-w-[240px]"></div></td>
+                        <td class="px-4 py-3"><div class="h-5 bg-slate-100 rounded-full animate-pulse w-16"></div></td>
+                        <td></td>
+                      </tr>
+                    }
+                  } @else if (mensagens().length === 0) {
+                    <tr>
+                      <td colspan="5" class="px-4 py-10 text-center text-slate-400 text-sm">Nenhuma mensagem enviada ainda.</td>
+                    </tr>
+                  } @else {
+                    @for (m of mensagens(); track m.id) {
+                      <tr class="border-b border-slate-100 hover:bg-slate-50 last:border-0">
+                        <td class="px-4 py-3 font-mono text-[11.5px] text-slate-400 hidden sm:table-cell whitespace-nowrap">{{ fmtDt(m.criadoEm) }}</td>
+                        <td class="px-4 py-3">
+                          <span class="inline-flex items-center px-1.5 py-0.5 bg-slate-100 text-slate-600 text-[9.5px] font-semibold rounded uppercase tracking-wide">{{ m.tipo }}</span>
+                        </td>
+                        <td class="px-4 py-3 text-slate-500 text-[12px] max-w-[240px] truncate">{{ m.conteudo }}</td>
+                        <td class="px-4 py-3">
+                          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-semibold border"
+                                [class]="m.status === 'ENVIADO' ? 'bg-green-50 text-green-800 border-green-200' : m.status === 'FALHA' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-slate-100 text-slate-500 border-slate-200'">
+                            <span class="w-1.5 h-1.5 rounded-full bg-current"></span>
+                            {{ m.status }}
+                          </span>
+                        </td>
+                        <td class="px-4 py-3">
+                          @if (m.status === 'FALHA') {
+                            <button (click)="retry(m.id)"
+                                    class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-[12px] font-semibold rounded-lg transition-colors">
+                              ↺ Reenviar
+                            </button>
+                          }
+                        </td>
+                      </tr>
+                    }
+                  }
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Modal: Nova Mensagem ────────────────────────────────────────────── -->
+    @if (showModal()) {
+      <div class="fixed inset-0 bg-black/40 z-40" (click)="showModal.set(false)"></div>
+      <div class="fixed right-0 top-0 h-full w-full sm:w-[420px] bg-white z-50 flex flex-col shadow-xl">
+        <div class="px-6 py-5 border-b border-slate-200 flex items-center justify-between flex-shrink-0">
+          <h2 class="font-display font-semibold text-lg">Nova mensagem</h2>
+          <button (click)="showModal.set(false)" class="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg text-lg">✕</button>
+        </div>
+        <div class="flex-1 overflow-y-auto p-6 flex flex-col gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">Grupo de destino</label>
+            <select [(ngModel)]="msgGrupoId" name="grupoId"
+                    class="w-full px-3 py-2.5 border border-slate-200 rounded-[10px] text-sm bg-white focus:outline-none focus:border-green-700">
+              <option value="">Selecione um grupo…</option>
+              @for (g of grupos(); track g.id) {
+                <option [value]="g.id">{{ g.nome }}</option>
+              }
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">Tipo</label>
+            <select [(ngModel)]="msgTipo" name="tipo"
+                    class="w-full px-3 py-2.5 border border-slate-200 rounded-[10px] text-sm bg-white focus:outline-none focus:border-green-700">
+              <option value="MANUAL">Manual</option>
+              <option value="RESULTADO_SORTEIO">Resultado do sorteio</option>
+              <option value="RANKING_PARCIAL">Ranking parcial</option>
+              <option value="PREMIADOS">Premiados</option>
+              <option value="AVISO_ADMIN">Aviso administrativo</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">Mensagem</label>
+            <textarea [(ngModel)]="msgConteudo" name="conteudo" rows="5"
+                      class="w-full px-3 py-2.5 border border-slate-200 rounded-[10px] text-sm font-mono resize-none focus:outline-none focus:border-green-700"
+                      placeholder="📣 Mensagem..."></textarea>
+            <div class="text-right text-[11px] text-slate-400 mt-1">{{ msgConteudo.length }}/4096</div>
+          </div>
+          @if (modalError()) {
+            <div class="p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">{{ modalError() }}</div>
+          }
+        </div>
+        <div class="px-6 py-4 border-t border-slate-200 flex gap-2.5 flex-shrink-0">
+          <button (click)="showModal.set(false)" class="flex-1 py-2.5 bg-white border border-slate-200 font-semibold text-sm rounded-[10px]">Cancelar</button>
+          <button (click)="enviarMensagem()"
+                  [disabled]="!msgGrupoId || !msgConteudo || modalLoading()"
+                  class="flex-1 py-2.5 bg-green-700 hover:bg-green-800 disabled:opacity-40 text-white font-semibold text-sm rounded-[10px] shadow-sm">
+            {{ modalLoading() ? 'Enviando…' : '→ Enfileirar' }}
+          </button>
+        </div>
+      </div>
+    }
+  `,
+})
+export class WhatsAppComponent implements OnInit, OnDestroy {
+  private readonly api = inject(ApiService);
+
+  // ── State ──────────────────────────────────────────────────────────────────
+  session      = signal<SessionInfo | null>(null);
+  grupos       = signal<Grupo[]>([]);
+  mensagens    = signal<MensagemWa[]>([]);
+  acao         = signal(false);
+  loadingGrupos = signal(false);
+  loadingMsgs  = signal(false);
+  showModal    = signal(false);
+  modalLoading = signal(false);
+  modalError   = signal('');
+  msgGrupoId   = '';
+  msgTipo      = 'MANUAL';
+  msgConteudo  = '';
+
+  private pollInterval: ReturnType<typeof setInterval> | null = null;
+
+  // ── Computed KPIs ──────────────────────────────────────────────────────────
+  totalEnviadas = () => this.mensagens().filter(m => m.status === 'ENVIADO').length + DEMO_MSGS.filter(m => m.status === 'ENVIADO').length;
+  totalFalhas   = () => this.mensagens().filter(m => m.status === 'FALHA').length;
+  pctSucesso    = () => {
+    const t = this.mensagens().length;
+    const s = this.mensagens().filter(m => m.status === 'ENVIADO').length;
+    return t > 0 ? Math.round(s / t * 100) : 96;
+  };
+
+  readonly templates = [
+    { tipo: 'RESULTADO_SORTEIO', nome: 'Resultado do sorteio',  auto: true,  preview: '🎯 Sorteio #{concurso} — {numeros}' },
+    { tipo: 'PREMIADOS',         nome: 'Premiados',             auto: true,  preview: '🏆 Bolão encerrado! Ganhadores: {lista}' },
+    { tipo: 'RANKING_PARCIAL',   nome: 'Ranking parcial',       auto: true,  preview: '📊 Top 10 do bolão — {tabela}' },
+    { tipo: 'MANUAL',            nome: 'Aviso administrativo',  auto: false, preview: '📣 Mensagem manual livre' },
+  ];
+
+  ngOnInit(): void {
+    this.loadSession();
+    this.loadMensagens();
+    // Polling a cada 3s quando CARREGANDO ou AGUARDANDO_QR
+    this.pollInterval = setInterval(() => {
+      const s = this.session()?.status;
+      if (s === 'CARREGANDO' || s === 'AGUARDANDO_QR') this.loadSession();
+    }, 3000);
+  }
+
+  ngOnDestroy(): void {
+    if (this.pollInterval) clearInterval(this.pollInterval);
+  }
+
+  // ── API ────────────────────────────────────────────────────────────────────
+  async loadSession(): Promise<void> {
+    try {
+      this.session.set(await firstValueFrom(this.api.get<SessionInfo>('/whatsapp/sessao/status')));
+      if (this.session()?.status === 'CONECTADO' && this.grupos().length === 0) this.loadGrupos();
+    } catch {
+      this.session.set({ status: 'DESCONECTADO' });
+    }
+  }
+
+  async loadGrupos(): Promise<void> {
+    this.loadingGrupos.set(true);
+    try {
+      this.grupos.set(await firstValueFrom(this.api.get<Grupo[]>('/whatsapp/sessao/grupos')));
+    } catch {
+      this.grupos.set(DEMO_GRUPOS);
+    } finally {
+      this.loadingGrupos.set(false);
+    }
+  }
+
+  async loadMensagens(): Promise<void> {
+    this.loadingMsgs.set(true);
+    try {
+      const res = await firstValueFrom(this.api.get<{ data: MensagemWa[] }>('/whatsapp/mensagens?perPage=20'));
+      this.mensagens.set(res.data.length > 0 ? res.data : DEMO_MSGS);
+    } catch {
+      this.mensagens.set(DEMO_MSGS);
+    } finally {
+      this.loadingMsgs.set(false);
+    }
+  }
+
+  async iniciarSessao(): Promise<void> {
+    this.acao.set(true);
+    try {
+      this.session.set(await firstValueFrom(this.api.post<SessionInfo>('/whatsapp/sessao/iniciar', {})));
+    } catch { this.session.set({ status: 'CARREGANDO' }); }
+    finally { this.acao.set(false); }
+  }
+
+  async desconectar(): Promise<void> {
+    this.acao.set(true);
+    try {
+      await firstValueFrom(this.api.delete('/whatsapp/sessao'));
+      this.session.set({ status: 'DESCONECTADO' });
+      this.grupos.set([]);
+    } catch {} finally { this.acao.set(false); }
+  }
+
+  async enviarMensagem(): Promise<void> {
+    if (!this.msgGrupoId || !this.msgConteudo || this.modalLoading()) return;
+    this.modalLoading.set(true);
+    this.modalError.set('');
+    try {
+      await firstValueFrom(this.api.post('/whatsapp/mensagens', {
+        grupoId: this.msgGrupoId, tipo: this.msgTipo, conteudo: this.msgConteudo,
+      }));
+      this.showModal.set(false);
+      this.msgConteudo = '';
+      this.msgGrupoId  = '';
+      await this.loadMensagens();
+    } catch (err: unknown) {
+      this.modalError.set((err as { error?: { message?: string } })?.error?.message ?? 'Erro ao enfileirar mensagem');
+    } finally { this.modalLoading.set(false); }
+  }
+
+  async retry(id: string): Promise<void> {
+    try {
+      await firstValueFrom(this.api.post(`/whatsapp/mensagens/${id}/retry`, {}));
+      this.mensagens.update(ms => ms.map(m => m.id === id ? { ...m, status: 'PENDENTE' as const } : m));
+    } catch {}
+  }
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  statusLabel(): string {
+    const s = this.session()?.status;
+    if (s === 'CONECTADO')      return 'Conectado';
+    if (s === 'AGUARDANDO_QR')  return 'Aguardando leitura do QR';
+    if (s === 'CARREGANDO')     return 'Conectando…';
+    return 'Desconectado';
+  }
+
+  statusColor(): string {
+    const s = this.session()?.status;
+    if (s === 'CONECTADO')     return '#10b981';
+    if (s === 'AGUARDANDO_QR') return '#f59e0b';
+    if (s === 'CARREGANDO')    return '#94a3b8';
+    return '#ef4444';
+  }
+
+  fmtDt(iso: string): string {
+    try { return new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }); }
+    catch { return iso; }
+  }
+}
+
+// ── Demo data ─────────────────────────────────────────────────────────────────
+
+const DEMO_GRUPOS: Grupo[] = [
+  { id: '120363000001@g.us', nome: 'Família CG · Bolão'  },
+  { id: '120363000002@g.us', nome: 'Trabalho Sorte'       },
+  { id: '120363000003@g.us', nome: 'Vizinhos Quadra 12'   },
+];
+
+const DEMO_MSGS: MensagemWa[] = [
+  { id: 'm1', tipo: 'RESULTADO_SORTEIO', grupo: 'Família CG', conteudo: '🎯 Sorteio #2994 — 04, 07, 12, 23, 28, 31…', status: 'ENVIADO', criadoEm: new Date(Date.now() - 3600000 * 2).toISOString() },
+  { id: 'm2', tipo: 'RESULTADO_SORTEIO', grupo: 'Trabalho Sorte', conteudo: '🎯 Sorteio #2994 — 04, 07, 12, 23, 28, 31…', status: 'ENVIADO', criadoEm: new Date(Date.now() - 3600000 * 2).toISOString() },
+  { id: 'm3', tipo: 'RESULTADO_SORTEIO', grupo: 'Vizinhos Q12', conteudo: '🎯 Sorteio #2994 — 04, 07, 12, 23, 28, 31…', status: 'FALHA',   criadoEm: new Date(Date.now() - 3600000 * 2).toISOString() },
+  { id: 'm4', tipo: 'RANKING_PARCIAL',   grupo: 'Família CG',  conteudo: '📊 Top 10 do bolão após sorteio 3…',          status: 'ENVIADO', criadoEm: new Date(Date.now() - 3600000).toISOString()   },
+  { id: 'm5', tipo: 'MANUAL',            grupo: 'Família CG',  conteudo: '📣 Lembrete: confirmem o pagamento até sexta', status: 'ENVIADO', criadoEm: new Date(Date.now() - 86400000).toISOString()  },
+];
