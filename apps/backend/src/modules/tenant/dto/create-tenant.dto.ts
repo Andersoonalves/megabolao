@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
+  IsEmail,
   IsNotEmpty,
   IsNumber,
   IsObject,
@@ -10,6 +11,7 @@ import {
   Max,
   MaxLength,
   Min,
+  MinLength,
   ValidateNested,
 } from 'class-validator';
 import { TenantBrandingDto } from './branding.dto';
@@ -43,4 +45,26 @@ export class CreateTenantDto {
   @Type(() => TenantBrandingDto)
   @IsOptional()
   branding?: TenantBrandingDto;
+
+  @ApiProperty({ example: 'admin@empresa.com.br' })
+  @IsEmail()
+  @IsNotEmpty()
+  adminEmail!: string;
+
+  @ApiProperty({ example: 'Senha@123', minLength: 8 })
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(8)
+  adminSenha!: string;
+
+  @ApiPropertyOptional({ example: 'Amanda Andrade' })
+  @IsString()
+  @IsOptional()
+  @MaxLength(100)
+  adminNome?: string;
+
+  @ApiPropertyOptional({ example: '11999990000' })
+  @IsString()
+  @IsOptional()
+  adminCelular?: string;
 }

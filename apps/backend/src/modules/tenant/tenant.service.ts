@@ -3,6 +3,7 @@ import { Tenant as PrismaTenant } from '@prisma/client';
 import { TenantBranding } from '@nossobolao/shared-types';
 import { PaginatedResponse } from '@nossobolao/shared-types';
 import { PrismaService } from '../prisma/prisma.service';
+import { SupabaseService } from '../supabase/supabase.service';
 import { BusinessException } from '../../common/exceptions/business.exception';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import { CreateTenantDto } from './dto/create-tenant.dto';
@@ -22,7 +23,10 @@ export interface TenantResponse {
 
 @Injectable()
 export class TenantService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly supabase: SupabaseService,
+  ) {}
 
   async create(dto: CreateTenantDto): Promise<TenantResponse> {
     const slugExiste = await this.prisma.tenant.findUnique({ where: { slug: dto.slug } });
@@ -43,7 +47,53 @@ export class TenantService {
       },
     });
 
+    try {
+      await this.provisionarAdmin(tenant.id, dto.adminEmail, dto.adminSenha, dto.adminNome, dto.adminCelular);
+    } catch (err) {
+      await this.prisma.tenant.delete({ where: { id: tenant.id } });
+      throw err;
+    }
+
     return this.toResponse(tenant);
+  }
+
+  private async provisionarAdmin(
+    tenantId: string,
+    email: string,
+    senha: string,
+    nome?: string,
+    celular?: string,
+  ): Promise<void> {
+    const { data, error } = await this.supabase.admin.auth.admin.createUser({
+      email,
+      password: senha,
+      email_confirm: true,
+      user_metadata: { papel: 'ADMIN', tenant_id: tenantId, ...(nome && { nome }), ...(celular && { celular }) },
+    });
+
+    if (error) {
+      if (error.message?.includes('already been registered') || error.code === 'email_exists') {
+        throw new BusinessException(
+          'ADMIN_EMAIL_JA_EXISTE',
+          `Email "${email}" já está em uso em outro tenant`,
+          [{ field: 'adminEmail', code: 'ADMIN_EMAIL_JA_EXISTE', message: 'Email já cadastrado' }],
+        );
+      }
+      throw new BusinessException(
+        'ERRO_CRIAR_ADMIN',
+        `Erro ao criar usuário admin: ${error.message}`,
+        [],
+      );
+    }
+
+    await this.prisma.userProfile.create({
+      data: {
+        id: data.user.id,
+        tenantId,
+        papel: 'ADMIN',
+        celular: celular ?? null,
+      },
+    });
   }
 
   async findAll({ page = 1, perPage = 20 }: PaginationDto): Promise<PaginatedResponse<TenantResponse>> {
@@ -109,7 +159,37 @@ export class TenantService {
       },
     });
 
+    if (dto.novaAdminSenha) {
+      await this.resetarSenhaAdmin(id, dto.novaAdminSenha);
+    }
+
     return this.toResponse(updated);
+  }
+
+  private async resetarSenhaAdmin(tenantId: string, novaSenha: string): Promise<void> {
+    const perfil = await this.prisma.userProfile.findFirst({
+      where: { tenantId, papel: 'ADMIN' },
+    });
+
+    if (!perfil) {
+      throw new BusinessException(
+        'ADMIN_NAO_ENCONTRADO',
+        'Nenhum usuário ADMIN encontrado para este tenant',
+        [],
+      );
+    }
+
+    const { error } = await this.supabase.admin.auth.admin.updateUserById(perfil.id, {
+      password: novaSenha,
+    });
+
+    if (error) {
+      throw new BusinessException(
+        'ERRO_RESETAR_SENHA',
+        `Erro ao redefinir senha: ${error.message}`,
+        [],
+      );
+    }
   }
 
   async updateOwn(tenantId: string | null, dto: UpdateOwnTenantDto): Promise<TenantResponse> {

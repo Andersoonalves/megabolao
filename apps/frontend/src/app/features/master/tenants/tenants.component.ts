@@ -259,6 +259,37 @@ function hexToRgba(hex: string, alpha: number): string {
                    class="w-full px-3 py-2.5 border border-slate-200 rounded-[10px] text-sm focus:outline-none focus:border-green-700"
                    placeholder="Exibido no portal em vez do nome do tenant" />
           </div>
+
+          <!-- Redefinir senha do admin -->
+          <div class="border-t border-slate-100 pt-4">
+            <button type="button" (click)="mostrarSenha.set(!mostrarSenha())"
+                    class="flex items-center gap-2 text-[13px] font-semibold text-slate-500 hover:text-slate-700 transition-colors w-full text-left">
+              <span class="text-[10px] transition-transform" [class.rotate-90]="mostrarSenha()">▶</span>
+              Redefinir senha do admin
+            </button>
+
+            @if (mostrarSenha()) {
+              <div class="mt-3 flex flex-col gap-3">
+                <div>
+                  <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">Nova senha</label>
+                  <input [ngModel]="editAdminSenha()" (ngModelChange)="editAdminSenha.set($event)" name="editAdminSenha"
+                         type="password"
+                         class="w-full px-3 py-2.5 border border-slate-200 rounded-[10px] text-sm focus:outline-none focus:border-green-700"
+                         placeholder="Mínimo 8 caracteres" />
+                  @if (editSenhaError()) {
+                    <p class="text-[11px] text-red-600 mt-1">⚠ {{ editSenhaError() }}</p>
+                  }
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">Confirmar nova senha</label>
+                  <input [ngModel]="editConfirmarSenha()" (ngModelChange)="editConfirmarSenha.set($event)" name="editConfirmarSenha"
+                         type="password"
+                         class="w-full px-3 py-2.5 border border-slate-200 rounded-[10px] text-sm focus:outline-none focus:border-green-700"
+                         placeholder="Repita a senha" />
+                </div>
+              </div>
+            }
+          </div>
         </div>
 
         <!-- Footer -->
@@ -285,15 +316,19 @@ export class TenantsComponent implements OnInit {
   page       = signal(1);
 
   // ── Edit state ──────────────────────────────────────────────────────────────
-  editando      = signal<TenantResponse | null>(null);
-  editNome      = signal('');
-  editSlug      = signal('');
-  editTaxa      = signal(15);
-  editStatus    = signal<TenantResponse['status']>('ATIVO');
-  editCor       = signal('#047857');
-  editNomeCustom = signal('');
-  editLoading   = signal(false);
-  editError     = signal('');
+  editando        = signal<TenantResponse | null>(null);
+  editNome        = signal('');
+  editSlug        = signal('');
+  editTaxa        = signal(15);
+  editStatus      = signal<TenantResponse['status']>('ATIVO');
+  editCor         = signal('#047857');
+  editNomeCustom  = signal('');
+  editLoading     = signal(false);
+  editError       = signal('');
+  mostrarSenha    = signal(false);
+  editAdminSenha  = signal('');
+  editConfirmarSenha = signal('');
+  editSenhaError  = signal('');
 
   ngOnInit(): void { this.load(); }
 
@@ -326,6 +361,10 @@ export class TenantsComponent implements OnInit {
     this.editCor.set(t.branding?.corPrimaria ?? '#047857');
     this.editNomeCustom.set(t.branding?.nomeCustomizado ?? '');
     this.editError.set('');
+    this.mostrarSenha.set(false);
+    this.editAdminSenha.set('');
+    this.editConfirmarSenha.set('');
+    this.editSenhaError.set('');
   }
 
   fecharEdicao(): void { this.editando.set(null); }
@@ -333,6 +372,19 @@ export class TenantsComponent implements OnInit {
   async salvarEdicao(): Promise<void> {
     const t = this.editando();
     if (!t || this.editLoading()) return;
+
+    this.editSenhaError.set('');
+    if (this.mostrarSenha() && this.editAdminSenha()) {
+      if (this.editAdminSenha().length < 8) {
+        this.editSenhaError.set('Mínimo 8 caracteres');
+        return;
+      }
+      if (this.editAdminSenha() !== this.editConfirmarSenha()) {
+        this.editSenhaError.set('As senhas não conferem');
+        return;
+      }
+    }
+
     this.editLoading.set(true);
     this.editError.set('');
     try {
@@ -346,6 +398,9 @@ export class TenantsComponent implements OnInit {
             corPrimaria:    this.editCor(),
             ...(this.editNomeCustom() && { nomeCustomizado: this.editNomeCustom() }),
           },
+          ...(this.mostrarSenha() && this.editAdminSenha() && {
+            novaAdminSenha: this.editAdminSenha(),
+          }),
         }),
       );
       // Atualização otimista da lista

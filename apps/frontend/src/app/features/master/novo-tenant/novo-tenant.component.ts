@@ -160,16 +160,34 @@ const SLUG_RE = /^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$/;
                        placeholder="(00) 0 0000-0000" />
               </div>
 
-              <!-- Magic link -->
-              <div class="flex items-end">
-                <label class="flex items-start gap-2.5 cursor-pointer">
-                  <input [ngModel]="enviarMagicLink()" (ngModelChange)="enviarMagicLink.set($event)"
-                         name="magicLink" type="checkbox"
-                         class="mt-0.5 accent-green-700 w-4 h-4 flex-shrink-0" />
-                  <span class="text-[13px] text-slate-600 leading-snug">
-                    Enviar Magic Link de primeiro acesso por email após criar o tenant
-                  </span>
+              <!-- Senha -->
+              <div>
+                <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">
+                  Senha <span class="text-red-500">*</span>
                 </label>
+                <input [ngModel]="adminSenha()" (ngModelChange)="adminSenha.set($event)" name="adminSenha"
+                       type="password"
+                       class="w-full px-3 py-2.5 border rounded-[10px] text-sm focus:outline-none transition-colors"
+                       [class]="fieldErr('adminSenha') ? 'border-red-400 focus:border-red-500 bg-red-50' : 'border-slate-200 focus:border-green-700'"
+                       placeholder="Mínimo 8 caracteres" />
+                @if (fieldErr('adminSenha')) {
+                  <p class="text-[11px] text-red-600 mt-1 flex items-center gap-1">⚠ {{ fieldErr('adminSenha') }}</p>
+                }
+              </div>
+
+              <!-- Confirmar senha -->
+              <div>
+                <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">
+                  Confirmar senha <span class="text-red-500">*</span>
+                </label>
+                <input [ngModel]="confirmarSenha()" (ngModelChange)="confirmarSenha.set($event)" name="confirmarSenha"
+                       type="password"
+                       class="w-full px-3 py-2.5 border rounded-[10px] text-sm focus:outline-none transition-colors"
+                       [class]="fieldErr('confirmarSenha') ? 'border-red-400 focus:border-red-500 bg-red-50' : 'border-slate-200 focus:border-green-700'"
+                       placeholder="Repita a senha" />
+                @if (fieldErr('confirmarSenha')) {
+                  <p class="text-[11px] text-red-600 mt-1 flex items-center gap-1">⚠ {{ fieldErr('confirmarSenha') }}</p>
+                }
               </div>
             </div>
           </div>
@@ -296,7 +314,8 @@ export class NovoTenantComponent {
   adminNome       = signal('');
   adminEmail      = signal('');
   adminCelular    = signal('');
-  enviarMagicLink = signal(true);
+  adminSenha      = signal('');
+  confirmarSenha  = signal('');
   corPrimaria     = signal('#047857');
   logoUrl         = signal('');
   nomeCustomizado = signal('');
@@ -317,6 +336,10 @@ export class NovoTenantComponent {
     if (!this.adminNome().trim())   e['adminNome'] = 'Nome do administrador é obrigatório';
     if (!this.adminEmail().trim())  e['adminEmail'] = 'Email é obrigatório';
     else if (!this.adminEmail().includes('@')) e['adminEmail'] = 'Email inválido';
+    if (!this.adminSenha())         e['adminSenha'] = 'Senha é obrigatória';
+    else if (this.adminSenha().length < 8) e['adminSenha'] = 'Mínimo 8 caracteres';
+    if (!this.confirmarSenha())     e['confirmarSenha'] = 'Confirme a senha';
+    else if (this.adminSenha() !== this.confirmarSenha()) e['confirmarSenha'] = 'As senhas não conferem';
     return e;
   });
 
@@ -365,6 +388,10 @@ export class NovoTenantComponent {
           nome: this.nome().trim(),
           slug: this.slug().trim(),
           taxaAdministrativaPct: this.taxa(),
+          adminEmail:   this.adminEmail().trim(),
+          adminSenha:   this.adminSenha(),
+          adminNome:    this.adminNome().trim() || undefined,
+          adminCelular: this.adminCelular().trim() || undefined,
           branding: {
             corPrimaria: this.corPrimaria(),
             ...(this.logoUrl()        && { logoUrl:         this.logoUrl() }),
