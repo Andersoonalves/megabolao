@@ -27,7 +27,7 @@ interface SorteioResponse {
   imports: [FormsModule, RouterLink],
   template: `
     <!-- Topbar -->
-    <div class="bg-white border-b border-slate-200 px-7 py-3 flex items-center justify-between gap-4 sticky top-0 z-10">
+    <div class="bg-white border-b border-slate-200 px-4 lg:px-7 py-3 flex items-center justify-between gap-4 sticky top-14 lg:top-0 z-10">
       <div class="flex items-center gap-2 text-[12.5px]">
         <span class="text-slate-400">Dashboard</span>
         <span class="text-slate-300">›</span>
@@ -43,7 +43,7 @@ interface SorteioResponse {
     </div>
 
     <!-- Page -->
-    <div class="p-7 max-w-[1100px]">
+    <div class="p-4 lg:p-7 max-w-[1100px]">
       <div class="mb-6">
         <h1 class="font-display text-[26px] font-semibold tracking-tight mb-1">Registrar sorteio</h1>
         <p class="text-slate-500 text-[13.5px]">Após registrar, um job BullMQ calcula os acertos das cotas em segundo plano.</p>
@@ -62,7 +62,7 @@ interface SorteioResponse {
         </div>
       }
 
-      <div class="grid gap-6" style="grid-template-columns: 1fr 300px">
+      <div class="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6">
 
         <!-- Coluna principal -->
         <div class="bg-white border border-slate-200 rounded-lg">
@@ -83,7 +83,7 @@ interface SorteioResponse {
 
           <div class="p-5">
             <!-- Dados do concurso -->
-            <div class="grid grid-cols-3 gap-4 mb-6">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
               <div>
                 <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">Concurso Mega-Sena</label>
                 <input [(ngModel)]="numeroConcurso" name="concurso" type="number" inputmode="numeric"

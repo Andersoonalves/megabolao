@@ -52,7 +52,7 @@ let _nextId = 10;
   imports: [FormsModule, RouterLink],
   template: `
     <!-- Topbar -->
-    <div class="bg-white border-b border-slate-200 px-7 py-3 flex items-center justify-between gap-4 sticky top-0 z-10">
+    <div class="bg-white border-b border-slate-200 px-4 lg:px-7 py-3 flex items-center justify-between gap-4 sticky top-14 lg:top-0 z-10">
       <div class="flex items-center gap-2 text-[12.5px]">
         <span class="text-slate-400">Bolão CG</span>
         <span class="text-slate-300">›</span>
@@ -73,10 +73,10 @@ let _nextId = 10;
     </div>
 
     <!-- Page -->
-    <div class="p-7">
+    <div class="p-4 lg:p-7">
       <div class="mb-6">
-        <h1 class="font-display text-[26px] font-semibold tracking-tight mb-1">Novo bolão</h1>
-        <p class="text-slate-500 text-[13.5px]">Defina dados do bolão e as categorias de premiação. Após criado, as categorias são imutáveis.</p>
+        <h1 class="font-display text-2xl lg:text-[26px] font-semibold tracking-tight mb-1">Novo bolão</h1>
+        <p class="text-slate-500 text-[13.5px]">Defina dados do bolão e as categorias. Após criado, as categorias são imutáveis.</p>
       </div>
 
       @if (error()) {
@@ -85,7 +85,7 @@ let _nextId = 10;
         </div>
       }
 
-      <div class="grid gap-6" style="grid-template-columns: 1fr 300px">
+      <div class="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6">
 
         <!-- Left column -->
         <div class="flex flex-col gap-5">
@@ -95,7 +95,7 @@ let _nextId = 10;
             <div class="px-5 py-4 border-b border-slate-200">
               <h3 class="font-display font-semibold text-[15px]">1. Dados do bolão</h3>
             </div>
-            <div class="p-5 grid gap-4" style="grid-template-columns: 1fr 1fr">
+            <div class="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div class="col-span-2">
                 <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">Nome do bolão</label>
                 <input [(ngModel)]="nome" name="nome"
@@ -128,8 +128,8 @@ let _nextId = 10;
               </button>
             </div>
 
-            <!-- Table -->
-            <div class="overflow-x-auto">
+            <!-- Table — scroll horizontal no mobile -->
+            <div class="overflow-x-auto -mx-0">
               <table class="w-full text-[13px]">
                 <thead class="bg-slate-50">
                   <tr>

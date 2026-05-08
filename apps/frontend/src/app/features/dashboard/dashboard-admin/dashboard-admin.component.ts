@@ -12,31 +12,32 @@ import { ApiService } from '../../../core/services/api.service';
   imports: [RouterLink, DecimalPipe, CurrencyPipe, DatePipe, StatCardComponent, BolasGridComponent, BadgeComponent],
   template: `
     <!-- Topbar -->
-    <div class="bg-white border-b border-slate-200 px-7 py-3 flex items-center justify-between gap-4 sticky top-0 z-10">
-      <div class="flex items-center gap-2 text-[12.5px]">
+    <div class="bg-white border-b border-slate-200 px-4 lg:px-7 py-3 flex items-center justify-between gap-4 sticky top-14 lg:top-0 z-10">
+      <div class="hidden sm:flex items-center gap-2 text-[12.5px]">
         <span class="text-slate-400">Bolão CG</span>
         <span class="text-slate-300">›</span>
         <span class="font-semibold">Dashboard</span>
       </div>
+      <span class="font-display font-semibold text-[14px] sm:hidden">Dashboard</span>
       <div class="flex gap-2">
-        <a routerLink="/bolao/0/sorteio" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-sm font-semibold rounded-[10px] no-underline text-slate-900 transition-colors">
+        <a routerLink="/relatorios" class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-sm font-semibold rounded-[10px] no-underline text-slate-900 transition-colors min-h-9">
           📄 Relatório
         </a>
-        <a routerLink="/bolao/0/sorteio" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-800 text-white text-sm font-semibold rounded-[10px] no-underline transition-colors shadow-sm">
-          ✦ Registrar sorteio
+        <a routerLink="/bolao/0/sorteio" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-800 text-white text-sm font-semibold rounded-[10px] no-underline transition-colors shadow-sm min-h-9">
+          ✦ <span class="hidden sm:inline">Registrar sorteio</span><span class="sm:hidden">Sorteio</span>
         </a>
       </div>
     </div>
 
     <!-- Page -->
-    <div class="p-7">
+    <div class="p-4 lg:p-7">
       <div class="mb-6">
         <h1 class="font-display text-[26px] font-semibold tracking-tight mb-1">Bolão Mega 2994</h1>
         <p class="text-slate-500 text-[13.5px]">Iniciado em 14/abr/2026 · 5 categorias · 3 sorteios realizados</p>
       </div>
 
       <!-- KPIs -->
-      <div class="grid grid-cols-4 gap-4 mb-5">
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
         <nb-stat-card label="Cotas pagas"      value="9.244"      delta="↑ +312 hoje"        icon="🎫" />
         <nb-stat-card label="Arrecadação bruta" value="R$ 184.880" icon="💰" accent="gold" />
         <nb-stat-card label="Maior pontuação"  value="9 acertos"  delta="cota #4164 · Maria" icon="🏆" accent="gold" />
@@ -44,7 +45,7 @@ import { ApiService } from '../../../core/services/api.service';
       </div>
 
       <!-- Charts row -->
-      <div class="grid gap-5 mb-5" style="grid-template-columns: 1.4fr 1fr">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
 
         <!-- Distribuição de pontuação -->
         <div class="bg-white border border-slate-200 rounded-lg">
@@ -90,7 +91,7 @@ import { ApiService } from '../../../core/services/api.service';
       </div>
 
       <!-- Ranking + Próximas ações -->
-      <div class="grid gap-5" style="grid-template-columns: 1.4fr 1fr">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
         <!-- Top 8 ranking -->
         <div class="bg-white border border-slate-200 rounded-lg overflow-hidden">

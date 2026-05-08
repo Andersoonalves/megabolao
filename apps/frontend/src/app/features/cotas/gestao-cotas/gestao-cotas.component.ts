@@ -52,24 +52,23 @@ interface Paginated<T> {
   imports: [FormsModule, RouterLink, LocalNumPipe, BrlPipe],
   template: `
     <!-- Topbar -->
-    <div class="bg-white border-b border-slate-200 px-7 py-3 flex items-center justify-between gap-4 sticky top-0 z-10">
-      <div class="flex items-center gap-2 text-[12.5px]">
+    <div class="bg-white border-b border-slate-200 px-4 lg:px-7 py-3 flex items-center justify-between gap-4 sticky top-14 lg:top-0 z-10">
+      <div class="hidden sm:flex items-center gap-2 text-[12.5px]">
         <span class="text-slate-400">Dashboard</span>
-        <span class="text-slate-300">›</span>
-        <span class="text-slate-400">Bolão</span>
         <span class="text-slate-300">›</span>
         <span class="font-semibold">Cotas</span>
       </div>
+      <span class="font-display font-semibold text-[14px] sm:hidden">Cotas</span>
       <button (click)="showModal.set(true)"
-              class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-800 text-white text-sm font-semibold rounded-[10px] transition-colors shadow-sm min-h-8">
-        + Cadastrar cota
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-800 text-white text-sm font-semibold rounded-[10px] transition-colors shadow-sm min-h-9">
+        + Cadastrar
       </button>
     </div>
 
     <!-- Page -->
-    <div class="p-7">
-      <div class="mb-6">
-        <h1 class="font-display text-[26px] font-semibold tracking-tight mb-1">Cotas e participantes</h1>
+    <div class="p-4 lg:p-7">
+      <div class="mb-5">
+        <h1 class="font-display text-2xl lg:text-[26px] font-semibold tracking-tight mb-1">Cotas e participantes</h1>
         <p class="text-slate-500 text-[13.5px]">
           {{ total() | localNum }} pagas ·
           {{ totalPendente() }} pendentes
@@ -77,7 +76,7 @@ interface Paginated<T> {
       </div>
 
       <!-- KPIs -->
-      <div class="grid grid-cols-4 gap-4 mb-5">
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
         <div class="bg-white border border-slate-200 rounded-lg p-[18px]">
           <div class="text-[11.5px] font-semibold text-slate-500 uppercase tracking-widest">Cotas pagas</div>
           <div class="font-display text-[28px] font-semibold tracking-tight mt-1 tabular">{{ totalPago() | localNum }}</div>
@@ -276,8 +275,8 @@ interface Paginated<T> {
       <!-- Backdrop -->
       <div class="fixed inset-0 bg-black/40 z-40" (click)="closeModal()"></div>
 
-      <!-- Slide-over panel -->
-      <div class="fixed right-0 top-0 h-full w-[460px] bg-white shadow-xl z-50 flex flex-col overflow-hidden">
+      <!-- Slide-over panel: full-width mobile, 460px desktop -->
+      <div class="fixed right-0 top-0 h-full w-full sm:w-[460px] bg-white shadow-xl z-50 flex flex-col overflow-hidden">
         <div class="px-6 py-5 border-b border-slate-200 flex items-center justify-between flex-shrink-0">
           <div>
             <h2 class="font-display font-semibold text-lg">Cadastrar cota</h2>

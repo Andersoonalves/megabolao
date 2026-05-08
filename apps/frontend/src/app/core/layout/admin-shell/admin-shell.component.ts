@@ -1,7 +1,8 @@
-import { Component, signal, ChangeDetectionStrategy } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject } from '@angular/core';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
-import { NgClass } from '@angular/common';
+import { NgTemplateOutlet } from '@angular/common';
 import { AuthService } from '../../services/auth.service';
+import { ShellService } from '../../services/shell.service';
 
 interface NavItem {
   section?: string;
@@ -13,14 +14,15 @@ interface NavItem {
 
 const ADMIN_NAV: NavItem[] = [
   { section: 'Bolões' },
-  { id: 'dashboard',  label: 'Dashboard',     icon: '◈', route: '/dashboard' },
-  { id: 'bolao-novo', label: 'Criar bolão',    icon: '+', route: '/bolao/novo' },
-  { id: 'sorteio',    label: 'Sorteios',       icon: '✦', route: '/bolao/0/sorteio' },
-  { id: 'premios',    label: 'Prêmios',        icon: '🏆', route: '/bolao/0/premios' },
+  { id: 'dashboard',  label: 'Dashboard',   icon: '◈', route: '/dashboard' },
+  { id: 'bolao-novo', label: 'Criar bolão',  icon: '+', route: '/bolao/novo' },
+  { id: 'cotas',      label: 'Cotas',        icon: '🎫', route: '/bolao/0/cotas' },
+  { id: 'sorteio',    label: 'Sorteios',     icon: '✦', route: '/bolao/0/sorteio' },
+  { id: 'premios',    label: 'Prêmios',      icon: '🏆', route: '/bolao/0/premios' },
   { section: 'Comunicação' },
-  { id: 'whatsapp',   label: 'WhatsApp',       icon: '💬', route: '/whatsapp' },
+  { id: 'whatsapp',   label: 'WhatsApp',     icon: '💬', route: '/whatsapp' },
   { section: 'Sistema' },
-  { id: 'relatorios', label: 'Relatórios',     icon: '📄', route: '/relatorios' },
+  { id: 'relatorios', label: 'Relatórios',   icon: '📄', route: '/relatorios' },
 ];
 
 const MASTER_NAV: NavItem[] = [
@@ -34,74 +36,116 @@ const MASTER_NAV: NavItem[] = [
 @Component({
   selector: 'nb-admin-shell',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, NgClass],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, NgTemplateOutlet],
   template: `
-    <!-- Mobile: sidebar overlay trigger -->
-    <div class="grid min-h-screen" style="grid-template-columns: 240px 1fr">
+    <!-- Desktop: sidebar 240px | Main. Mobile: sidebar oculta, drawer -->
+    <div class="min-h-screen lg:grid" style="grid-template-columns: 240px 1fr">
 
-      <!-- Sidebar -->
-      <aside class="bg-white border-r border-slate-200 flex flex-col h-screen sticky top-0 overflow-y-auto">
-        <!-- Logo -->
-        <div class="flex items-center gap-2.5 px-3 pt-4 pb-5">
-          <div class="w-8 h-8 rounded-[9px] bg-gradient-to-br from-green-700 to-green-900 text-white flex items-center justify-center font-display font-bold text-sm tracking-tight shadow-sm">NB</div>
-          <div>
-            <div class="font-display font-semibold text-[15.5px] tracking-tight">NossoBolão</div>
-            <div class="text-[10.5px] text-slate-400 font-medium -mt-0.5">{{ auth.isMaster() ? 'Plataforma' : 'Admin' }}</div>
-          </div>
-        </div>
-
-        <!-- Nav links -->
-        <nav class="flex flex-col gap-0.5 px-2 flex-1">
-          @for (item of navItems(); track item.id ?? item.section) {
-            @if (item.section) {
-              <div class="text-[10.5px] font-semibold text-slate-400 uppercase tracking-widest px-2.5 pt-3.5 pb-1.5">{{ item.section }}</div>
-            } @else {
-              <a [routerLink]="item.route"
-                 routerLinkActive="bg-green-50 text-green-800 font-semibold"
-                 [routerLinkActiveOptions]="{ exact: item.route === '/dashboard' || item.route === '/dashboard-master' }"
-                 class="flex items-center gap-2.5 px-2.5 py-2 rounded-md text-slate-500 text-[13px] font-medium hover:bg-slate-100 hover:text-slate-900 transition-all duration-100 no-underline">
-                <span class="text-base leading-none w-4 text-center flex-shrink-0">{{ item.icon }}</span>
-                <span>{{ item.label }}</span>
-              </a>
-            }
-          }
-        </nav>
-
-        <!-- User footer -->
-        <div class="p-3 mt-auto">
-          <div class="flex items-center gap-2.5 p-2 rounded-[10px] bg-slate-50 border border-slate-200">
-            <div class="w-8 h-8 rounded-full bg-green-100 text-green-800 flex items-center justify-center font-semibold text-xs flex-shrink-0">
-              {{ initials() }}
-            </div>
-            <div class="min-w-0 flex-1">
-              <div class="text-[12.5px] font-semibold truncate">{{ auth.user()?.email }}</div>
-              <div class="text-[11px] text-slate-400">{{ auth.user()?.role }}</div>
-            </div>
-            <button (click)="auth.signOut()" class="text-slate-400 hover:text-slate-700 p-1 transition-colors" title="Sair">⏏</button>
-          </div>
-        </div>
+      <!-- ── Sidebar (desktop sempre visível) ────────────────────────────────── -->
+      <aside class="hidden lg:flex flex-col bg-white border-r border-slate-200 h-screen sticky top-0 overflow-y-auto">
+        <ng-container *ngTemplateOutlet="sidebarContent" />
       </aside>
 
-      <!-- Main content -->
+      <!-- ── Mobile header com hambúrguer ────────────────────────────────────── -->
+      <!-- h-14=56px fixo → page topbars usam sticky top-14 no mobile -->
+      <div class="lg:hidden bg-white border-b border-slate-200 px-4 h-14 flex items-center gap-3 sticky top-0 z-30">
+        <button (click)="shell.openDrawer()"
+                class="w-10 h-10 flex items-center justify-center text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                aria-label="Abrir menu">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <line x1="3" y1="6" x2="21" y2="6"/>
+            <line x1="3" y1="12" x2="21" y2="12"/>
+            <line x1="3" y1="18" x2="21" y2="18"/>
+          </svg>
+        </button>
+        <div class="flex items-center gap-2">
+          <div class="w-7 h-7 rounded-[8px] bg-gradient-to-br from-green-700 to-green-900 text-white flex items-center justify-center font-display font-bold text-xs">NB</div>
+          <span class="font-display font-semibold text-[15px]">NossoBolão</span>
+        </div>
+      </div>
+
+      <!-- ── Mobile drawer (backdrop + painel) ───────────────────────────────── -->
+      @if (shell.drawerOpen()) {
+        <!-- Backdrop -->
+        <div class="fixed inset-0 bg-black/40 z-40 lg:hidden"
+             (click)="shell.closeDrawer()"></div>
+
+        <!-- Drawer -->
+        <aside class="fixed left-0 top-0 h-full w-64 bg-white z-50 lg:hidden flex flex-col shadow-xl overflow-y-auto">
+          <div class="flex items-center justify-between px-4 pt-4 pb-2">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-[9px] bg-gradient-to-br from-green-700 to-green-900 text-white flex items-center justify-center font-display font-bold text-sm">NB</div>
+              <span class="font-display font-semibold text-[15.5px]">NossoBolão</span>
+            </div>
+            <button (click)="shell.closeDrawer()"
+                    class="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors text-lg">
+              ✕
+            </button>
+          </div>
+          <ng-container *ngTemplateOutlet="sidebarContent" />
+        </aside>
+      }
+
+      <!-- ── Main content ─────────────────────────────────────────────────────── -->
       <div class="flex flex-col min-w-0">
         <router-outlet />
       </div>
     </div>
+
+    <!-- ── Sidebar content template ─────────────────────────────────────────── -->
+    <ng-template #sidebarContent>
+      <!-- Logo (desktop only — mobile has it in the header) -->
+      <div class="hidden lg:flex items-center gap-2.5 px-3 pt-4 pb-5">
+        <div class="w-8 h-8 rounded-[9px] bg-gradient-to-br from-green-700 to-green-900 text-white flex items-center justify-center font-display font-bold text-sm tracking-tight shadow-sm">NB</div>
+        <div>
+          <div class="font-display font-semibold text-[15.5px] tracking-tight">NossoBolão</div>
+          <div class="text-[10.5px] text-slate-400 font-medium -mt-0.5">{{ auth.isMaster() ? 'Plataforma' : 'Admin' }}</div>
+        </div>
+      </div>
+
+      <!-- Nav links -->
+      <nav class="flex flex-col gap-0.5 px-2 flex-1 pt-2 lg:pt-0">
+        @for (item of navItems(); track item.id ?? item.section) {
+          @if (item.section) {
+            <div class="text-[10.5px] font-semibold text-slate-400 uppercase tracking-widest px-2.5 pt-3.5 pb-1.5">{{ item.section }}</div>
+          } @else {
+            <a [routerLink]="item.route"
+               routerLinkActive="bg-green-50 text-green-800 font-semibold"
+               [routerLinkActiveOptions]="{ exact: item.route === '/dashboard' || item.route === '/dashboard-master' }"
+               (click)="shell.closeDrawer()"
+               class="flex items-center gap-2.5 px-2.5 py-3 lg:py-2 rounded-md text-slate-500 text-[13px] font-medium hover:bg-slate-100 hover:text-slate-900 transition-all duration-100 no-underline">
+              <span class="text-base leading-none w-4 text-center flex-shrink-0">{{ item.icon }}</span>
+              <span>{{ item.label }}</span>
+            </a>
+          }
+        }
+      </nav>
+
+      <!-- User footer -->
+      <div class="p-3 mt-auto">
+        <div class="flex items-center gap-2.5 p-2 rounded-[10px] bg-slate-50 border border-slate-200">
+          <div class="w-8 h-8 rounded-full bg-green-100 text-green-800 flex items-center justify-center font-semibold text-xs flex-shrink-0">
+            {{ initials() }}
+          </div>
+          <div class="min-w-0 flex-1">
+            <div class="text-[12.5px] font-semibold truncate">{{ auth.user()?.email }}</div>
+            <div class="text-[11px] text-slate-400">{{ auth.user()?.role }}</div>
+          </div>
+          <button (click)="auth.signOut()" class="text-slate-400 hover:text-slate-700 p-1 transition-colors" title="Sair">⏏</button>
+        </div>
+      </div>
+    </ng-template>
   `,
 })
 export class AdminShellComponent {
-  readonly auth: AuthService;
-
-  constructor(auth: AuthService) {
-    this.auth = auth;
-  }
+  readonly auth  = inject(AuthService);
+  readonly shell = inject(ShellService);
 
   navItems() {
     return this.auth.isMaster() ? MASTER_NAV : ADMIN_NAV;
   }
 
   initials() {
-    const email = this.auth.user()?.email ?? '';
-    return email.slice(0, 2).toUpperCase();
+    return (this.auth.user()?.email ?? '').slice(0, 2).toUpperCase();
   }
 }
