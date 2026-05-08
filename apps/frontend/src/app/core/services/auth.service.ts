@@ -33,13 +33,6 @@ export class AuthService {
   }
 
   private initAuth(): void {
-    this.supabase.auth.getSession().then(({ data }) => {
-      if (data.session?.user) {
-        this._user.set(this.mapUser(data.session.user));
-      }
-      this._loading.set(false);
-    });
-
     this.supabase.auth.onAuthStateChange((_event, session) => {
       this._user.set(session?.user ? this.mapUser(session.user) : null);
       this._loading.set(false);
