@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../../core/services/api.service';
 import { BackButtonComponent } from '../../../shared/components/back-button/back-button.component';
+import { QrCodeComponent } from '../../../shared/components/qr-code/qr-code.component';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -22,7 +23,7 @@ interface MensagemWa {
 @Component({
   selector: 'nb-whatsapp',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [BackButtonComponent, FormsModule],
+  imports: [BackButtonComponent, FormsModule, QrCodeComponent],
   template: `
     <!-- Topbar -->
     <div class="bg-white border-b border-slate-200 px-4 lg:px-7 py-3 flex items-center gap-3 sticky top-14 lg:top-0 z-10">
@@ -33,7 +34,7 @@ interface MensagemWa {
         <span class="font-semibold">WhatsApp</span>
       </div>
       <span class="font-display font-semibold text-[14px] sm:hidden">WhatsApp</span>
-      <button (click)="showModal.set(true)"
+      <button (click)="abrirModalMensagem()"
               class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-800 text-white text-sm font-semibold rounded-[10px] transition-colors shadow-sm min-h-9">
         + Nova mensagem
       </button>
@@ -72,19 +73,34 @@ interface MensagemWa {
 
               <!-- QR Code -->
               @if (session()?.status === 'AGUARDANDO_QR') {
-                <div class="mb-4 p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-center">
-                  <div class="text-2xl mb-2">📱</div>
-                  <p class="text-[12px] text-slate-500 leading-relaxed">
-                    Abra o WhatsApp → <strong>Menu ⋮</strong> → <strong>Aparelhos conectados</strong> → <strong>Conectar aparelho</strong>
-                  </p>
-                  @if (session()?.qrCode) {
-                    <div class="mt-2 font-mono text-[9px] text-slate-400 break-all">QR: {{ session()!.qrCode!.slice(0, 40) }}…</div>
-                  }
-                  <div class="mt-2 flex items-center justify-center gap-1.5 text-[11.5px] text-slate-400">
-                    <div class="w-1.5 h-1.5 rounded-full bg-slate-300 animate-bounce" style="animation-delay:0ms"></div>
-                    <div class="w-1.5 h-1.5 rounded-full bg-slate-300 animate-bounce" style="animation-delay:150ms"></div>
-                    <div class="w-1.5 h-1.5 rounded-full bg-slate-300 animate-bounce" style="animation-delay:300ms"></div>
-                    aguardando leitura
+                <div class="mb-4 rounded-xl border border-slate-200 overflow-hidden">
+                  <!-- Instruções -->
+                  <div class="px-4 py-3 bg-slate-50 border-b border-slate-200 text-center">
+                    <p class="text-[12px] text-slate-600 leading-relaxed">
+                      Abra o WhatsApp →
+                      <strong>⋮ Menu</strong> →
+                      <strong>Aparelhos conectados</strong> →
+                      <strong>Conectar aparelho</strong>
+                    </p>
+                  </div>
+
+                  <!-- QR image -->
+                  <div class="flex flex-col items-center p-4 bg-white">
+                    @if (session()?.qrCode) {
+                      <nb-qr-code [data]="session()!.qrCode!" [size]="220" />
+                    } @else {
+                      <div class="w-[220px] h-[220px] flex items-center justify-center bg-slate-50 rounded-xl">
+                        <div class="flex gap-1">
+                          <div class="w-2 h-2 rounded-full bg-slate-300 animate-bounce" style="animation-delay:0ms"></div>
+                          <div class="w-2 h-2 rounded-full bg-slate-300 animate-bounce" style="animation-delay:150ms"></div>
+                          <div class="w-2 h-2 rounded-full bg-slate-300 animate-bounce" style="animation-delay:300ms"></div>
+                        </div>
+                      </div>
+                    }
+                    <div class="mt-3 flex items-center gap-1.5 text-[11.5px] text-slate-400">
+                      <div class="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></div>
+                      Aguardando leitura do QR code
+                    </div>
                   </div>
                 </div>
               }
@@ -127,16 +143,38 @@ interface MensagemWa {
               } @else {
                 @for (g of grupos(); track g.id; let last = $last) {
                   <div class="flex items-center gap-3 px-4 py-3" [class]="last ? '' : 'border-b border-slate-100'">
-                    <div class="w-8 h-8 rounded-full bg-green-100 text-green-800 flex items-center justify-center text-sm flex-shrink-0">👥</div>
+                    <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm flex-shrink-0"
+                         [class]="grupoPadraoId() === g.id ? 'bg-green-700 text-white' : 'bg-green-100 text-green-800'">
+                      👥
+                    </div>
                     <div class="flex-1 min-w-0">
                       <div class="text-[13px] font-semibold truncate">{{ g.nome }}</div>
-                      <div class="text-[11px] text-slate-400 font-mono truncate">{{ g.id.slice(0, 20) }}…</div>
+                      @if (grupoPadraoId() === g.id) {
+                        <div class="text-[11px] text-green-700 font-semibold flex items-center gap-1">
+                          <span>📌</span> Grupo padrão para notificações
+                        </div>
+                      } @else {
+                        <div class="text-[11px] text-slate-400 font-mono truncate">{{ g.id.slice(0, 20) }}…</div>
+                      }
                     </div>
-                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-semibold border bg-green-50 text-green-800 border-green-200">
-                      <span class="w-1.5 h-1.5 rounded-full bg-current"></span> ativo
-                    </span>
+                    @if (grupoPadraoId() === g.id) {
+                      <button (click)="removerPadrao()"
+                              class="text-[11px] font-semibold text-slate-400 hover:text-red-500 transition-colors px-2 py-1 rounded-lg hover:bg-red-50">
+                        Remover
+                      </button>
+                    } @else {
+                      <button (click)="definirPadrao(g.id)"
+                              class="text-[11px] font-semibold text-slate-500 hover:text-green-700 transition-colors px-2 py-1 rounded-lg hover:bg-green-50 border border-slate-200 hover:border-green-300 whitespace-nowrap">
+                        📌 Definir padrão
+                      </button>
+                    }
                   </div>
                 }
+              }
+              @if (grupoPadraoId() && grupos().length > 0) {
+                <div class="px-4 py-2.5 bg-green-50 border-t border-green-100 text-[11.5px] text-green-700">
+                  ✓ Notificações automáticas (sorteio, ranking) vão para <strong>{{ nomeGrupoPadrao() }}</strong>
+                </div>
               }
               @if (loadingGrupos()) {
                 <div class="px-4 py-4 text-center text-[12px] text-slate-400">Carregando grupos…</div>
@@ -309,18 +347,19 @@ export class WhatsAppComponent implements OnInit, OnDestroy {
   private readonly api = inject(ApiService);
 
   // ── State ──────────────────────────────────────────────────────────────────
-  session      = signal<SessionInfo | null>(null);
-  grupos       = signal<Grupo[]>([]);
-  mensagens    = signal<MensagemWa[]>([]);
-  acao         = signal(false);
+  session       = signal<SessionInfo | null>(null);
+  grupos        = signal<Grupo[]>([]);
+  mensagens     = signal<MensagemWa[]>([]);
+  acao          = signal(false);
   loadingGrupos = signal(false);
-  loadingMsgs  = signal(false);
-  showModal    = signal(false);
-  modalLoading = signal(false);
-  modalError   = signal('');
-  msgGrupoId   = '';
-  msgTipo      = 'MANUAL';
-  msgConteudo  = '';
+  loadingMsgs   = signal(false);
+  showModal     = signal(false);
+  modalLoading  = signal(false);
+  modalError    = signal('');
+  msgGrupoId    = '';
+  msgTipo       = 'MANUAL';
+  msgConteudo   = '';
+  grupoPadraoId = signal<string | null>(null);
 
   private pollInterval: ReturnType<typeof setInterval> | null = null;
 
@@ -340,7 +379,10 @@ export class WhatsAppComponent implements OnInit, OnDestroy {
     { tipo: 'MANUAL',            nome: 'Aviso administrativo',  auto: false, preview: '📣 Mensagem manual livre' },
   ];
 
+  private readonly STORAGE_KEY = 'whatsapp_grupo_padrao';
+
   ngOnInit(): void {
+    this.grupoPadraoId.set(localStorage.getItem(this.STORAGE_KEY));
     this.loadSession();
     this.loadMensagens();
     // Polling a cada 3s quando CARREGANDO ou AGUARDANDO_QR
@@ -429,6 +471,27 @@ export class WhatsAppComponent implements OnInit, OnDestroy {
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────────
+  abrirModalMensagem(): void {
+    if (this.grupoPadraoId()) this.msgGrupoId = this.grupoPadraoId()!;
+    this.showModal.set(true);
+  }
+
+  definirPadrao(grupoId: string): void {
+    localStorage.setItem(this.STORAGE_KEY, grupoId);
+    this.grupoPadraoId.set(grupoId);
+    // Pré-seleciona no modal de nova mensagem
+    this.msgGrupoId = grupoId;
+  }
+
+  removerPadrao(): void {
+    localStorage.removeItem(this.STORAGE_KEY);
+    this.grupoPadraoId.set(null);
+  }
+
+  nomeGrupoPadrao(): string {
+    return this.grupos().find(g => g.id === this.grupoPadraoId())?.nome ?? 'grupo selecionado';
+  }
+
   statusLabel(): string {
     const s = this.session()?.status;
     if (s === 'CONECTADO')      return 'Conectado';
