@@ -87,13 +87,21 @@ export class BolaoService {
     return this.toResponse(bolao);
   }
 
-  async findAll(tenantId: string | null, { page = 1, perPage = 20 }: PaginationDto): Promise<PaginatedResponse<BolaoResponse>> {
+  async findAll(
+    tenantId: string | null,
+    { page = 1, perPage = 12, busca, status }: { page?: number; perPage?: number; busca?: string; status?: string },
+  ): Promise<PaginatedResponse<BolaoResponse>> {
     this.assertTenantId(tenantId);
     const skip = (page - 1) * perPage;
+    const where = {
+      tenantId,
+      ...(busca  && { nome: { contains: busca, mode: 'insensitive' as const } }),
+      ...(status && { status: status as import('@prisma/client').BolaoStatus }),
+    };
 
     const [data, total] = await this.prisma.$transaction([
       this.prisma.bolao.findMany({
-        where: { tenantId },
+        where,
         include: {
           categoriasPremiacao: { orderBy: { ordem: 'asc' } },
           _count: { select: { cotas: { where: { statusPagamento: PagamentoStatus.PAGO } } } },
@@ -102,7 +110,7 @@ export class BolaoService {
         take: perPage,
         orderBy: { criadoEm: 'desc' },
       }),
-      this.prisma.bolao.count({ where: { tenantId } }),
+      this.prisma.bolao.count({ where }),
     ]);
 
     return {

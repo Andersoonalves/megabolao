@@ -14,7 +14,7 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { TenantId } from '../auth/decorators/tenant-id.decorator';
-import { PaginationDto } from '../../common/dto/pagination.dto';
+import { ListBolaoDto } from './dto/list-bolao.dto';
 import { BolaoService } from './bolao.service';
 import { CreateBolaoDto } from './dto/create-bolao.dto';
 import { UpdateBolaoDto } from './dto/update-bolao.dto';
@@ -35,8 +35,8 @@ export class BolaoController {
 
   @Get()
   @ApiOperation({ summary: 'Listar bolões do tenant' })
-  findAll(@TenantId() tenantId: string | null, @Query() pagination: PaginationDto) {
-    return this.bolaoService.findAll(tenantId, pagination);
+  findAll(@TenantId() tenantId: string | null, @Query() query: ListBolaoDto) {
+    return this.bolaoService.findAll(tenantId, query);
   }
 
   @Get(':id')
