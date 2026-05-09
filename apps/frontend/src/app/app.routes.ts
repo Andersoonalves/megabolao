@@ -29,6 +29,10 @@ export const appRoutes: Route[] = [
         loadComponent: () => import('./features/dashboard/dashboard-master/dashboard-master.component').then(m => m.DashboardMasterComponent),
       },
       {
+        path: 'boloes',
+        loadComponent: () => import('./features/bolao/lista-bolaoes/lista-bolaoes.component').then(m => m.ListaBolaoesComponent),
+      },
+      {
         path: 'bolao/novo',
         loadComponent: () => import('./features/bolao/criar-bolao/criar-bolao.component').then(m => m.CriarBolaoComponent),
       },
@@ -37,7 +41,7 @@ export const appRoutes: Route[] = [
         loadComponent: () => import('./features/cotas/gestao-cotas/gestao-cotas.component').then(m => m.GestaoCotagsComponent),
       },
       {
-        path: 'bolao/:id/sorteio',
+        path: 'sorteios',
         loadComponent: () => import('./features/sorteio/registrar-sorteio/registrar-sorteio.component').then(m => m.RegistrarSorteioComponent),
       },
       {
