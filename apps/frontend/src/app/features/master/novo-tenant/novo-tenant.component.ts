@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../../core/services/api.service';
+import { PhoneMaskDirective } from '../../../shared/phone';
 
 // Regex slug: letras minúsculas, números, hífens (não começa/termina com hífen)
 const SLUG_RE = /^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$/;
@@ -12,7 +13,7 @@ const SLUG_RE = /^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$/;
 @Component({
   selector: 'nb-novo-tenant',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, PhoneMaskDirective],
   template: `
     <!-- Topbar -->
     <div class="bg-white border-b border-slate-200 px-4 lg:px-7 py-3 flex items-center justify-between gap-4 sticky top-14 lg:top-0 z-10">
@@ -154,7 +155,7 @@ const SLUG_RE = /^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$/;
               <!-- Celular -->
               <div>
                 <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">Celular</label>
-                <input [ngModel]="adminCelular()" (ngModelChange)="adminCelular.set($event)" name="celular"
+                <input phoneMask [ngModel]="adminCelular()" (ngModelChange)="adminCelular.set($event)" name="celular"
                        type="tel" inputmode="numeric"
                        class="w-full px-3 py-2.5 border border-slate-200 rounded-[10px] text-sm font-mono focus:outline-none focus:border-green-700"
                        placeholder="(00) 0 0000-0000" />
@@ -391,7 +392,7 @@ export class NovoTenantComponent {
           adminEmail:   this.adminEmail().trim(),
           adminSenha:   this.adminSenha(),
           adminNome:    this.adminNome().trim() || undefined,
-          adminCelular: this.adminCelular().trim() || undefined,
+          adminCelular: this.adminCelular().replace(/\D/g, '') || undefined,
           branding: {
             corPrimaria: this.corPrimaria(),
             ...(this.logoUrl()        && { logoUrl:         this.logoUrl() }),

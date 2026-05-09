@@ -2,13 +2,14 @@ import { Component, signal, ChangeDetectionStrategy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
+import { PhoneMaskDirective, PhonePipe } from '../../../shared/phone';
 
 type Step = 'phone' | 'otp';
 
 @Component({
   selector: 'nb-portal-busca',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, PhoneMaskDirective, PhonePipe],
   template: `
     <div class="min-h-screen flex flex-col" style="background: linear-gradient(180deg, #065f46, #064e3b)">
 
@@ -40,10 +41,10 @@ type Step = 'phone' | 'otp';
           <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">Número de celular</label>
           <div class="relative mb-5">
             <span class="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-semibold select-none">🇧🇷 +55</span>
-            <input [(ngModel)]="celular" name="celular" type="tel" inputmode="numeric"
+            <input phoneMask [(ngModel)]="celular" name="celular" type="tel" inputmode="numeric"
                    (keyup.enter)="enviarOtp()"
                    class="w-full pl-[72px] pr-4 py-4 border border-slate-200 rounded-xl text-[15px] font-mono tracking-wide focus:outline-none focus:border-green-700"
-                   placeholder="(00) 0 0000-0000" />
+                   placeholder="(00) 9 0000-0000" />
           </div>
 
           <button (click)="enviarOtp()" [disabled]="loading() || !celular"
@@ -65,7 +66,7 @@ type Step = 'phone' | 'otp';
 
           <h2 class="font-display text-[20px] font-semibold mb-1">Código enviado!</h2>
           <p class="text-slate-400 text-[13px] mb-1">Digite o código de 6 dígitos enviado para</p>
-          <p class="font-mono font-semibold text-green-700 text-sm mb-6">{{ celularFormatado() }}</p>
+          <p class="font-mono font-semibold text-green-700 text-sm mb-6">{{ celular | phone }}</p>
 
           @if (error()) {
             <div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">{{ error() }}</div>
@@ -108,19 +109,12 @@ export class PortalBuscaComponent {
     private readonly router: Router,
   ) {}
 
-  celularFormatado(): string {
-    const d = this.celular.replace(/\D/g, '');
-    if (d.length === 11) return `(${d.slice(0,2)}) ${d[2]} ${d.slice(3,7)}-${d.slice(7)}`;
-    if (d.length === 10) return `(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`;
-    return this.celular;
-  }
-
   async enviarOtp(): Promise<void> {
     if (!this.celular || this.loading()) return;
     this.loading.set(true);
     this.error.set('');
     try {
-      await this.auth.signInWithOtp(this.celular);
+      await this.auth.signInWithOtp(this.celular.replace(/\D/g, ''));
       this.otpToken = '';
       this.step.set('otp');
     } catch (err) {
@@ -135,7 +129,7 @@ export class PortalBuscaComponent {
     this.loading.set(true);
     this.error.set('');
     try {
-      await this.auth.verifyOtp(this.celular, this.otpToken);
+      await this.auth.verifyOtp(this.celular.replace(/\D/g, ''), this.otpToken);
       await this.router.navigate(['/portal/cotas']);
     } catch (err) {
       this.error.set(err instanceof Error ? err.message : 'Código inválido ou expirado.');

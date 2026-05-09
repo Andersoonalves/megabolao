@@ -6,6 +6,7 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../../core/services/api.service';
+import { PhoneMaskDirective, PhonePipe } from '../../../shared/phone';
 
 // ── Pipes (declarados antes do componente que os usa) ─────────────────────────
 
@@ -49,16 +50,22 @@ interface Paginated<T> {
 @Component({
   selector: 'nb-gestao-cotas',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, RouterLink, LocalNumPipe, BrlPipe],
+  imports: [FormsModule, RouterLink, LocalNumPipe, BrlPipe, PhoneMaskDirective, PhonePipe],
   template: `
     <!-- Topbar -->
     <div class="bg-white border-b border-slate-200 px-4 lg:px-7 py-3 flex items-center justify-between gap-4 sticky top-14 lg:top-0 z-10">
       <div class="hidden sm:flex items-center gap-2 text-[12.5px]">
-        <span class="text-slate-400">Dashboard</span>
+        <a routerLink="/boloes" class="text-slate-400 hover:text-slate-600 transition-colors">Bolões</a>
+        @if (bolao()) {
+          <span class="text-slate-300">›</span>
+          <span class="text-slate-500 truncate max-w-[180px]">{{ bolao()!.nome }}</span>
+        }
         <span class="text-slate-300">›</span>
         <span class="font-semibold">Cotas</span>
       </div>
-      <span class="font-display font-semibold text-[14px] sm:hidden">Cotas</span>
+      <span class="font-display font-semibold text-[14px] sm:hidden">
+        {{ bolao()?.nome ?? 'Cotas' }}
+      </span>
       <button (click)="showModal.set(true)"
               class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-800 text-white text-sm font-semibold rounded-[10px] transition-colors shadow-sm min-h-9">
         + Cadastrar
@@ -68,9 +75,17 @@ interface Paginated<T> {
     <!-- Page -->
     <div class="p-4 lg:p-7">
       <div class="mb-5">
-        <h1 class="font-display text-2xl lg:text-[26px] font-semibold tracking-tight mb-1">Cotas e participantes</h1>
+        <div class="flex items-center gap-2 mb-1">
+          <h1 class="font-display text-2xl lg:text-[26px] font-semibold tracking-tight">Cotas</h1>
+          @if (bolao()) {
+            <span class="px-2.5 py-0.5 bg-blue-50 border border-blue-200 text-blue-700 text-[12px] font-semibold rounded-full truncate max-w-[240px]">
+              {{ bolao()!.nome }}
+            </span>
+          }
+        </div>
         <p class="text-slate-500 text-[13.5px]">
-          {{ total() | localNum }} pagas ·
+          {{ total() | localNum }} cotas ·
+          {{ totalPago() | localNum }} pagas ·
           {{ totalPendente() }} pendentes
         </p>
       </div>
@@ -187,7 +202,7 @@ interface Paginated<T> {
                     </td>
 
                     <!-- Celular -->
-                    <td class="px-4 py-3 font-mono text-slate-400 text-[12px]">{{ cota.numeroCelular ?? '—' }}</td>
+                    <td class="px-4 py-3 font-mono text-slate-400 text-[12px]">{{ cota.numeroCelular | phone }}</td>
 
                     <!-- Palpites -->
                     <td class="px-4 py-3">
@@ -203,9 +218,12 @@ interface Paginated<T> {
                       </div>
                     </td>
 
-                    <!-- Acertos -->
+                    <!-- Acertos (calculado client-side a partir dos sorteios carregados) -->
                     <td class="px-4 py-3">
-                      <span class="font-mono font-bold tabular text-[14px]">{{ cota.totalAcertosAcumulados }}/10</span>
+                      <span class="font-mono font-bold tabular text-[14px]"
+                            [class]="acertos(cota) >= 8 ? 'text-amber-600' : acertos(cota) >= 5 ? 'text-green-700' : ''">
+                        {{ acertos(cota) }}/10
+                      </span>
                     </td>
 
                     <!-- Pagamento -->
@@ -291,20 +309,79 @@ interface Paginated<T> {
         </div>
 
         <div class="flex-1 overflow-y-auto p-6 flex flex-col gap-5">
+
+          <!-- Busca de participante -->
+          <div class="relative">
+            <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">Buscar participante</label>
+            <div class="relative">
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">🔍</span>
+              <input [ngModel]="buscaParticipante()" (ngModelChange)="onBuscaParticipanteChange($event)"
+                     name="buscaParticipante" autocomplete="off"
+                     class="w-full pl-8 pr-8 py-2.5 border border-slate-200 rounded-[10px] text-sm focus:outline-none focus:border-green-700"
+                     placeholder="Nome ou celular do participante" />
+              @if (buscandoParticipante()) {
+                <span class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs animate-pulse">…</span>
+              }
+              @if (buscaParticipante() && !buscandoParticipante()) {
+                <button type="button" (click)="limparBusca()"
+                        class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs leading-none">✕</button>
+              }
+            </div>
+
+            <!-- Dropdown de resultados -->
+            @if (resultadosBusca().length > 0) {
+              <div class="absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-10 overflow-hidden">
+                @for (p of resultadosBusca(); track p.id) {
+                  <button type="button" (click)="selecionarParticipante(p)"
+                          class="w-full flex items-center gap-3 px-4 py-3 hover:bg-green-50 transition-colors text-left border-b border-slate-100 last:border-0">
+                    <div class="w-8 h-8 rounded-full bg-green-100 text-green-800 flex items-center justify-center font-semibold text-xs flex-shrink-0">
+                      {{ initials(p.nome) }}
+                    </div>
+                    <div class="min-w-0">
+                      <div class="font-semibold text-[13px] truncate">{{ p.nome }}</div>
+                      <div class="text-[11px] text-slate-400 font-mono">{{ p.numeroCelular | phone }}</div>
+                    </div>
+                    <span class="ml-auto text-[10px] text-slate-400 flex-shrink-0">{{ p.totalCotas }} cota(s)</span>
+                  </button>
+                }
+                @if (totalResultados() > resultadosBusca().length) {
+                  <div class="px-4 py-2 text-[11px] text-slate-400 text-center bg-slate-50">
+                    +{{ totalResultados() - resultadosBusca().length }} resultados — refine a busca
+                  </div>
+                }
+              </div>
+            }
+            @if (participanteVinculado()) {
+              <p class="text-[11px] text-green-700 font-semibold mt-1.5 flex items-center gap-1">
+                <span>✓</span> Participante selecionado — campos preenchidos
+                <button type="button" (click)="limparParticipante()" class="ml-auto text-slate-400 hover:text-slate-600">↩ trocar</button>
+              </p>
+            }
+          </div>
+
           <!-- Nome -->
           <div>
             <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">Nome do participante *</label>
             <input [ngModel]="novaNome()" (ngModelChange)="novaNome.set($event)" name="novaNome"
-                   class="w-full px-3 py-2.5 border border-slate-200 rounded-[10px] text-sm focus:outline-none focus:border-green-700 uppercase"
+                   [readonly]="participanteVinculado()"
+                   class="w-full px-3 py-2.5 border rounded-[10px] text-sm focus:outline-none uppercase transition-colors"
+                   [class]="participanteVinculado()
+                     ? 'border-green-200 bg-green-50 text-green-900 cursor-not-allowed'
+                     : 'border-slate-200 focus:border-green-700'"
                    placeholder="NOME COMPLETO" />
           </div>
 
           <!-- Celular -->
           <div>
             <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">Celular</label>
-            <input [ngModel]="novaCelular()" (ngModelChange)="novaCelular.set($event)" name="novaCelular" type="tel" inputmode="numeric"
-                   class="w-full px-3 py-2.5 border border-slate-200 rounded-[10px] text-sm font-mono focus:outline-none focus:border-green-700"
-                   placeholder="83999990000" />
+            <input phoneMask [ngModel]="novaCelular()" (ngModelChange)="onCelularChange($event)" name="novaCelular"
+                   type="tel" inputmode="numeric"
+                   [readonly]="participanteVinculado()"
+                   class="w-full px-3 py-2.5 border rounded-[10px] text-sm font-mono focus:outline-none transition-colors"
+                   [class]="participanteVinculado()
+                     ? 'border-green-200 bg-green-50 text-green-900 cursor-not-allowed'
+                     : 'border-slate-200 focus:border-green-700'"
+                   placeholder="(83) 99999-9999" />
           </div>
 
           <!-- Abas de cotas -->
@@ -391,6 +468,7 @@ export class GestaoCotagsComponent implements OnInit {
   private readonly router = inject(Router);
 
   // ── List state ───────────────────────────────────────────────────────────────
+  bolao         = signal<{ nome: string; valorCota: number } | null>(null);
   cotas         = signal<CotaResponse[]>([]);
   sorteios      = signal<{ bolasSorteadas: number[] }[]>([]);
   loading       = signal(false);
@@ -414,13 +492,23 @@ export class GestaoCotagsComponent implements OnInit {
   valorPendente = computed(() => this.totalPendente() * this.valorCotaRef);
 
   // ── Modal state ───────────────────────────────────────────────────────────────
-  showModal    = signal(false);
-  novaNome     = signal('');
-  novaCelular  = signal('');
-  todasCotas   = signal<number[][]>([[]]); // array of palpite arrays
-  cotaAtualIdx = signal(0);               // which cota grid is active
-  modalLoading = signal(false);
-  modalError   = signal('');
+  showModal             = signal(false);
+  novaNome              = signal('');
+  novaCelular           = signal('');
+  todasCotas            = signal<number[][]>([[]]); // array of palpite arrays
+  cotaAtualIdx          = signal(0);               // which cota grid is active
+  modalLoading          = signal(false);
+  modalError            = signal('');
+  participanteVinculado = signal(false);
+  buscandoParticipante  = signal(false);
+
+  // busca de participante no modal
+  buscaParticipante  = signal('');
+  resultadosBusca    = signal<{ id: string; nome: string; numeroCelular: string; totalCotas: number }[]>([]);
+  totalResultados    = signal(0);
+
+  private celularTimeout: ReturnType<typeof setTimeout> | null = null;
+  private buscaTimeout:   ReturnType<typeof setTimeout> | null = null;
 
   podeSubmitModal = computed(() =>
     this.novaNome().trim().length > 0 &&
@@ -480,14 +568,16 @@ export class GestaoCotagsComponent implements OnInit {
         ...(this.busca()       && { busca: this.busca() }),
         ...(this.statusFiltro() && { status: this.statusFiltro() }),
       });
-      const [cotasRes, sorteiosRes] = await Promise.all([
+      const [cotasRes, sorteiosRes, bolaoRes] = await Promise.all([
         firstValueFrom(this.api.get<Paginated<CotaResponse>>(`/boloes/${this.bolaoId}/cotas?${params}`)),
         firstValueFrom(this.api.get<{ bolasSorteadas: number[] }[]>(`/boloes/${this.bolaoId}/sorteios`)).catch(() => []),
+        this.bolao() ? Promise.resolve(null) : firstValueFrom(this.api.get<{ nome: string; valorCota: number }>(`/boloes/${this.bolaoId}`)).catch(() => null),
       ]);
       this.cotas.set(cotasRes.data);
       this.total.set(cotasRes.total);
       this.totalPages.set(cotasRes.totalPages);
       this.sorteios.set(sorteiosRes);
+      if (bolaoRes) this.bolao.set(bolaoRes);
     } catch {
       this.error.set('Erro ao carregar cotas. Verifique a conexão com a API.');
       this.cotas.set([]);
@@ -544,6 +634,82 @@ export class GestaoCotagsComponent implements OnInit {
     this.todasCotas.set([[]]);
     this.cotaAtualIdx.set(0);
     this.modalError.set('');
+    this.participanteVinculado.set(false);
+    this.buscandoParticipante.set(false);
+    this.buscaParticipante.set('');
+    this.resultadosBusca.set([]);
+    this.totalResultados.set(0);
+  }
+
+  onBuscaParticipanteChange(value: string): void {
+    this.buscaParticipante.set(value);
+    this.resultadosBusca.set([]);
+    if (!value.trim()) return;
+
+    if (this.buscaTimeout) clearTimeout(this.buscaTimeout);
+    this.buscaTimeout = setTimeout(async () => {
+      this.buscandoParticipante.set(true);
+      try {
+        const res = await firstValueFrom(
+          this.api.get<{ data: { id: string; nome: string; numeroCelular: string; totalCotas: number }[]; total: number }>(
+            `/participantes?busca=${encodeURIComponent(value.trim())}&perPage=6`,
+          ),
+        );
+        this.resultadosBusca.set(res.data);
+        this.totalResultados.set(res.total);
+      } catch {
+        this.resultadosBusca.set([]);
+      } finally {
+        this.buscandoParticipante.set(false);
+      }
+    }, 350);
+  }
+
+  selecionarParticipante(p: { nome: string; numeroCelular: string }): void {
+    this.novaNome.set(p.nome);
+    this.novaCelular.set(p.numeroCelular);
+    this.participanteVinculado.set(true);
+    this.resultadosBusca.set([]);
+    this.buscaParticipante.set(p.nome);
+  }
+
+  limparBusca(): void {
+    this.buscaParticipante.set('');
+    this.resultadosBusca.set([]);
+    this.totalResultados.set(0);
+  }
+
+  limparParticipante(): void {
+    this.novaNome.set('');
+    this.novaCelular.set('');
+    this.participanteVinculado.set(false);
+    this.buscaParticipante.set('');
+    this.resultadosBusca.set([]);
+  }
+
+  onCelularChange(value: string): void {
+    this.novaCelular.set(value);
+    this.participanteVinculado.set(false);
+    const digits = value.replace(/\D/g, '');
+    if (digits.length < 10) return;
+
+    if (this.celularTimeout) clearTimeout(this.celularTimeout);
+    this.celularTimeout = setTimeout(async () => {
+      this.buscandoParticipante.set(true);
+      try {
+        const p = await firstValueFrom(
+          this.api.get<{ nome: string } | null>(`/participantes/buscar-celular?celular=${digits}`),
+        );
+        if (p?.nome) {
+          this.novaNome.set(p.nome);
+          this.participanteVinculado.set(true);
+        }
+      } catch {
+        // participante não encontrado — não faz nada
+      } finally {
+        this.buscandoParticipante.set(false);
+      }
+    }, 400);
   }
 
   togglePalpite(n: number): void {
@@ -595,6 +761,13 @@ export class GestaoCotagsComponent implements OnInit {
   }
 
   // ── Template helpers ──────────────────────────────────────────────────────────
+  acertos(cota: CotaResponse): number {
+    const sorteados = this.numerosJaSorteados();
+    return sorteados.size > 0
+      ? cota.palpites.filter(n => sorteados.has(n)).length
+      : cota.totalAcertosAcumulados;
+  }
+
   pad(n: number): string { return String(n).padStart(2, '0'); }
 
   initials(nome: string): string {
