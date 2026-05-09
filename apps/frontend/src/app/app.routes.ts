@@ -41,6 +41,10 @@ export const appRoutes: Route[] = [
         loadComponent: () => import('./features/bolao/bolao-detalhes/bolao-detalhes.component').then(m => m.BolaoDetalhesComponent),
       },
       {
+        path: 'bolao/:id/google-drive',
+        loadComponent: () => import('./features/google-drive/google-drive.component').then(m => m.GoogleDriveComponent),
+      },
+      {
         path: 'bolao/:id/cotas',
         loadComponent: () => import('./features/cotas/gestao-cotas/gestao-cotas.component').then(m => m.GestaoCotagsComponent),
       },
