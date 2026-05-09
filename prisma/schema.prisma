@@ -122,6 +122,10 @@ model Bolao {
   valorCota    Decimal     @db.Decimal(10, 2) @map("valor_cota")
   dataInicio   DateTime?   @db.Date @map("data_inicio")
   dataTermino  DateTime?   @db.Date @map("data_termino")
+  sheetsSpreadsheetId String?   @map("sheets_spreadsheet_id")
+  sheetsAtivo         Boolean   @default(false) @map("sheets_ativo")
+  sheetsUltimaSyncAt  DateTime? @db.Timestamptz() @map("sheets_ultima_sync_at")
+  sheetsUltimoErro    String?   @map("sheets_ultimo_erro")
   criadoEm     DateTime    @default(now()) @db.Timestamptz() @map("criado_em")
   atualizadoEm DateTime    @default(now()) @db.Timestamptz() @map("atualizado_em")
 
