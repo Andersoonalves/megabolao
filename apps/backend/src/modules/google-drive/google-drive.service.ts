@@ -1,16 +1,36 @@
-import { ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Inject, Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { google } from 'googleapis';
+import { JWT } from 'google-auth-library';
+import { Queue } from 'bullmq';
 import { validarPalpites } from '@nossobolao/shared-utils';
 import { PrismaService } from '../prisma/prisma.service';
 import { BusinessException } from '../../common/exceptions/business.exception';
 import { ImportCotasDto } from './dto/import-cotas.dto';
 import { ExportarResultadosDto } from './dto/exportar-resultados.dto';
+import { VincularSheetsDto } from './dto/vincular-sheets.dto';
+import { SHEETS_SYNC_QUEUE, SheetsSyncTrigger } from './jobs/sheets-sync.types';
 
 export interface ImportResult {
   total: number;
   criadas: number;
   erros: { linha: number; erro: string }[];
+}
+
+export interface PreviewRow {
+  linha: number;
+  nome: string;
+  celular: string | null;
+  palpites: number[];
+  valida: boolean;
+  erro: string | null;
+}
+
+export interface PreviewResult {
+  total: number;
+  validas: number;
+  invalidas: number;
+  preview: PreviewRow[];
 }
 
 @Injectable()
@@ -20,6 +40,7 @@ export class GoogleDriveService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
+    @Optional() @Inject(SHEETS_SYNC_QUEUE) private readonly syncQueue?: Queue,
   ) {}
 
   async importarCotas(
@@ -154,11 +175,251 @@ export class GoogleDriveService {
     this.logger.log(`Export: ${cotas.length} cotas exportadas para ${dto.spreadsheetId}`);
   }
 
-  private getAuth() {
+  async getSheetsStatus(tenantId: string | null, bolaoId: string) {
+    this.assertTenantId(tenantId);
+    const bolao = await this.prisma.bolao.findFirst({
+      where: { id: bolaoId, tenantId },
+      select: { sheetsSpreadsheetId: true, sheetsAtivo: true, sheetsUltimaSyncAt: true, sheetsUltimoErro: true },
+    });
+    if (!bolao) throw new NotFoundException({ statusCode: 404, error: 'BOLAO_NAO_ENCONTRADO', message: `Bolão ${bolaoId} não encontrado`, details: [] });
+    return {
+      vinculada:     !!bolao.sheetsSpreadsheetId,
+      spreadsheetId: bolao.sheetsSpreadsheetId ?? null,
+      ativo:         bolao.sheetsAtivo,
+      ultimaSyncAt:  bolao.sheetsUltimaSyncAt?.toISOString() ?? null,
+      ultimoErro:    bolao.sheetsUltimoErro ?? null,
+    };
+  }
+
+  async vincular(tenantId: string | null, bolaoId: string, dto: VincularSheetsDto) {
+    this.assertTenantId(tenantId);
+    const bolao = await this.prisma.bolao.findFirst({ where: { id: bolaoId, tenantId } });
+    if (!bolao) throw new NotFoundException({ statusCode: 404, error: 'BOLAO_NAO_ENCONTRADO', message: `Bolão ${bolaoId} não encontrado`, details: [] });
+
+    await this.prisma.bolao.update({
+      where: { id: bolaoId },
+      data: { sheetsSpreadsheetId: dto.spreadsheetId, sheetsAtivo: true, sheetsUltimoErro: null },
+    });
+
+    // Sync inicial imediato
+    await this.triggerSync(bolaoId, tenantId, 'MANUAL');
+
+    return this.getSheetsStatus(tenantId, bolaoId);
+  }
+
+  async desvincular(tenantId: string | null, bolaoId: string) {
+    this.assertTenantId(tenantId);
+    const bolao = await this.prisma.bolao.findFirst({ where: { id: bolaoId, tenantId } });
+    if (!bolao) throw new NotFoundException({ statusCode: 404, error: 'BOLAO_NAO_ENCONTRADO', message: `Bolão ${bolaoId} não encontrado`, details: [] });
+
+    await this.prisma.bolao.update({
+      where: { id: bolaoId },
+      data: { sheetsSpreadsheetId: null, sheetsAtivo: false, sheetsUltimaSyncAt: null, sheetsUltimoErro: null },
+    });
+  }
+
+  async triggerSync(bolaoId: string, tenantId: string, trigger: SheetsSyncTrigger): Promise<void> {
+    if (!this.syncQueue) return;
+    await this.syncQueue.add(
+      `sync-${trigger.toLowerCase()}`,
+      { bolaoId, tenantId, trigger },
+      { jobId: `${bolaoId}-${trigger}-${Date.now()}`, removeOnComplete: 100, removeOnFail: 50 },
+    );
+  }
+
+  async previewImport(
+    tenantId: string | null,
+    bolaoId: string,
+    dto: ImportCotasDto,
+  ): Promise<PreviewResult> {
+    this.assertTenantId(tenantId);
+
+    const bolao = await this.prisma.bolao.findFirst({ where: { id: bolaoId, tenantId } });
+    if (!bolao) throw new NotFoundException({ statusCode: 404, error: 'BOLAO_NAO_ENCONTRADO', message: `Bolão ${bolaoId} não encontrado`, details: [] });
+
+    const range = dto.range ?? 'Plan1!A2:L1000';
+    const sheets = google.sheets({ version: 'v4', auth: this.getAuth() });
+
+    let rows: (string | number | boolean | null)[][];
+    try {
+      const res = await sheets.spreadsheets.values.get({ spreadsheetId: dto.spreadsheetId, range });
+      rows = (res.data.values as typeof rows) ?? [];
+    } catch {
+      throw new BusinessException('SHEETS_INACESSIVEL', 'Não foi possível acessar a planilha. Verifique o ID e as permissões da Service Account.');
+    }
+
+    const preview: PreviewRow[] = [];
+    let validas = 0;
+    let invalidas = 0;
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const linha = i + 2;
+      const nome = String(row[0] ?? '').trim();
+      if (!nome) continue;
+
+      const celularRaw = row[1] ? String(row[1]).replace(/\D/g, '') : undefined;
+      const celular    = celularRaw && celularRaw.length >= 10 ? celularRaw : null;
+      const palpites   = Array.from({ length: 10 }, (_, k) => parseInt(String(row[k + 2] ?? ''), 10));
+      const valida     = validarPalpites(palpites);
+      const erro       = valida ? null : `Palpites inválidos: ${palpites.join(', ')}`;
+
+      valida ? validas++ : invalidas++;
+      preview.push({ linha, nome, celular, palpites, valida, erro });
+    }
+
+    return { total: rows.length, validas, invalidas, preview };
+  }
+
+  async exportarCompleto(
+    tenantId: string | null,
+    bolaoId: string,
+    dto: ExportarResultadosDto,
+  ): Promise<{ abas: string[]; linhasExportadas: number }> {
+    this.assertTenantId(tenantId);
+
+    const bolao = await this.prisma.bolao.findFirst({
+      where: { id: bolaoId, tenantId },
+      include: { sorteios: { orderBy: { sequenciaNoBolao: 'asc' } }, categoriasPremiacao: { orderBy: { ordem: 'asc' } } },
+    });
+    if (!bolao) throw new NotFoundException({ statusCode: 404, error: 'BOLAO_NAO_ENCONTRADO', message: `Bolão ${bolaoId} não encontrado`, details: [] });
+
+    const [cotas, totalPendente] = await Promise.all([
+      this.prisma.cota.findMany({
+        where: { bolaoId, tenantId: tenantId! },
+        orderBy: [{ totalAcertosAcumulados: 'desc' }, { numeroSequencial: 'asc' }],
+      }),
+      this.prisma.cota.count({ where: { bolaoId, tenantId: tenantId!, statusPagamento: 'PENDENTE' } }),
+    ]);
+
+    const cotasPagas = cotas.filter(c => c.statusPagamento === 'PAGO');
+    const arrecadacao = Number(bolao.valorCota) * cotasPagas.length;
+
+    const abaResumo     = 'Resumo';
+    const abaCotas      = 'Cotas';
+    const abaSorteios   = 'Sorteios';
+    const abaRanking    = 'Ranking';
+    const abaCategorias = 'Categorias';
+
+    const valoresResumo = [
+      ['Campo', 'Valor'],
+      ['Nome do bolão', bolao.nome],
+      ['Status', bolao.status],
+      ['Valor da cota (R$)', Number(bolao.valorCota)],
+      ['Data início', bolao.dataInicio?.toISOString().slice(0, 10) ?? '—'],
+      ['Data término', bolao.dataTermino?.toISOString().slice(0, 10) ?? '—'],
+      ['Total de cotas pagas', cotasPagas.length],
+      ['Total de cotas pendentes', totalPendente],
+      ['Total de cotas', cotas.length],
+      ['Arrecadação bruta (R$)', arrecadacao],
+      ['Sorteios realizados', bolao.sorteios.length],
+    ];
+
+    const valoresCotas = [
+      ['Nº Cota', 'Nome', 'Celular', 'Status Pgto', 'Acertos', 'Resultado',
+        'P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8', 'P9', 'P10'],
+      ...cotas.map(c => [
+        c.numeroSequencial, c.nomeIdentificacao, c.numeroCelular ?? '',
+        c.statusPagamento, c.totalAcertosAcumulados, c.statusResultado,
+        ...c.palpites,
+      ]),
+    ];
+
+    const bolasUnion = [...new Set(bolao.sorteios.flatMap(s => s.bolasSorteadas))].sort((a, b) => a - b);
+    const valoresSorteios = [
+      ['Nº Concurso', 'Data', 'Sequência', 'Bola 1', 'Bola 2', 'Bola 3', 'Bola 4', 'Bola 5', 'Bola 6'],
+      ...bolao.sorteios.map(s => [
+        s.numeroConcurso,
+        s.dataSorteio.toISOString().slice(0, 10),
+        s.sequenciaNoBolao,
+        ...s.bolasSorteadas,
+      ]),
+      [],
+      ['Todas as bolas já sorteadas (union)', bolasUnion.join(', ')],
+    ];
+
+    const valoresRanking = [
+      ['Posição', 'Nº Cota', 'Nome', 'Celular', 'Acertos', 'Status Resultado'],
+      ...cotasPagas.map((c, i) => [
+        i + 1, c.numeroSequencial, c.nomeIdentificacao,
+        c.numeroCelular ?? '', c.totalAcertosAcumulados, c.statusResultado,
+      ]),
+    ];
+
+    const valoresCategorias = [
+      ['Nome', 'Tipo', 'Acertos Alvo', 'Sorteio Ref.', 'Percentual (%)', 'Acumula sem ganhador'],
+      ...bolao.categoriasPremiacao.map(cat => [
+        cat.nome, cat.tipo, cat.acertosAlvo ?? '—', cat.sorteioReferencia ?? '—',
+        Number(cat.percentual), cat.acumulaSemGanhador ? 'Sim' : 'Não',
+      ]),
+    ];
+
+    const sheets = google.sheets({ version: 'v4', auth: this.getAuth() });
+
+    try {
+      // Garante que todas as abas existem
+      const meta = await sheets.spreadsheets.get({ spreadsheetId: dto.spreadsheetId });
+      const abasExistentes = (meta.data.sheets ?? []).map(s => s.properties?.title ?? '');
+      const abasNecessarias = [abaResumo, abaCotas, abaSorteios, abaRanking, abaCategorias];
+      const abasFaltando   = abasNecessarias.filter(a => !abasExistentes.includes(a));
+
+      if (abasFaltando.length > 0) {
+        await sheets.spreadsheets.batchUpdate({
+          spreadsheetId: dto.spreadsheetId,
+          requestBody: {
+            requests: abasFaltando.map(title => ({ addSheet: { properties: { title } } })),
+          },
+        });
+      }
+
+      const dados: { aba: string; valores: (string | number | boolean | null)[][] }[] = [
+        { aba: abaResumo,     valores: valoresResumo },
+        { aba: abaCotas,      valores: valoresCotas },
+        { aba: abaSorteios,   valores: valoresSorteios },
+        { aba: abaRanking,    valores: valoresRanking },
+        { aba: abaCategorias, valores: valoresCategorias },
+      ];
+
+      for (const { aba, valores } of dados) {
+        await sheets.spreadsheets.values.clear({ spreadsheetId: dto.spreadsheetId, range: `${aba}!A1:Z10000` });
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: dto.spreadsheetId,
+          range: `${aba}!A1`,
+          valueInputOption: 'RAW',
+          requestBody: { values: valores },
+        });
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('SHEETS_')) throw err;
+      throw new BusinessException('SHEETS_ESCRITA_FALHOU', `Não foi possível escrever na planilha: ${msg}`);
+    }
+
+    this.logger.log(`Export completo: ${cotas.length} cotas, ${bolao.sorteios.length} sorteios → ${dto.spreadsheetId}`);
+    return { abas: [abaResumo, abaCotas, abaSorteios, abaRanking, abaCategorias], linhasExportadas: cotas.length };
+  }
+
+  private getAuth(): JWT {
     const email = this.config.getOrThrow<string>('GOOGLE_SA_EMAIL');
-    const key = this.config.getOrThrow<string>('GOOGLE_SA_PRIVATE_KEY').replace(/\\n/g, '\n');
-    return new google.auth.GoogleAuth({
-      credentials: { type: 'service_account', client_email: email, private_key: key },
+    const rawKey = this.config.getOrThrow<string>('GOOGLE_SA_PRIVATE_KEY');
+
+    // Normaliza a chave independente do formato do .env:
+    // 1) Remove aspas externas se existirem
+    // 2) Converte \n literal em quebra de linha real
+    // 3) Remove espaços em excesso ao redor
+    const key = rawKey
+      .replace(/^["']|["']$/g, '')  // remove aspas externas
+      .replace(/\\n/g, '\n')        // \n literal → quebra real
+      .trim();
+
+    if (!key.includes('BEGIN')) {
+      throw new Error('GOOGLE_SA_PRIVATE_KEY inválida — verifique o formato no .env');
+    }
+
+    // JWT é mais robusto que GoogleAuth com credentials para Node 18+ / OpenSSL 3
+    return new JWT({
+      email,
+      key,
       scopes: ['https://www.googleapis.com/auth/spreadsheets'],
     });
   }
