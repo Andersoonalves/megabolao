@@ -143,22 +143,28 @@ interface Paginated<T> { data: T[]; total: number; page: number; totalPages: num
               </div>
 
               <!-- Ações -->
-              <div class="grid grid-cols-3 gap-2 pt-1 border-t border-slate-100">
-                <a [routerLink]="['/bolao', b.id, 'cotas']"
-                   class="flex flex-col items-center gap-1 py-2 rounded-lg hover:bg-slate-50 transition-colors no-underline text-slate-600 hover:text-green-700">
-                  <span class="text-base">🎫</span>
-                  <span class="text-[11px] font-semibold">Cotas</span>
+              <div class="flex flex-col gap-2 pt-1 border-t border-slate-100">
+                <a [routerLink]="['/bolao', b.id, 'detalhes']"
+                   class="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-green-700 hover:bg-green-800 transition-colors no-underline text-white font-semibold text-[12px]">
+                  📊 Ver detalhes
                 </a>
-                <a routerLink="/sorteios"
-                   class="flex flex-col items-center gap-1 py-2 rounded-lg hover:bg-slate-50 transition-colors no-underline text-slate-600 hover:text-green-700">
-                  <span class="text-base">✦</span>
-                  <span class="text-[11px] font-semibold">Sorteios</span>
-                </a>
-                <a [routerLink]="['/bolao', b.id, 'premios']"
-                   class="flex flex-col items-center gap-1 py-2 rounded-lg hover:bg-slate-50 transition-colors no-underline text-slate-600 hover:text-green-700">
-                  <span class="text-base">🏆</span>
-                  <span class="text-[11px] font-semibold">Prêmios</span>
-                </a>
+                <div class="grid grid-cols-3 gap-1.5">
+                  <a [routerLink]="['/bolao', b.id, 'cotas']"
+                     class="flex flex-col items-center gap-1 py-2 rounded-lg hover:bg-slate-50 transition-colors no-underline text-slate-600 hover:text-green-700">
+                    <span class="text-base">🎫</span>
+                    <span class="text-[11px] font-semibold">Cotas</span>
+                  </a>
+                  <a routerLink="/sorteios"
+                     class="flex flex-col items-center gap-1 py-2 rounded-lg hover:bg-slate-50 transition-colors no-underline text-slate-600 hover:text-green-700">
+                    <span class="text-base">✦</span>
+                    <span class="text-[11px] font-semibold">Sorteios</span>
+                  </a>
+                  <a [routerLink]="['/bolao', b.id, 'premios']"
+                     class="flex flex-col items-center gap-1 py-2 rounded-lg hover:bg-slate-50 transition-colors no-underline text-slate-600 hover:text-green-700">
+                    <span class="text-base">🏆</span>
+                    <span class="text-[11px] font-semibold">Prêmios</span>
+                  </a>
+                </div>
               </div>
             </div>
           }

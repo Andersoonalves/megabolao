@@ -1,182 +1,201 @@
-import { Component, signal, OnInit, ChangeDetectionStrategy } from '@angular/core';
+import { Component, signal, computed, OnInit, ChangeDetectionStrategy, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { DecimalPipe, CurrencyPipe, DatePipe } from '@angular/common';
-import { StatCardComponent } from '../../../shared/components/stat-card/stat-card.component';
-import { BolasGridComponent } from '../../../shared/components/bolas-grid/bolas-grid.component';
-import { BadgeComponent } from '../../../shared/components/badge/badge.component';
+import { DecimalPipe, CurrencyPipe, DatePipe, SlicePipe } from '@angular/common';
+import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../../core/services/api.service';
+
+interface BolaoItem {
+  id: string;
+  nome: string;
+  status: string;
+  valorCota: number;
+  totalCotasAtivas: number;
+  valorBrutoArrecadado: number;
+  dataInicio: string | null;
+  dataTermino: string | null;
+}
 
 @Component({
   selector: 'nb-dashboard-admin',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, DecimalPipe, CurrencyPipe, DatePipe, StatCardComponent, BolasGridComponent, BadgeComponent],
+  imports: [RouterLink, DecimalPipe, CurrencyPipe, DatePipe, SlicePipe],
   template: `
     <!-- Topbar -->
     <div class="bg-white border-b border-slate-200 px-4 lg:px-7 py-3 flex items-center justify-between gap-4 sticky top-14 lg:top-0 z-10">
-      <div class="hidden sm:flex items-center gap-2 text-[12.5px]">
-        <span class="text-slate-400">Bolão CG</span>
-        <span class="text-slate-300">›</span>
-        <span class="font-semibold">Dashboard</span>
-      </div>
-      <span class="font-display font-semibold text-[14px] sm:hidden">Dashboard</span>
+      <span class="font-display font-semibold text-[14px] sm:text-base">Dashboard</span>
       <div class="flex gap-2">
-        <a routerLink="/relatorios" class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-sm font-semibold rounded-[10px] no-underline text-slate-900 transition-colors min-h-9">
-          📄 Relatório
-        </a>
-        <a routerLink="/bolao/0/sorteio" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-800 text-white text-sm font-semibold rounded-[10px] no-underline transition-colors shadow-sm min-h-9">
-          ✦ <span class="hidden sm:inline">Registrar sorteio</span><span class="sm:hidden">Sorteio</span>
+        <a routerLink="/bolao/novo"
+           class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-800 text-white text-sm font-semibold rounded-[10px] no-underline transition-colors shadow-sm min-h-9">
+          + <span class="hidden sm:inline">Novo bolão</span>
         </a>
       </div>
     </div>
 
-    <!-- Page -->
     <div class="p-4 lg:p-7">
+
+      <!-- Título -->
       <div class="mb-6">
-        <h1 class="font-display text-[26px] font-semibold tracking-tight mb-1">Bolão Mega 2994</h1>
-        <p class="text-slate-500 text-[13.5px]">Iniciado em 14/abr/2026 · 5 categorias · 3 sorteios realizados</p>
+        <h1 class="font-display text-[26px] font-semibold tracking-tight mb-1">Visão geral</h1>
+        <p class="text-slate-500 text-[13.5px]">Todos os bolões do tenant</p>
       </div>
 
-      <!-- KPIs -->
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
-        <nb-stat-card label="Cotas pagas"      value="9.244"      delta="↑ +312 hoje"        icon="🎫" />
-        <nb-stat-card label="Arrecadação bruta" value="R$ 184.880" icon="💰" accent="gold" />
-        <nb-stat-card label="Maior pontuação"  value="9 acertos"  delta="cota #4164 · Maria" icon="🏆" accent="gold" />
-        <nb-stat-card label="Próximo sorteio"  value="01/mai"     delta="Concurso 2995 · 20h" icon="📅" accent="blue" />
-      </div>
+      @if (loading()) {
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
+          @for (i of [1,2,3,4]; track i) { <div class="bg-white border border-slate-200 rounded-lg p-5 h-24 animate-pulse"></div> }
+        </div>
+      }
 
-      <!-- Charts row -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
+      @if (error()) {
+        <div class="mb-5 p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">⚠ {{ error() }}</div>
+      }
 
-        <!-- Distribuição de pontuação -->
-        <div class="bg-white border border-slate-200 rounded-lg">
-          <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
-            <h3 class="font-display font-semibold text-[15px]">Distribuição de pontuação</h3>
-            <span class="text-slate-400 text-xs">9.244 cotas pagas</span>
+      @if (!loading()) {
+        <!-- KPIs agregados -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div class="bg-white border border-slate-200 rounded-lg p-[18px]">
+            <div class="text-[11.5px] font-semibold text-slate-500 uppercase tracking-widest mb-1">🎲 Bolões ativos</div>
+            <div class="font-display text-[28px] font-semibold tracking-tight tabular text-green-700">{{ emAndamento() }}</div>
+            <div class="text-[11.5px] text-slate-400 mt-0.5">{{ bolaoes().length }} total</div>
           </div>
-          <div class="p-5">
-            <div class="flex items-end gap-1.5 h-44">
-              @for (d of distribuicao; track d.acc) {
-                <div class="flex-1 flex flex-col items-center gap-1">
-                  <div class="text-[10.5px] text-slate-400">{{ d.n }}</div>
-                  <div class="w-full rounded-t min-h-1 transition-all"
-                       [style.height]="(d.n / 2960 * 100) + '%'"
-                       [style.background]="d.acc >= 9 ? '#f59e0b' : '#059669'"
-                       [style.opacity]="d.n === 0 ? 0.2 : 1"></div>
-                  <div class="text-[11px] font-semibold text-slate-400">{{ d.acc }}</div>
+
+          <div class="bg-white border border-slate-200 rounded-lg p-[18px]">
+            <div class="text-[11.5px] font-semibold text-slate-500 uppercase tracking-widest mb-1">🎫 Total de cotas</div>
+            <div class="font-display text-[28px] font-semibold tracking-tight tabular">{{ totalCotas() | number }}</div>
+            <div class="text-[11.5px] text-slate-400 mt-0.5">pagas (todos os bolões)</div>
+          </div>
+
+          <div class="bg-white border border-slate-200 rounded-lg p-[18px]">
+            <div class="text-[11.5px] font-semibold text-slate-500 uppercase tracking-widest mb-1">💰 Arrecadação total</div>
+            <div class="font-display text-[22px] font-semibold tracking-tight text-green-700 tabular">{{ totalArrecadado() | currency:'BRL':'symbol':'1.0-0' }}</div>
+            <div class="text-[11.5px] text-slate-400 mt-0.5">acumulado de todos</div>
+          </div>
+
+          <div class="bg-white border border-slate-200 rounded-lg p-[18px]">
+            <div class="text-[11.5px] font-semibold text-slate-500 uppercase tracking-widest mb-1">👥 Participantes</div>
+            <div class="font-display text-[28px] font-semibold tracking-tight tabular">{{ totalParticipantes() | number }}</div>
+            <div class="text-[11.5px] text-slate-400 mt-0.5">banco do tenant</div>
+          </div>
+        </div>
+
+        <!-- Lista de bolões -->
+        <div class="bg-white border border-slate-200 rounded-lg overflow-hidden">
+          <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
+            <h2 class="font-display font-semibold text-[15px]">Bolões</h2>
+            <a routerLink="/boloes" class="text-xs text-green-700 font-semibold no-underline">Ver todos ›</a>
+          </div>
+
+          @if (bolaoes().length === 0) {
+            <div class="p-12 text-center">
+              <div class="text-4xl mb-3">🎲</div>
+              <p class="text-slate-500 text-sm mb-4">Nenhum bolão cadastrado ainda.</p>
+              <a routerLink="/bolao/novo" class="inline-flex items-center gap-1.5 px-4 py-2 bg-green-700 hover:bg-green-800 text-white text-sm font-semibold rounded-[10px] no-underline transition-colors">
+                + Criar primeiro bolão
+              </a>
+            </div>
+          } @else {
+            <div class="divide-y divide-slate-100">
+              @for (b of bolaoes(); track b.id) {
+                <div class="px-5 py-4 flex items-center gap-4 hover:bg-slate-50 transition-colors">
+                  <!-- Status dot + nome -->
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2 mb-0.5">
+                      <span class="w-2 h-2 rounded-full flex-shrink-0"
+                            [class]="b.status === 'EM_ANDAMENTO' ? 'bg-green-500' : b.status === 'A_SER_INICIADO' ? 'bg-blue-400' : 'bg-slate-300'"></span>
+                      <span class="font-semibold text-[14px] truncate">{{ b.nome }}</span>
+                      <span class="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded-full flex-shrink-0"
+                            [class]="b.status === 'EM_ANDAMENTO' ? 'bg-green-100 text-green-800' : b.status === 'A_SER_INICIADO' ? 'bg-blue-50 text-blue-700' : 'bg-slate-100 text-slate-500'">
+                        {{ statusLabel(b.status) }}
+                      </span>
+                    </div>
+                    @if (b.dataInicio) {
+                      <p class="text-[11.5px] text-slate-400 ml-4">{{ b.dataInicio | slice:0:10 | date:'dd/MM/yyyy' }}</p>
+                    }
+                  </div>
+
+                  <!-- Stats -->
+                  <div class="hidden sm:flex items-center gap-6 text-right flex-shrink-0">
+                    <div>
+                      <div class="font-semibold text-[14px] tabular">{{ b.totalCotasAtivas | number }}</div>
+                      <div class="text-[10.5px] text-slate-400">cotas</div>
+                    </div>
+                    <div>
+                      <div class="font-semibold text-[13px] tabular text-green-700">{{ b.valorBrutoArrecadado | currency:'BRL':'symbol':'1.0-0' }}</div>
+                      <div class="text-[10.5px] text-slate-400">arrecadado</div>
+                    </div>
+                  </div>
+
+                  <!-- Ações -->
+                  <div class="flex items-center gap-1.5 flex-shrink-0">
+                    <a [routerLink]="['/bolao', b.id, 'cotas']"
+                       class="px-2.5 py-1.5 text-[12px] font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200 no-underline">
+                      🎫 Cotas
+                    </a>
+                    <a [routerLink]="['/bolao', b.id, 'detalhes']"
+                       class="px-2.5 py-1.5 text-[12px] font-semibold text-green-700 hover:bg-green-50 rounded-lg transition-colors border border-green-200 no-underline">
+                      Ver detalhes →
+                    </a>
+                  </div>
                 </div>
               }
             </div>
-            <div class="text-[11.5px] text-slate-400 text-center mt-1.5">acertos acumulados após 3 sorteios</div>
-          </div>
-        </div>
-
-        <!-- Bolas sorteadas -->
-        <div class="bg-white border border-slate-200 rounded-lg">
-          <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
-            <h3 class="font-display font-semibold text-[15px]">Bolas sorteadas</h3>
-            <span class="text-slate-400 text-xs">3 sorteios</span>
-          </div>
-          <div class="p-5">
-            <nb-bolas-grid [drawn]="bolasDrawn" size="sm" [cols]="10" />
-            <div class="flex gap-4 mt-3.5 text-[11.5px]">
-              <span class="flex items-center gap-1.5">
-                <span class="w-3 h-3 rounded-full bg-green-700 inline-block"></span> sorteada
-              </span>
-              <span class="flex items-center gap-1.5">
-                <span class="w-3 h-3 rounded-full border border-slate-200 inline-block"></span> não sorteada
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Ranking + Próximas ações -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
-
-        <!-- Top 8 ranking -->
-        <div class="bg-white border border-slate-200 rounded-lg overflow-hidden">
-          <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
-            <h3 class="font-display font-semibold text-[15px]">Top 8 do ranking</h3>
-            <a routerLink="/boloes" class="text-xs text-green-700 font-semibold no-underline">Ver todos ›</a>
-          </div>
-          <table class="w-full text-[13.5px]">
-            <thead class="bg-slate-50">
-              <tr>
-                <th class="text-left text-[11.5px] font-semibold text-slate-400 uppercase tracking-widest px-3 py-2.5">Pos</th>
-                <th class="text-left text-[11.5px] font-semibold text-slate-400 uppercase tracking-widest px-3 py-2.5">Cota</th>
-                <th class="text-left text-[11.5px] font-semibold text-slate-400 uppercase tracking-widest px-3 py-2.5">Participante</th>
-                <th class="text-left text-[11.5px] font-semibold text-slate-400 uppercase tracking-widest px-3 py-2.5">Acertos</th>
-                <th class="text-left text-[11.5px] font-semibold text-slate-400 uppercase tracking-widest px-3 py-2.5">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (r of ranking; track r.c) {
-                <tr class="border-b border-slate-100 hover:bg-slate-50 last:border-0">
-                  <td class="px-3 py-3">
-                    <span class="w-6 h-6 rounded-[6px] inline-flex items-center justify-center font-bold text-[11px]"
-                          [class]="r.p === 1 ? 'bg-amber-400 text-white' : r.p <= 3 ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-400'">
-                      {{ r.p }}
-                    </span>
-                  </td>
-                  <td class="px-3 py-3 font-mono text-[12.5px]">#{{ r.c }}</td>
-                  <td class="px-3 py-3 font-semibold">{{ r.n }}</td>
-                  <td class="px-3 py-3 font-mono font-bold">{{ r.a }}/10</td>
-                  <td class="px-3 py-3">
-                    <nb-badge [variant]="r.s.includes('PRÊMIO') ? 'warn' : 'default'" [dot]="true">{{ r.s }}</nb-badge>
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-
-        <!-- Próximas ações -->
-        <div class="bg-white border border-slate-200 rounded-lg">
-          <div class="px-5 py-4 border-b border-slate-200">
-            <h3 class="font-display font-semibold text-[15px]">Próximas ações</h3>
-          </div>
-          @for (x of acoes; track x.t) {
-            <div class="flex items-center gap-3 px-5 py-3.5 border-b border-slate-100 last:border-0">
-              <div class="w-8 h-8 rounded-[8px] bg-green-50 text-green-700 flex items-center justify-center text-sm flex-shrink-0">
-                {{ x.icon }}
-              </div>
-              <div class="flex-1 min-w-0">
-                <div class="text-[13px] font-semibold">{{ x.t }}</div>
-                <div class="text-[11.5px] text-slate-400">{{ x.d }}</div>
-              </div>
-              <a class="text-[11.5px] text-green-700 font-semibold cursor-pointer">{{ x.a }}</a>
-            </div>
           }
         </div>
-      </div>
+
+        <!-- Atalhos rápidos -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5">
+          <a routerLink="/participantes"
+             class="bg-white border border-slate-200 rounded-xl p-4 flex flex-col items-center gap-2 hover:border-green-300 hover:bg-green-50 transition-colors no-underline text-slate-700 group">
+            <span class="text-2xl">👥</span>
+            <span class="text-[12px] font-semibold text-center group-hover:text-green-700">Participantes</span>
+          </a>
+          <a routerLink="/sorteios"
+             class="bg-white border border-slate-200 rounded-xl p-4 flex flex-col items-center gap-2 hover:border-green-300 hover:bg-green-50 transition-colors no-underline text-slate-700 group">
+            <span class="text-2xl">✦</span>
+            <span class="text-[12px] font-semibold text-center group-hover:text-green-700">Registrar sorteio</span>
+          </a>
+          <a routerLink="/whatsapp"
+             class="bg-white border border-slate-200 rounded-xl p-4 flex flex-col items-center gap-2 hover:border-green-300 hover:bg-green-50 transition-colors no-underline text-slate-700 group">
+            <span class="text-2xl">💬</span>
+            <span class="text-[12px] font-semibold text-center group-hover:text-green-700">WhatsApp</span>
+          </a>
+          <a routerLink="/relatorios"
+             class="bg-white border border-slate-200 rounded-xl p-4 flex flex-col items-center gap-2 hover:border-green-300 hover:bg-green-50 transition-colors no-underline text-slate-700 group">
+            <span class="text-2xl">📄</span>
+            <span class="text-[12px] font-semibold text-center group-hover:text-green-700">Relatórios</span>
+          </a>
+        </div>
+      }
     </div>
   `,
 })
-export class DashboardAdminComponent {
-  bolasDrawn = [4, 7, 12, 18, 23, 28, 31, 36, 42, 47, 49, 53, 56, 58, 3, 11, 19, 27];
+export class DashboardAdminComponent implements OnInit {
+  private readonly api = inject(ApiService);
 
-  distribuicao = [
-    { acc: 0, n: 412 }, { acc: 1, n: 1840 }, { acc: 2, n: 2960 },
-    { acc: 3, n: 2150 }, { acc: 4, n: 1180 }, { acc: 5, n: 480 },
-    { acc: 6, n: 158 },  { acc: 7, n: 48 },   { acc: 8, n: 14 },
-    { acc: 9, n: 2 },    { acc: 10, n: 0 },
-  ];
+  loading             = signal(true);
+  error               = signal('');
+  bolaoes             = signal<BolaoItem[]>([]);
+  totalParticipantes  = signal(0);
 
-  ranking = [
-    { p: 1, c: 4164, n: 'Maria L. Souza',  a: 9, s: 'PRÊMIO A RECEBER' },
-    { p: 2, c: 213,  n: 'João Pedro M.',   a: 8, s: 'PRÊMIO A RECEBER' },
-    { p: 3, c: 1837, n: 'Carlos E. Lima',  a: 8, s: 'EM ANDAMENTO' },
-    { p: 4, c: 6029, n: 'Ana C. Ribeiro',  a: 7, s: 'EM ANDAMENTO' },
-    { p: 5, c: 558,  n: 'Roberto S.',      a: 7, s: 'EM ANDAMENTO' },
-    { p: 6, c: 7211, n: 'Fernanda T.',     a: 6, s: 'EM ANDAMENTO' },
-    { p: 7, c: 902,  n: 'Lucas Pereira',   a: 6, s: 'EM ANDAMENTO' },
-    { p: 8, c: 3340, n: 'Patrícia A.',     a: 6, s: 'EM ANDAMENTO' },
-  ];
+  emAndamento   = computed(() => this.bolaoes().filter(b => b.status === 'EM_ANDAMENTO').length);
+  totalCotas    = computed(() => this.bolaoes().reduce((s, b) => s + b.totalCotasAtivas, 0));
+  totalArrecadado = computed(() => this.bolaoes().reduce((s, b) => s + b.valorBrutoArrecadado, 0));
 
-  acoes = [
-    { icon: '📅', t: 'Sorteio 2995',          d: 'Quarta · 01/mai · 20h',        a: 'Lembrete em 2h' },
-    { icon: '💰', t: '12 cotas pendentes',    d: 'R$ 240 a confirmar',            a: 'Confirmar' },
-    { icon: '🏆', t: '2 prêmios a pagar',     d: 'Maria L. · João Pedro',         a: 'Registrar' },
-    { icon: '💬', t: 'Grupo Família CG',      d: 'Sem mensagem há 3 dias',        a: 'Enviar status' },
-  ];
+  async ngOnInit(): Promise<void> {
+    try {
+      const [bolaoRes, partRes] = await Promise.all([
+        firstValueFrom(this.api.get<{ data: BolaoItem[] }>('/boloes?perPage=50')),
+        firstValueFrom(this.api.get<{ total: number }>('/participantes?perPage=1')).catch(() => ({ total: 0 })),
+      ]);
+      this.bolaoes.set(bolaoRes.data);
+      this.totalParticipantes.set(partRes.total);
+    } catch {
+      this.error.set('Erro ao carregar dados.');
+    } finally {
+      this.loading.set(false);
+    }
+  }
+
+  statusLabel(s: string): string {
+    return ({ EM_ANDAMENTO: 'Ativo', A_SER_INICIADO: 'A iniciar', FINALIZADO: 'Finalizado', SUSPENSO: 'Suspenso' } as Record<string, string>)[s] ?? s;
+  }
 }
