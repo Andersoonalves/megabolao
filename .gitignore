@@ -15,3 +15,7 @@ apps/frontend/design-prototypes/
 
 # WhatsApp session data (runtime, contains auth tokens)
 .wa-sessions/
+
+# IDE
+.idea/
+.vscode/

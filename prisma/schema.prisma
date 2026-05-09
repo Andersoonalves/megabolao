@@ -96,6 +96,7 @@ model Tenant {
   acertosSorteio      AcertoSorteio[]
   premios             Premio[]
   mensagens           MensagemWhatsapp[]
+  participantes       Participante[]
 
   @@map("tenants")
 }
@@ -157,10 +158,28 @@ model CategoriaPremiacao {
   @@map("categorias_premiacao")
 }
 
+model Participante {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId      String   @db.Uuid @map("tenant_id")
+  nome          String
+  numeroCelular String   @map("numero_celular")
+  email         String?
+  observacoes   String?
+  criadoEm     DateTime @default(now()) @db.Timestamptz() @map("criado_em")
+  atualizadoEm DateTime @default(now()) @db.Timestamptz() @map("atualizado_em")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  cotas  Cota[]
+
+  @@unique([tenantId, numeroCelular])
+  @@map("participantes")
+}
+
 model Cota {
   id                       String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   tenantId                 String          @db.Uuid @map("tenant_id")
   bolaoId                  String          @db.Uuid @map("bolao_id")
+  participanteId           String?         @db.Uuid @map("participante_id")
   nomeIdentificacao        String          @map("nome_identificacao")
   numeroCelular            String?         @map("numero_celular")
   numeroSequencial         Int             @map("numero_sequencial")
@@ -174,6 +193,7 @@ model Cota {
 
   tenant         Tenant          @relation(fields: [tenantId], references: [id])
   bolao          Bolao           @relation(fields: [bolaoId], references: [id])
+  participante   Participante?   @relation(fields: [participanteId], references: [id])
   acertosSorteio AcertoSorteio[]
   premios        Premio[]
 

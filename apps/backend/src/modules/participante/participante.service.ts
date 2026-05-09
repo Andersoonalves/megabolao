@@ -4,6 +4,7 @@ import { PaginatedResponse } from '@nossobolao/shared-types';
 import { validarPalpites } from '@nossobolao/shared-utils';
 import { PrismaService } from '../prisma/prisma.service';
 import { BusinessException } from '../../common/exceptions/business.exception';
+import { BancoParticipanteService } from './banco-participante.service';
 import { CreateCotaDto } from './dto/create-cota.dto';
 import { UpdateCotaDto } from './dto/update-cota.dto';
 import { ListCotasDto } from './dto/list-cotas.dto';
@@ -26,7 +27,10 @@ export interface CotaResponse {
 
 @Injectable()
 export class ParticipanteService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly bancoParticipante: BancoParticipanteService,
+  ) {}
 
   async create(tenantId: string | null, bolaoId: string, dto: CreateCotaDto): Promise<CotaResponse> {
     this.assertTenantId(tenantId);
@@ -37,6 +41,16 @@ export class ParticipanteService {
     }
 
     this.assertPalpitesValidos(dto.palpites);
+
+    // Auto-vincula ou cria participante quando celular for informado
+    let participanteId: string | null = null;
+    if (dto.numeroCelular) {
+      participanteId = await this.bancoParticipante.upsertParaCota(
+        tenantId,
+        dto.nomeIdentificacao,
+        dto.numeroCelular,
+      );
+    }
 
     const cota = await this.prisma.$transaction(async (tx) => {
       const { _max } = await tx.cota.aggregate({
@@ -49,6 +63,7 @@ export class ParticipanteService {
         data: {
           tenantId,
           bolaoId,
+          participanteId,
           nomeIdentificacao: dto.nomeIdentificacao,
           numeroCelular: dto.numeroCelular ?? null,
           numeroSequencial: nextSeq,
