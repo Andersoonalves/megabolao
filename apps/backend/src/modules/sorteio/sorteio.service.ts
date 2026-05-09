@@ -1,10 +1,11 @@
-import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Inject, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { Queue } from 'bullmq';
 import { validarBolasSorteadas } from '@nossobolao/shared-utils';
 import { PrismaService } from '../prisma/prisma.service';
 import { BusinessException } from '../../common/exceptions/business.exception';
 import { CreateSorteioDto } from './dto/create-sorteio.dto';
 import { CALC_ACERTOS_QUEUE, CALC_ACERTOS_QUEUE_NAME, CalcAcertosJobData } from './jobs/calc-acertos.types';
+import { SHEETS_SYNC_QUEUE } from '../google-drive/jobs/sheets-sync.types';
 
 export interface SorteioResponse {
   id: string;
@@ -24,6 +25,7 @@ export class SorteioService {
   constructor(
     private readonly prisma: PrismaService,
     @Inject(CALC_ACERTOS_QUEUE) private readonly queue: Queue,
+    @Optional() @Inject(SHEETS_SYNC_QUEUE) private readonly syncQueue?: Queue,
   ) {}
 
   async create(tenantId: string | null, bolaoId: string, dto: CreateSorteioDto): Promise<SorteioResponse> {
@@ -90,6 +92,7 @@ export class SorteioService {
       },
     );
 
+    this.triggerSheetsSync(bolaoId, tenantId, 'SORTEIO');
     return this.toResponse(sorteio);
   }
 
@@ -228,6 +231,15 @@ export class SorteioService {
 
   private assertTenantId(tenantId: string | null): asserts tenantId is string {
     if (!tenantId) throw new ForbiddenException('TENANT_ID_OBRIGATORIO');
+  }
+
+  private triggerSheetsSync(bolaoId: string, tenantId: string, trigger: 'SORTEIO' | 'RANKING'): void {
+    if (!this.syncQueue) return;
+    this.syncQueue.add(`sync-${trigger.toLowerCase()}`, { bolaoId, tenantId, trigger }, {
+      jobId: `${bolaoId}-${trigger}-${Date.now()}`,
+      removeOnComplete: 100,
+      removeOnFail: 50,
+    }).catch(() => {});
   }
 
   private toResponse(s: {

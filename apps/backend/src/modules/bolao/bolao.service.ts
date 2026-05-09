@@ -293,19 +293,21 @@ export class BolaoService {
     });
     if (!bolao) throw new NotFoundException({ statusCode: 404, error: 'BOLAO_NAO_ENCONTRADO', message: `Bolão ${bolaoId} não encontrado`, details: [] });
 
-    const [totalPago, totalPendente, ranking, distribuicao] = await this.prisma.$transaction([
-      this.prisma.cota.count({ where: { bolaoId, tenantId, statusPagamento: 'PAGO' } }),
-      this.prisma.cota.count({ where: { bolaoId, tenantId, statusPagamento: 'PENDENTE' } }),
-      this.prisma.cota.findMany({
-        where:   { bolaoId, tenantId, statusPagamento: 'PAGO' },
-        orderBy: { totalAcertosAcumulados: 'desc' },
-        take:    10,
-        select:  { numeroSequencial: true, nomeIdentificacao: true, totalAcertosAcumulados: true, statusResultado: true },
-      }),
+    const [[totalPago, totalPendente, ranking], distribuicao] = await Promise.all([
+      this.prisma.$transaction([
+        this.prisma.cota.count({ where: { bolaoId, tenantId, statusPagamento: 'PAGO' } }),
+        this.prisma.cota.count({ where: { bolaoId, tenantId, statusPagamento: 'PENDENTE' } }),
+        this.prisma.cota.findMany({
+          where:   { bolaoId, tenantId, statusPagamento: 'PAGO' },
+          orderBy: { totalAcertosAcumulados: 'desc' },
+          take:    10,
+          select:  { numeroSequencial: true, nomeIdentificacao: true, totalAcertosAcumulados: true, statusResultado: true },
+        }),
+      ]),
       this.prisma.cota.groupBy({
         by:    ['totalAcertosAcumulados'],
         where: { bolaoId, tenantId, statusPagamento: 'PAGO' },
-        _count: { _all: true },
+        _count: true,
       }),
     ]);
 
@@ -339,7 +341,7 @@ export class BolaoService {
         statusResultado:        c.statusResultado,
       })),
       distribuicaoAcertos: distribuicao
-        .map(d => ({ acertos: d.totalAcertosAcumulados, quantidade: d._count._all }))
+        .map(d => ({ acertos: d.totalAcertosAcumulados, quantidade: typeof d._count === 'number' ? d._count : 0 }))
         .sort((a, b) => a.acertos - b.acertos),
     };
   }

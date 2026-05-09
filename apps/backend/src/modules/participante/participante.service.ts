@@ -1,10 +1,12 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Inject, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { Cota, Prisma } from '@prisma/client';
+import { Queue } from 'bullmq';
 import { PaginatedResponse } from '@nossobolao/shared-types';
 import { validarPalpites } from '@nossobolao/shared-utils';
 import { PrismaService } from '../prisma/prisma.service';
 import { BusinessException } from '../../common/exceptions/business.exception';
 import { BancoParticipanteService } from './banco-participante.service';
+import { SHEETS_SYNC_QUEUE } from '../google-drive/jobs/sheets-sync.types';
 import { CreateCotaDto } from './dto/create-cota.dto';
 import { UpdateCotaDto } from './dto/update-cota.dto';
 import { ListCotasDto } from './dto/list-cotas.dto';
@@ -30,6 +32,7 @@ export class ParticipanteService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly bancoParticipante: BancoParticipanteService,
+    @Optional() @Inject(SHEETS_SYNC_QUEUE) private readonly syncQueue?: Queue,
   ) {}
 
   async create(tenantId: string | null, bolaoId: string, dto: CreateCotaDto): Promise<CotaResponse> {
@@ -72,6 +75,7 @@ export class ParticipanteService {
       });
     });
 
+    this.triggerSheetsSync(bolaoId, tenantId, 'COTA');
     return this.toResponse(cota);
   }
 
@@ -172,6 +176,7 @@ export class ParticipanteService {
       },
     });
 
+    this.triggerSheetsSync(bolaoId, tenantId, 'COTA');
     return this.toResponse(updated);
   }
 
@@ -203,6 +208,16 @@ export class ParticipanteService {
     }
 
     await this.prisma.cota.delete({ where: { id } });
+  }
+
+  // ── Sheets sync ───────────────────────────────────────────────────────────
+  private triggerSheetsSync(bolaoId: string, tenantId: string, trigger: 'COTA' | 'SORTEIO' | 'RANKING' | 'MANUAL'): void {
+    if (!this.syncQueue) return;
+    this.syncQueue.add(`sync-${trigger.toLowerCase()}`, { bolaoId, tenantId, trigger }, {
+      jobId: `${bolaoId}-${trigger}-${Date.now()}`,
+      removeOnComplete: 100,
+      removeOnFail: 50,
+    }).catch(() => {}); // fire-and-forget
   }
 
   // ── Helpers privados ──────────────────────────────────────────────────────

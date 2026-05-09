@@ -1,9 +1,10 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Job, Worker } from 'bullmq';
+import { Job, Queue, Worker } from 'bullmq';
 import { calcularAcertos } from '@nossobolao/shared-utils';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CALC_ACERTOS_QUEUE_NAME, CalcAcertosJobData } from './calc-acertos.types';
+import { SHEETS_SYNC_QUEUE } from '../../google-drive/jobs/sheets-sync.types';
 
 const BATCH_SIZE = 500;
 
@@ -15,6 +16,7 @@ export class CalcAcertosProcessor implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
+    @Optional() @Inject(SHEETS_SYNC_QUEUE) private readonly syncQueue?: Queue,
   ) {}
 
   onModuleInit(): void {
@@ -114,5 +116,14 @@ export class CalcAcertosProcessor implements OnModuleInit, OnModuleDestroy {
     this.logger.log(
       `Sorteio ${sorteioId} (concurso ${sorteio.numeroConcurso}): ${totalProcessadas} cotas processadas`,
     );
+
+    // Trigger sheets sync after ranking is calculated
+    if (this.syncQueue) {
+      this.syncQueue.add('sync-ranking', { bolaoId, tenantId, trigger: 'RANKING' }, {
+        jobId: `${bolaoId}-RANKING-${Date.now()}`,
+        removeOnComplete: 100,
+        removeOnFail: 50,
+      }).catch(() => {});
+    }
   }
 }

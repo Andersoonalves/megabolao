@@ -6,8 +6,10 @@ import { SorteioGlobalController } from './sorteio-global.controller';
 import { SorteioService } from './sorteio.service';
 import { CalcAcertosProcessor } from './jobs/calc-acertos.processor';
 import { CALC_ACERTOS_QUEUE, CALC_ACERTOS_QUEUE_NAME } from './jobs/calc-acertos.types';
+import { GoogleDriveModule } from '../google-drive/google-drive.module';
 
 @Module({
+  imports: [GoogleDriveModule],
   controllers: [SorteioController, SorteioGlobalController],
   providers: [
     {
