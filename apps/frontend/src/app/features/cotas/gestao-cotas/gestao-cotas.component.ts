@@ -3,7 +3,7 @@ import {
   Pipe, PipeTransform,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../../core/services/api.service';
 
@@ -193,7 +193,10 @@ interface Paginated<T> {
                     <td class="px-4 py-3">
                       <div class="flex flex-wrap gap-[3px]">
                         @for (n of cota.palpites; track n) {
-                          <span class="w-[22px] h-[22px] rounded-full flex items-center justify-center font-mono font-semibold text-[10px] border border-slate-200 bg-white text-slate-700">
+                          <span class="w-[22px] h-[22px] rounded-full flex items-center justify-center font-mono font-semibold text-[10px] border transition-colors"
+                                [class]="numerosJaSorteados().has(n)
+                                  ? 'bg-green-600 border-green-600 text-white'
+                                  : 'bg-white border-slate-200 text-slate-700'">
                             {{ pad(n) }}
                           </span>
                         }
@@ -291,7 +294,7 @@ interface Paginated<T> {
           <!-- Nome -->
           <div>
             <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">Nome do participante *</label>
-            <input [(ngModel)]="novaNome" name="novaNome"
+            <input [ngModel]="novaNome()" (ngModelChange)="novaNome.set($event)" name="novaNome"
                    class="w-full px-3 py-2.5 border border-slate-200 rounded-[10px] text-sm focus:outline-none focus:border-green-700 uppercase"
                    placeholder="NOME COMPLETO" />
           </div>
@@ -299,35 +302,59 @@ interface Paginated<T> {
           <!-- Celular -->
           <div>
             <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">Celular</label>
-            <input [(ngModel)]="novaCelular" name="novaCelular" type="tel" inputmode="numeric"
+            <input [ngModel]="novaCelular()" (ngModelChange)="novaCelular.set($event)" name="novaCelular" type="tel" inputmode="numeric"
                    class="w-full px-3 py-2.5 border border-slate-200 rounded-[10px] text-sm font-mono focus:outline-none focus:border-green-700"
                    placeholder="83999990000" />
           </div>
 
-          <!-- Palpites grid -->
+          <!-- Abas de cotas -->
           <div>
-            <div class="flex items-center justify-between mb-2">
-              <label class="text-xs font-semibold text-slate-500 tracking-wide">Palpites *</label>
-              <span class="font-mono text-[12px]" [class]="novaPalpites().length === 10 ? 'text-green-700 font-bold' : 'text-slate-400'">
-                {{ novaPalpites().length }}/10
-              </span>
+            <label class="block text-xs font-semibold text-slate-500 mb-2 tracking-wide">Palpites</label>
+
+            <!-- Tab headers + botão adicionar -->
+            <div class="flex flex-wrap gap-1.5 mb-3">
+              @for (cotas of todasCotas(); track $index) {
+                <button type="button" (click)="cotaAtualIdx.set($index)"
+                        class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-semibold border transition-colors"
+                        [class]="cotaAtualIdx() === $index
+                          ? 'bg-green-700 text-white border-green-700'
+                          : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'">
+                  Cota {{ $index + 1 }}
+                  <span class="font-mono" [class]="cotas.length === 10 ? 'text-green-300' : ''">
+                    {{ cotas.length }}/10
+                  </span>
+                  @if (todasCotas().length > 1) {
+                    <span (click)="$event.stopPropagation(); removerCota($index)"
+                          class="ml-0.5 opacity-60 hover:opacity-100 cursor-pointer">✕</span>
+                  }
+                </button>
+              }
+              <!-- Botão adicionar cota — inline com as abas -->
+              <button type="button" (click)="adicionarCota()"
+                      class="flex items-center gap-1 px-3 py-1.5 rounded-lg text-[12px] font-bold border-2 border-dashed border-green-400 text-green-700 bg-green-50 hover:bg-green-100 hover:border-green-600 transition-colors">
+                + Nova cota
+              </button>
             </div>
+
+            <!-- Grid da cota ativa -->
             <div class="grid grid-cols-10 gap-1.5 p-4 bg-slate-50 rounded-xl border border-slate-200">
               @for (n of nums60; track n) {
                 <button type="button" (click)="togglePalpite(n)"
                         class="w-full aspect-square rounded-full flex items-center justify-center font-mono font-semibold text-[11px] border transition-all"
-                        [class]="novaPalpites().includes(n)
+                        [class]="todasCotas()[cotaAtualIdx()]?.includes(n)
                           ? 'bg-green-700 text-white border-green-700 shadow-sm scale-105'
-                          : novaPalpites().length >= 10
+                          : (todasCotas()[cotaAtualIdx()]?.length ?? 0) >= 10
                             ? 'bg-white text-slate-300 border-slate-200 cursor-not-allowed'
                             : 'bg-white text-slate-700 border-slate-200 hover:border-green-400 hover:text-green-700'">
                   {{ pad(n) }}
                 </button>
               }
             </div>
-            @if (novaPalpites().length > 0) {
+
+            <!-- Resumo da cota ativa -->
+            @if ((todasCotas()[cotaAtualIdx()]?.length ?? 0) > 0) {
               <div class="mt-2 flex flex-wrap gap-1.5">
-                @for (n of novaPalpites(); track n) {
+                @for (n of todasCotas()[cotaAtualIdx()]; track n) {
                   <span class="w-7 h-7 rounded-full flex items-center justify-center font-mono font-semibold text-[11px] bg-green-700 text-white">
                     {{ pad(n) }}
                   </span>
@@ -349,7 +376,7 @@ interface Paginated<T> {
           <button (click)="cadastrarCota()"
                   [disabled]="!podeSubmitModal() || modalLoading()"
                   class="flex-1 py-2.5 bg-green-700 hover:bg-green-800 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold text-sm rounded-[10px] transition-colors shadow-sm">
-            {{ modalLoading() ? 'Cadastrando...' : 'Cadastrar' }}
+            {{ modalLoading() ? 'Cadastrando...' : todasCotas().length > 1 ? 'Cadastrar ' + todasCotas().length + ' cotas' : 'Cadastrar' }}
           </button>
         </div>
       </div>
@@ -360,10 +387,12 @@ export class GestaoCotagsComponent implements OnInit {
   // Route param (withComponentInputBinding)
   readonly id = input<string>('');
 
-  private readonly api = inject(ApiService);
+  private readonly api    = inject(ApiService);
+  private readonly router = inject(Router);
 
   // ── List state ───────────────────────────────────────────────────────────────
   cotas         = signal<CotaResponse[]>([]);
+  sorteios      = signal<{ bolasSorteadas: number[] }[]>([]);
   loading       = signal(false);
   error         = signal('');
   total         = signal(0);
@@ -373,6 +402,10 @@ export class GestaoCotagsComponent implements OnInit {
   statusFiltro  = signal('');
   confirmandoId = signal('');
 
+  numerosJaSorteados = computed(() =>
+    new Set(this.sorteios().flatMap(s => s.bolasSorteadas)),
+  );
+
   // ── Computed KPIs ─────────────────────────────────────────────────────────────
   totalPago     = computed(() => this.cotas().filter(c => c.statusPagamento === 'PAGO').length);
   totalPendente = computed(() => this.cotas().filter(c => c.statusPagamento === 'PENDENTE').length);
@@ -381,34 +414,59 @@ export class GestaoCotagsComponent implements OnInit {
   valorPendente = computed(() => this.totalPendente() * this.valorCotaRef);
 
   // ── Modal state ───────────────────────────────────────────────────────────────
-  showModal   = signal(false);
-  novaNome    = '';
-  novaCelular = '';
-  novaPalpites = signal<number[]>([]);
+  showModal    = signal(false);
+  novaNome     = signal('');
+  novaCelular  = signal('');
+  todasCotas   = signal<number[][]>([[]]); // array of palpite arrays
+  cotaAtualIdx = signal(0);               // which cota grid is active
   modalLoading = signal(false);
   modalError   = signal('');
 
   podeSubmitModal = computed(() =>
-    this.novaNome.trim().length > 0 && this.novaPalpites().length === 10,
+    this.novaNome().trim().length > 0 &&
+    this.todasCotas().length > 0 &&
+    this.todasCotas().every(p => p.length === 10),
   );
 
   // ── Helpers ───────────────────────────────────────────────────────────────────
   readonly nums60 = Array.from({ length: 60 }, (_, i) => i + 1);
   private searchTimeout: ReturnType<typeof setTimeout> | null = null;
 
+  private readonly UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
   constructor() {
     effect(() => {
-      const bolaoId = this.id();
-      if (bolaoId) this.loadCotas();
+      const id = this.id();
+      if (this.UUID_RE.test(id)) {
+        this.loadCotas();
+      } else {
+        this.resolveActiveBolao();
+      }
     });
   }
 
-  ngOnInit(): void {
-    if (!this.id()) this.loadCotas();
+  ngOnInit(): void {}
+
+  private async resolveActiveBolao(): Promise<void> {
+    try {
+      const res = await firstValueFrom(
+        this.api.get<{ data: { id: string }[] }>('/boloes?perPage=1'),
+      );
+      const first = res.data?.[0];
+      if (first?.id) {
+        await this.router.navigate(['/bolao', first.id, 'cotas'], { replaceUrl: true });
+      } else {
+        this.error.set('Nenhum bolão encontrado. Crie um bolão primeiro.');
+        this.loading.set(false);
+      }
+    } catch {
+      this.error.set('Erro ao carregar bolão ativo.');
+      this.loading.set(false);
+    }
   }
 
   private get bolaoId(): string {
-    return this.id() || '00000000-0000-0000-0000-000000000002';
+    return this.id();
   }
 
   // ── Data loading ──────────────────────────────────────────────────────────────
@@ -422,12 +480,14 @@ export class GestaoCotagsComponent implements OnInit {
         ...(this.busca()       && { busca: this.busca() }),
         ...(this.statusFiltro() && { status: this.statusFiltro() }),
       });
-      const res = await firstValueFrom(
-        this.api.get<Paginated<CotaResponse>>(`/boloes/${this.bolaoId}/cotas?${params}`),
-      );
-      this.cotas.set(res.data);
-      this.total.set(res.total);
-      this.totalPages.set(res.totalPages);
+      const [cotasRes, sorteiosRes] = await Promise.all([
+        firstValueFrom(this.api.get<Paginated<CotaResponse>>(`/boloes/${this.bolaoId}/cotas?${params}`)),
+        firstValueFrom(this.api.get<{ bolasSorteadas: number[] }[]>(`/boloes/${this.bolaoId}/sorteios`)).catch(() => []),
+      ]);
+      this.cotas.set(cotasRes.data);
+      this.total.set(cotasRes.total);
+      this.totalPages.set(cotasRes.totalPages);
+      this.sorteios.set(sorteiosRes);
     } catch {
       this.error.set('Erro ao carregar cotas. Verifique a conexão com a API.');
       this.cotas.set([]);
@@ -479,18 +539,35 @@ export class GestaoCotagsComponent implements OnInit {
   // ── Modal ─────────────────────────────────────────────────────────────────────
   closeModal(): void {
     this.showModal.set(false);
-    this.novaNome    = '';
-    this.novaCelular = '';
-    this.novaPalpites.set([]);
+    this.novaNome.set('');
+    this.novaCelular.set('');
+    this.todasCotas.set([[]]);
+    this.cotaAtualIdx.set(0);
     this.modalError.set('');
   }
 
   togglePalpite(n: number): void {
-    this.novaPalpites.update(p =>
-      p.includes(n)
-        ? p.filter(x => x !== n)
-        : p.length < 10 ? [...p, n].sort((a, b) => a - b) : p,
-    );
+    const idx = this.cotaAtualIdx();
+    this.todasCotas.update(all => {
+      const copy = all.map(p => [...p]);
+      const cur = copy[idx];
+      copy[idx] = cur.includes(n)
+        ? cur.filter(x => x !== n)
+        : cur.length < 10 ? [...cur, n].sort((a, b) => a - b) : cur;
+      return copy;
+    });
+  }
+
+  adicionarCota(): void {
+    this.todasCotas.update(all => [...all, []]);
+    this.cotaAtualIdx.set(this.todasCotas().length - 1);
+  }
+
+  removerCota(idx: number): void {
+    if (this.todasCotas().length <= 1) return;
+    this.todasCotas.update(all => all.filter((_, i) => i !== idx));
+    const newLen = this.todasCotas().length;
+    if (this.cotaAtualIdx() >= newLen) this.cotaAtualIdx.set(newLen - 1);
   }
 
   async cadastrarCota(): Promise<void> {
@@ -498,18 +575,19 @@ export class GestaoCotagsComponent implements OnInit {
     this.modalLoading.set(true);
     this.modalError.set('');
     try {
-      await firstValueFrom(
-        this.api.post(`/boloes/${this.bolaoId}/cotas`, {
-          nomeIdentificacao: this.novaNome.trim().toUpperCase(),
-          numeroCelular:     this.novaCelular.replace(/\D/g, '') || undefined,
-          palpites:          this.novaPalpites(),
-        }),
-      );
+      for (const palpites of this.todasCotas()) {
+        await firstValueFrom(
+          this.api.post(`/boloes/${this.bolaoId}/cotas`, {
+            nomeIdentificacao: this.novaNome().trim().toUpperCase(),
+            numeroCelular:     this.novaCelular().replace(/\D/g, '') || undefined,
+            palpites,
+          }),
+        );
+      }
       this.closeModal();
-      this.page.set(1);
       await this.loadCotas();
     } catch (err: unknown) {
-      const msg = (err as { error?: { message?: string } })?.error?.message ?? 'Erro ao cadastrar cota';
+      const msg = (err as { error?: { message?: string } })?.error?.message ?? 'Erro ao cadastrar cota.';
       this.modalError.set(msg);
     } finally {
       this.modalLoading.set(false);
