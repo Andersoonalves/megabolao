@@ -4,6 +4,7 @@ import { NgTemplateOutlet } from '@angular/common';
 import { AuthService } from '../../services/auth.service';
 import { ShellService } from '../../services/shell.service';
 import { PwaBannerAdminComponent } from '../../../shared/components/pwa-banner/pwa-banner-admin.component';
+import { ThemeToggleComponent } from '../../../shared/components/theme-toggle/theme-toggle.component';
 
 interface NavItem {
   section?: string;
@@ -39,7 +40,7 @@ const MASTER_NAV: NavItem[] = [
 @Component({
   selector: 'nb-admin-shell',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, NgTemplateOutlet, PwaBannerAdminComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, NgTemplateOutlet, PwaBannerAdminComponent, ThemeToggleComponent],
   template: `
     <!-- Desktop: sidebar 240px | Main. Mobile: sidebar oculta, drawer -->
     <nb-pwa-banner-admin />
@@ -62,10 +63,11 @@ const MASTER_NAV: NavItem[] = [
             <line x1="3" y1="18" x2="21" y2="18"/>
           </svg>
         </button>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 flex-1">
           <div class="w-7 h-7 rounded-[8px] bg-gradient-to-br from-green-700 to-green-900 text-white flex items-center justify-center font-display font-bold text-xs">NB</div>
           <span class="font-display font-semibold text-[15px]">NossoBolão</span>
         </div>
+        <nb-theme-toggle [size]="'sm'" />
       </div>
 
       <!-- ── Mobile drawer (backdrop + painel) ───────────────────────────────── -->
@@ -81,10 +83,14 @@ const MASTER_NAV: NavItem[] = [
               <div class="w-8 h-8 rounded-[9px] bg-gradient-to-br from-green-700 to-green-900 text-white flex items-center justify-center font-display font-bold text-sm">NB</div>
               <span class="font-display font-semibold text-[15.5px]">NossoBolão</span>
             </div>
-            <button (click)="shell.closeDrawer()"
-                    class="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors text-lg">
-              ✕
-            </button>
+            <div class="flex items-center gap-1">
+              <nb-theme-toggle [size]="'sm'" />
+              <button (click)="shell.closeDrawer()"
+                      class="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors text-lg"
+                      aria-label="Fechar menu">
+                ✕
+              </button>
+            </div>
           </div>
           <ng-container *ngTemplateOutlet="sidebarContent" />
         </aside>
@@ -101,10 +107,11 @@ const MASTER_NAV: NavItem[] = [
       <!-- Logo (desktop only — mobile has it in the header) -->
       <div class="hidden lg:flex items-center gap-2.5 px-3 pt-4 pb-5">
         <div class="w-8 h-8 rounded-[9px] bg-gradient-to-br from-green-700 to-green-900 text-white flex items-center justify-center font-display font-bold text-sm tracking-tight shadow-sm">NB</div>
-        <div>
+        <div class="flex-1 min-w-0">
           <div class="font-display font-semibold text-[15.5px] tracking-tight">NossoBolão</div>
           <div class="text-[10.5px] text-slate-400 font-medium -mt-0.5">{{ auth.isMaster() ? 'Plataforma' : 'Admin' }}</div>
         </div>
+        <nb-theme-toggle [size]="'sm'" />
       </div>
 
       <!-- Nav links -->
