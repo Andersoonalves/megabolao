@@ -7,6 +7,7 @@ import { Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../../core/services/api.service';
 import { PhoneMaskDirective, PhonePipe } from '../../../shared/phone';
+import { BackButtonComponent } from '../../../shared/components/back-button/back-button.component';
 
 // ── Pipes (declarados antes do componente que os usa) ─────────────────────────
 
@@ -50,10 +51,11 @@ interface Paginated<T> {
 @Component({
   selector: 'nb-gestao-cotas',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, RouterLink, LocalNumPipe, BrlPipe, PhoneMaskDirective, PhonePipe],
+  imports: [BackButtonComponent, FormsModule, RouterLink, LocalNumPipe, BrlPipe, PhoneMaskDirective, PhonePipe],
   template: `
     <!-- Topbar -->
-    <div class="bg-white border-b border-slate-200 px-4 lg:px-7 py-3 flex items-center justify-between gap-4 sticky top-14 lg:top-0 z-10">
+    <div class="bg-white border-b border-slate-200 px-4 lg:px-7 py-3 flex items-center gap-3 sticky top-14 lg:top-0 z-10">
+      <nb-back-button />
       <div class="hidden sm:flex items-center gap-2 text-[12.5px]">
         <a routerLink="/boloes" class="text-slate-400 hover:text-slate-600 transition-colors">Bolões</a>
         @if (bolao()) {

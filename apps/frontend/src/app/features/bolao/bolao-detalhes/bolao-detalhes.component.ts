@@ -5,6 +5,7 @@ import { firstValueFrom } from 'rxjs';
 import { BolasGridComponent } from '../../../shared/components/bolas-grid/bolas-grid.component';
 import { BadgeComponent } from '../../../shared/components/badge/badge.component';
 import { ApiService } from '../../../core/services/api.service';
+import { BackButtonComponent } from '../../../shared/components/back-button/back-button.component';
 
 interface DashboardData {
   bolao: { nome: string; status: string; valorCota: number; dataInicio: string | null; dataTermino: string | null; categorias: number };
@@ -20,10 +21,11 @@ interface DashboardData {
 @Component({
   selector: 'nb-bolao-detalhes',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, DecimalPipe, CurrencyPipe, DatePipe, BolasGridComponent, BadgeComponent],
+  imports: [BackButtonComponent, RouterLink, DecimalPipe, CurrencyPipe, DatePipe, BolasGridComponent, BadgeComponent],
   template: `
     <!-- Topbar -->
-    <div class="bg-white border-b border-slate-200 px-4 lg:px-7 py-3 flex items-center justify-between gap-4 sticky top-14 lg:top-0 z-10">
+    <div class="bg-white border-b border-slate-200 px-4 lg:px-7 py-3 flex items-center gap-3 sticky top-14 lg:top-0 z-10">
+      <nb-back-button />
       <div class="hidden sm:flex items-center gap-2 text-[12.5px]">
         <a routerLink="/boloes" class="text-slate-400 hover:text-slate-600 transition-colors">Bolões</a>
         @if (data()?.bolao) {

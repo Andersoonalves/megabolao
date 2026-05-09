@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../../core/services/api.service';
+import { BackButtonComponent } from '../../../shared/components/back-button/back-button.component';
 
 interface SorteioRecente {
   id: string;
@@ -22,10 +23,11 @@ interface RegistroResult {
 @Component({
   selector: 'nb-registrar-sorteio',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, RouterLink],
+  imports: [BackButtonComponent, FormsModule, RouterLink],
   template: `
     <!-- Topbar -->
-    <div class="bg-white border-b border-slate-200 px-4 lg:px-7 py-3 flex items-center justify-between gap-4 sticky top-14 lg:top-0 z-10">
+    <div class="bg-white border-b border-slate-200 px-4 lg:px-7 py-3 flex items-center gap-3 sticky top-14 lg:top-0 z-10">
+      <nb-back-button />
       <div class="flex items-center gap-2 text-[12.5px]">
         <span class="text-slate-400">Sorteios</span>
         <span class="text-slate-300">›</span>
