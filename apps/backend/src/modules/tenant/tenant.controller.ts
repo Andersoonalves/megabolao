@@ -18,6 +18,7 @@ import { PaginationDto } from '../../common/dto/pagination.dto';
 import { CreateTenantDto } from './dto/create-tenant.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
 import { UpdateOwnTenantDto } from './dto/update-own-tenant.dto';
+import { ResetAdminSenhaDto } from './dto/reset-admin-senha.dto';
 import { TenantService } from './tenant.service';
 
 @ApiTags('tenants')
@@ -67,6 +68,14 @@ export class TenantController {
   @ApiOperation({ summary: 'Atualizar tenant (MASTER)' })
   update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateTenantDto) {
     return this.tenantService.update(id, dto);
+  }
+
+  @Patch(':id/admin-senha')
+  @Roles('MASTER')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Redefinir senha do admin do tenant (MASTER)' })
+  resetAdminSenha(@Param('id', ParseUUIDPipe) id: string, @Body() dto: ResetAdminSenhaDto) {
+    return this.tenantService.resetarSenhaAdmin(id, dto.novaSenha);
   }
 
   @Delete(':id')

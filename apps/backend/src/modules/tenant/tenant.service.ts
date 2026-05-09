@@ -159,14 +159,10 @@ export class TenantService {
       },
     });
 
-    if (dto.novaAdminSenha) {
-      await this.resetarSenhaAdmin(id, dto.novaAdminSenha);
-    }
-
     return this.toResponse(updated);
   }
 
-  private async resetarSenhaAdmin(tenantId: string, novaSenha: string): Promise<void> {
+  async resetarSenhaAdmin(tenantId: string, novaSenha: string): Promise<void> {
     const perfil = await this.prisma.userProfile.findFirst({
       where: { tenantId, papel: 'ADMIN' },
     });
