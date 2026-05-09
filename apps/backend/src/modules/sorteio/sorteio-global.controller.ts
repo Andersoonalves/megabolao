@@ -1,0 +1,29 @@
+import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { TenantId } from '../auth/decorators/tenant-id.decorator';
+import { SorteioService } from './sorteio.service';
+import { CreateSorteioDto } from './dto/create-sorteio.dto';
+
+@ApiTags('sorteios')
+@ApiBearerAuth()
+@Roles('ADMIN', 'MASTER')
+@Controller('sorteios')
+export class SorteioGlobalController {
+  constructor(private readonly sorteioService: SorteioService) {}
+
+  @Post()
+  @ApiOperation({ summary: 'Registrar resultado Mega-Sena em todos os bolões EM_ANDAMENTO do tenant' })
+  registrarGlobal(
+    @TenantId() tenantId: string | null,
+    @Body() dto: CreateSorteioDto,
+  ) {
+    return this.sorteioService.registrarGlobal(tenantId, dto);
+  }
+
+  @Get('recentes')
+  @ApiOperation({ summary: 'Últimos concursos registrados no tenant (um por numeroConcurso)' })
+  recentes(@TenantId() tenantId: string | null, @Query('limit') limit = 10) {
+    return this.sorteioService.findRecentes(tenantId, +limit);
+  }
+}

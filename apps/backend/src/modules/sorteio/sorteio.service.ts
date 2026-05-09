@@ -93,6 +93,92 @@ export class SorteioService {
     return this.toResponse(sorteio);
   }
 
+  async registrarGlobal(tenantId: string | null, dto: CreateSorteioDto): Promise<{ bolaoesProcessados: number; sorteios: SorteioResponse[] }> {
+    this.assertTenantId(tenantId);
+
+    if (!validarBolasSorteadas(dto.bolasSorteadas)) {
+      throw new BusinessException(
+        'BOLAS_INVALIDAS',
+        'bolasSorteadas deve conter 6 números únicos entre 1 e 60',
+        [{ field: 'bolasSorteadas', code: 'BOLAS_INVALIDAS', message: '6 únicos, 1–60' }],
+      );
+    }
+
+    const boloes = await this.prisma.bolao.findMany({
+      where: { tenantId, status: 'EM_ANDAMENTO' },
+    });
+
+    if (boloes.length === 0) {
+      throw new BusinessException(
+        'SEM_BOLOES_ATIVOS',
+        'Nenhum bolão EM_ANDAMENTO encontrado. Inicie um bolão antes de registrar sorteios.',
+        [],
+      );
+    }
+
+    const sorteios: SorteioResponse[] = [];
+
+    for (const bolao of boloes) {
+      const sorteio = await this.prisma.$transaction(async (tx) => {
+        const { _max } = await tx.sorteio.aggregate({
+          where: { bolaoId: bolao.id, tenantId },
+          _max: { sequenciaNoBolao: true },
+        });
+        const nextSeq = (_max.sequenciaNoBolao ?? 0) + 1;
+
+        return tx.sorteio.create({
+          data: {
+            tenantId,
+            bolaoId: bolao.id,
+            numeroConcurso: dto.numeroConcurso,
+            dataSorteio: new Date(dto.dataSorteio),
+            bolasSorteadas: dto.bolasSorteadas,
+            sequenciaNoBolao: nextSeq,
+            ehPrimeiro: nextSeq === 1,
+          },
+        });
+      }).catch((err: { code?: string }) => {
+        if (err.code === 'P2002') {
+          throw new BusinessException(
+            'CONCURSO_DUPLICADO',
+            `Concurso ${dto.numeroConcurso} já registrado no bolão "${bolao.nome}"`,
+            [{ field: 'numeroConcurso', code: 'CONCURSO_DUPLICADO', message: 'Concurso já registrado' }],
+          );
+        }
+        throw err;
+      });
+
+      await this.queue.add(
+        CALC_ACERTOS_QUEUE_NAME,
+        { sorteioId: sorteio.id, tenantId, bolaoId: bolao.id } satisfies CalcAcertosJobData,
+        {
+          jobId: sorteio.id,
+          attempts: 3,
+          backoff: { type: 'exponential', delay: 5000 },
+          removeOnComplete: { age: 60 * 60 * 24 },
+          removeOnFail: { age: 60 * 60 * 24 * 7 },
+        },
+      );
+
+      sorteios.push(this.toResponse(sorteio));
+    }
+
+    return { bolaoesProcessados: boloes.length, sorteios };
+  }
+
+  async findRecentes(tenantId: string | null, limit = 10): Promise<SorteioResponse[]> {
+    this.assertTenantId(tenantId);
+
+    const sorteios = await this.prisma.sorteio.findMany({
+      where: { tenantId },
+      distinct: ['numeroConcurso'],
+      orderBy: { numeroConcurso: 'desc' },
+      take: limit,
+    });
+
+    return sorteios.map((s) => this.toResponse(s));
+  }
+
   async findAll(tenantId: string | null, bolaoId: string): Promise<SorteioResponse[]> {
     this.assertTenantId(tenantId);
 

@@ -2,12 +2,13 @@ import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Queue } from 'bullmq';
 import { SorteioController } from './sorteio.controller';
+import { SorteioGlobalController } from './sorteio-global.controller';
 import { SorteioService } from './sorteio.service';
 import { CalcAcertosProcessor } from './jobs/calc-acertos.processor';
 import { CALC_ACERTOS_QUEUE, CALC_ACERTOS_QUEUE_NAME } from './jobs/calc-acertos.types';
 
 @Module({
-  controllers: [SorteioController],
+  controllers: [SorteioController, SorteioGlobalController],
   providers: [
     {
       provide: CALC_ACERTOS_QUEUE,
