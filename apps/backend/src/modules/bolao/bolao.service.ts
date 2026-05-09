@@ -326,6 +326,17 @@ export class BolaoService {
       totalPago,
       totalPendente,
       valorBruto,
+      categorias: bolao.categoriasPremiacao.map((c) => ({
+        id:                     c.id,
+        ordem:                  c.ordem,
+        nome:                   c.nome,
+        tipo:                   c.tipo as CategoriaTipo,
+        acertosAlvo:            c.acertosAlvo,
+        sorteioReferencia:      c.sorteioReferencia,
+        percentual:             (c.percentual as unknown as Prisma.Decimal).toNumber(),
+        acumulaSemGanhador:     c.acumulaSemGanhador,
+        valorAcumuladoAnterior: (c.valorAcumuladoAnterior as unknown as Prisma.Decimal).toNumber(),
+      })),
       sorteios: bolao.sorteios.map(s => ({
         numeroConcurso:   s.numeroConcurso,
         dataSorteio:      s.dataSorteio.toISOString().slice(0, 10),

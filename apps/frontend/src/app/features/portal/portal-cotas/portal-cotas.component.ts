@@ -1,7 +1,6 @@
 import {
   Component, signal, computed, OnInit, ChangeDetectionStrategy, inject,
 } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../../core/services/api.service';
 import { AuthService } from '../../../core/services/auth.service';
@@ -48,7 +47,7 @@ interface BolaoData {
 @Component({
   selector: 'nb-portal-cotas',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink],
+  imports: [],
   template: `
     <!-- Header verde ─────────────────────────────────────────────────────── -->
     <div style="background: linear-gradient(180deg, #065f46, #1a4436)" class="text-white">

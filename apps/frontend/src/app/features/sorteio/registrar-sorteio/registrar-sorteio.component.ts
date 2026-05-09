@@ -2,7 +2,7 @@ import {
   Component, signal, computed, OnInit, ChangeDetectionStrategy, inject,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../../core/services/api.service';
 import { BackButtonComponent } from '../../../shared/components/back-button/back-button.component';
@@ -23,7 +23,7 @@ interface RegistroResult {
 @Component({
   selector: 'nb-registrar-sorteio',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [BackButtonComponent, FormsModule, RouterLink],
+  imports: [BackButtonComponent, FormsModule],
   template: `
     <!-- Topbar -->
     <div class="bg-white border-b border-slate-200 px-4 lg:px-7 py-3 flex items-center gap-3 sticky top-14 lg:top-0 z-10">

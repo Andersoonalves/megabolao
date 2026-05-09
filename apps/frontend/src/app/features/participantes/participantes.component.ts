@@ -2,7 +2,6 @@ import {
   Component, signal, computed, OnInit, ChangeDetectionStrategy, inject,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../core/services/api.service';
 import { PhoneMaskDirective, PhonePipe } from '../../shared/phone';
@@ -30,7 +29,7 @@ interface Paginated<T> { data: T[]; total: number; page: number; perPage: number
 @Component({
   selector: 'nb-participantes',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [BackButtonComponent, FormsModule, RouterLink, PhoneMaskDirective, PhonePipe],
+  imports: [BackButtonComponent, FormsModule, PhoneMaskDirective, PhonePipe],
   template: `
     <!-- Topbar -->
     <div class="bg-white border-b border-slate-200 px-4 lg:px-7 py-3 flex items-center gap-3 sticky top-14 lg:top-0 z-10">

@@ -1,11 +1,10 @@
-import { Component, input, computed, ChangeDetectionStrategy } from '@angular/core';
-import { NgFor } from '@angular/common';
+import { Component, input, ChangeDetectionStrategy } from '@angular/core';
 import { BolaComponent, BolaVariant, BolaSize } from '../bola/bola.component';
 
 @Component({
   selector: 'nb-bolas-grid',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgFor, BolaComponent],
+  imports: [BolaComponent],
   template: `
     <div class="grid gap-2" [style.grid-template-columns]="'repeat(' + cols() + ', 1fr)'">
       @for (n of numbers; track n) {

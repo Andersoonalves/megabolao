@@ -7,16 +7,52 @@ import { BadgeComponent } from '../../../shared/components/badge/badge.component
 import { ApiService } from '../../../core/services/api.service';
 import { BackButtonComponent } from '../../../shared/components/back-button/back-button.component';
 
+type CategoriaTipo =
+  | 'TAXA_ADMINISTRATIVA'
+  | 'ACERTOS_EXATOS'
+  | 'MAIOR_PONTUACAO_SORTEIO'
+  | 'MAIOR_PONTUACAO_GERAL'
+  | 'MENOR_PONTUACAO_GERAL';
+
+interface CategoriaItem {
+  id: string;
+  ordem: number;
+  nome: string;
+  tipo: CategoriaTipo;
+  acertosAlvo: number | null;
+  sorteioReferencia: number | null;
+  percentual: number;
+  acumulaSemGanhador: boolean;
+  valorAcumuladoAnterior: number;
+}
+
 interface DashboardData {
   bolao: { nome: string; status: string; valorCota: number; dataInicio: string | null; dataTermino: string | null; categorias: number };
   totalPago: number;
   totalPendente: number;
   valorBruto: number;
+  categorias: CategoriaItem[];
   sorteios: { numeroConcurso: number; dataSorteio: string; bolasSorteadas: number[]; sequenciaNoBolao: number }[];
   bolasJaSorteadas: number[];
   ranking: { posicao: number; numeroSequencial: number; nomeIdentificacao: string; totalAcertosAcumulados: number; statusResultado: string }[];
   distribuicaoAcertos: { acertos: number; quantidade: number }[];
 }
+
+const TIPO_LABELS: Record<CategoriaTipo, string> = {
+  TAXA_ADMINISTRATIVA:     'Taxa adm.',
+  ACERTOS_EXATOS:          'Acertos exatos',
+  MAIOR_PONTUACAO_SORTEIO: 'Maior pont. sorteio',
+  MAIOR_PONTUACAO_GERAL:   'Maior pont. geral',
+  MENOR_PONTUACAO_GERAL:   'Menor pont. geral',
+};
+
+const TIPO_CHIP: Record<CategoriaTipo, string> = {
+  TAXA_ADMINISTRATIVA:     'bg-slate-100 text-slate-700',
+  ACERTOS_EXATOS:          'bg-green-50 text-green-800',
+  MAIOR_PONTUACAO_SORTEIO: 'bg-blue-50 text-blue-700',
+  MAIOR_PONTUACAO_GERAL:   'bg-amber-50 text-amber-600',
+  MENOR_PONTUACAO_GERAL:   'bg-red-50 text-red-700',
+};
 
 @Component({
   selector: 'nb-bolao-detalhes',
@@ -155,7 +191,7 @@ interface DashboardData {
         </div>
 
         <!-- Ranking + Sorteios -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
           <div class="bg-white border border-slate-200 rounded-lg overflow-hidden">
             <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
               <h3 class="font-display font-semibold text-[15px]">Top ranking</h3>
@@ -229,6 +265,119 @@ interface DashboardData {
             }
           </div>
         </div>
+         <!-- Categorias de premiação -->
+        <div class="bg-white border border-slate-200 rounded-lg mb-5">
+          <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between gap-3">
+            <div>
+              <h3 class="font-display font-semibold text-[15px]">Categorias de premiação</h3>
+              <p class="text-[11.5px] text-slate-400 mt-0.5">
+                {{ d.categorias.length }} categoria(s) · soma 100% · valor estimado sobre {{ d.valorBruto | currency:'BRL':'symbol':'1.0-0' }}
+              </p>
+            </div>
+          </div>
+
+          @if (d.categorias.length === 0) {
+            <div class="p-8 text-center text-slate-400 text-sm">Nenhuma categoria cadastrada.</div>
+          } @else {
+            <!-- Mobile: cards -->
+            <div class="lg:hidden divide-y divide-slate-100">
+              @for (c of d.categorias; track c.id) {
+                <div class="px-5 py-4">
+                  <div class="flex items-start justify-between gap-3 mb-1.5">
+                    <div class="min-w-0 flex-1">
+                      <div class="flex items-center gap-2 mb-1">
+                        <span class="text-[10.5px] font-mono text-slate-400">#{{ c.ordem }}</span>
+                        <span class="px-2 py-0.5 rounded-full text-[10.5px] font-semibold" [class]="chipClass(c.tipo)">
+                          {{ tipoLabel(c.tipo) }}
+                        </span>
+                        @if (c.acumulaSemGanhador) {
+                          <span class="px-2 py-0.5 rounded-full text-[10.5px] font-semibold bg-gold-50 text-gold-700">
+                            ↻ acumula
+                          </span>
+                        }
+                      </div>
+                      <div class="font-semibold text-[14px] truncate">{{ c.nome }}</div>
+                      @if (categoriaDetalhe(c); as det) {
+                        <div class="text-[12px] text-slate-500 mt-0.5">{{ det }}</div>
+                      }
+                    </div>
+                    <div class="text-right shrink-0">
+                      <div class="font-display text-[18px] font-semibold tracking-tight tabular text-green-700">
+                        {{ c.percentual | number:'1.0-2' }}%
+                      </div>
+                      <div class="text-[11px] text-slate-400 tabular">
+                        {{ valorEstimado(c, d.valorBruto) | currency:'BRL':'symbol':'1.0-0' }}
+                      </div>
+                    </div>
+                  </div>
+                  @if (c.valorAcumuladoAnterior > 0) {
+                    <div class="text-[11px] text-amber-600 mt-1">
+                      + {{ c.valorAcumuladoAnterior | currency:'BRL':'symbol':'1.2-2' }} acumulado de bolão anterior
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+
+            <!-- Desktop: tabela -->
+            <table class="hidden lg:table w-full text-[13.5px]">
+              <thead class="bg-slate-50">
+                <tr>
+                  <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-5 py-2.5 w-12">#</th>
+                  <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-3 py-2.5">Categoria</th>
+                  <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-3 py-2.5">Tipo</th>
+                  <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-3 py-2.5">Detalhe</th>
+                  <th class="text-right text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-3 py-2.5">Percentual</th>
+                  <th class="text-right text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-5 py-2.5">Valor estimado</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (c of d.categorias; track c.id) {
+                  <tr class="border-b border-slate-100 last:border-0 hover:bg-slate-50">
+                    <td class="px-5 py-3 font-mono text-[12.5px] text-slate-400">{{ c.ordem }}</td>
+                    <td class="px-3 py-3">
+                      <div class="flex items-center gap-2">
+                        <span class="font-semibold">{{ c.nome }}</span>
+                        @if (c.acumulaSemGanhador) {
+                          <span class="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-gold-50 text-gold-700"
+                                title="Acumula para o próximo bolão se não houver ganhador">↻</span>
+                        }
+                      </div>
+                    </td>
+                    <td class="px-3 py-3">
+                      <span class="px-2 py-0.5 rounded-full text-[10.5px] font-semibold inline-block" [class]="chipClass(c.tipo)">
+                        {{ tipoLabel(c.tipo) }}
+                      </span>
+                    </td>
+                    <td class="px-3 py-3 text-slate-500 text-[12.5px]">
+                      {{ categoriaDetalhe(c) || '—' }}
+                    </td>
+                    <td class="px-3 py-3 text-right font-display font-semibold tabular text-green-700">
+                      {{ c.percentual | number:'1.0-2' }}%
+                    </td>
+                    <td class="px-5 py-3 text-right tabular">
+                      <div class="font-semibold">{{ valorEstimado(c, d.valorBruto) | currency:'BRL':'symbol':'1.0-0' }}</div>
+                      @if (c.valorAcumuladoAnterior > 0) {
+                        <div class="text-[11px] text-amber-600">+ {{ c.valorAcumuladoAnterior | currency:'BRL':'symbol':'1.2-2' }} acum.</div>
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+              <tfoot class="bg-slate-50">
+                <tr>
+                  <td colspan="4" class="px-5 py-2.5 text-[11.5px] font-semibold text-slate-500 uppercase tracking-widest">Total</td>
+                  <td class="px-3 py-2.5 text-right font-display font-semibold tabular text-slate-700">
+                    {{ totalPercentual(d.categorias) | number:'1.0-2' }}%
+                  </td>
+                  <td class="px-5 py-2.5 text-right font-display font-semibold tabular text-slate-700">
+                    {{ d.valorBruto | currency:'BRL':'symbol':'1.0-0' }}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          }
+        </div>
       </div>
     }
   `,
@@ -268,5 +417,37 @@ export class BolaoDetalhesComponent implements OnInit {
   pad(n: number): string { return String(n).padStart(2, '0'); }
   statusLabel(s: string): string {
     return ({ EM_ANDAMENTO: 'Em andamento', A_SER_INICIADO: 'A iniciar', FINALIZADO: 'Finalizado' } as Record<string, string>)[s] ?? s;
+  }
+
+  tipoLabel(t: CategoriaTipo): string { return TIPO_LABELS[t]; }
+  chipClass(t: CategoriaTipo): string { return TIPO_CHIP[t]; }
+
+  /**
+   * Texto adicional por tipo: alvo de acertos, sorteio de referência, etc.
+   * Retorna string vazia quando o tipo não tem detalhe específico.
+   */
+  categoriaDetalhe(c: CategoriaItem): string {
+    switch (c.tipo) {
+      case 'ACERTOS_EXATOS':
+        return c.acertosAlvo != null ? `${c.acertosAlvo} acertos` : '';
+      case 'MAIOR_PONTUACAO_SORTEIO':
+        return c.sorteioReferencia != null ? `${c.sorteioReferencia}º sorteio` : '';
+      case 'MAIOR_PONTUACAO_GERAL':
+        return 'maior acumulado geral';
+      case 'MENOR_PONTUACAO_GERAL':
+        return 'menor acumulado geral';
+      case 'TAXA_ADMINISTRATIVA':
+        return 'retida pela administração';
+      default:
+        return '';
+    }
+  }
+
+  valorEstimado(c: CategoriaItem, valorBruto: number): number {
+    return (c.percentual / 100) * valorBruto + (c.valorAcumuladoAnterior ?? 0);
+  }
+
+  totalPercentual(cats: CategoriaItem[]): number {
+    return cats.reduce((acc, c) => acc + c.percentual, 0);
   }
 }
