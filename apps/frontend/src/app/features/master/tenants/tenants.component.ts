@@ -398,11 +398,15 @@ export class TenantsComponent implements OnInit {
             corPrimaria:    this.editCor(),
             ...(this.editNomeCustom() && { nomeCustomizado: this.editNomeCustom() }),
           },
-          ...(this.mostrarSenha() && this.editAdminSenha() && {
-            novaAdminSenha: this.editAdminSenha(),
-          }),
         }),
       );
+
+      if (this.mostrarSenha() && this.editAdminSenha()) {
+        await firstValueFrom(
+          this.api.patch(`/tenants/${t.id}/admin-senha`, { novaSenha: this.editAdminSenha() }),
+        );
+      }
+
       // Atualização otimista da lista
       this.tenants.update(ts => ts.map(x => x.id === t.id ? updated : x));
       this.fecharEdicao();

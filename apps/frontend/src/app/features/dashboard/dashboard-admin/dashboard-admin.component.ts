@@ -97,7 +97,7 @@ import { ApiService } from '../../../core/services/api.service';
         <div class="bg-white border border-slate-200 rounded-lg overflow-hidden">
           <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
             <h3 class="font-display font-semibold text-[15px]">Top 8 do ranking</h3>
-            <a routerLink="/bolao/0/cotas" class="text-xs text-green-700 font-semibold no-underline">Ver todos ›</a>
+            <a routerLink="/boloes" class="text-xs text-green-700 font-semibold no-underline">Ver todos ›</a>
           </div>
           <table class="w-full text-[13.5px]">
             <thead class="bg-slate-50">
