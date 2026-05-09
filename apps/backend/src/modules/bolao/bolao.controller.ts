@@ -39,6 +39,12 @@ export class BolaoController {
     return this.bolaoService.findAll(tenantId, query);
   }
 
+  @Get(':id/dashboard')
+  @ApiOperation({ summary: 'Dados agregados do dashboard do bolão' })
+  dashboard(@TenantId() tenantId: string | null, @Param('id', ParseUUIDPipe) id: string) {
+    return this.bolaoService.dashboard(tenantId, id);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Buscar bolão por ID (com categorias)' })
   findById(@TenantId() tenantId: string | null, @Param('id', ParseUUIDPipe) id: string) {

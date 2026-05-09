@@ -281,6 +281,69 @@ export class BolaoService {
     return bolao as BolaoComTudo;
   }
 
+  async dashboard(tenantId: string | null, bolaoId: string) {
+    this.assertTenantId(tenantId);
+
+    const bolao = await this.prisma.bolao.findFirst({
+      where: { id: bolaoId, tenantId },
+      include: {
+        sorteios:           { orderBy: { sequenciaNoBolao: 'asc' } },
+        categoriasPremiacao: { orderBy: { ordem: 'asc' } },
+      },
+    });
+    if (!bolao) throw new NotFoundException({ statusCode: 404, error: 'BOLAO_NAO_ENCONTRADO', message: `Bolão ${bolaoId} não encontrado`, details: [] });
+
+    const [totalPago, totalPendente, ranking, distribuicao] = await this.prisma.$transaction([
+      this.prisma.cota.count({ where: { bolaoId, tenantId, statusPagamento: 'PAGO' } }),
+      this.prisma.cota.count({ where: { bolaoId, tenantId, statusPagamento: 'PENDENTE' } }),
+      this.prisma.cota.findMany({
+        where:   { bolaoId, tenantId, statusPagamento: 'PAGO' },
+        orderBy: { totalAcertosAcumulados: 'desc' },
+        take:    10,
+        select:  { numeroSequencial: true, nomeIdentificacao: true, totalAcertosAcumulados: true, statusResultado: true },
+      }),
+      this.prisma.cota.groupBy({
+        by:    ['totalAcertosAcumulados'],
+        where: { bolaoId, tenantId, statusPagamento: 'PAGO' },
+        _count: { _all: true },
+      }),
+    ]);
+
+    const bolasJaSorteadas = [...new Set(bolao.sorteios.flatMap(s => s.bolasSorteadas))].sort((a, b) => a - b);
+    const valorBruto       = Number(bolao.valorCota) * totalPago;
+
+    return {
+      bolao: {
+        nome:        bolao.nome,
+        status:      bolao.status,
+        valorCota:   Number(bolao.valorCota),
+        dataInicio:  bolao.dataInicio?.toISOString().slice(0, 10) ?? null,
+        dataTermino: bolao.dataTermino?.toISOString().slice(0, 10) ?? null,
+        categorias:  bolao.categoriasPremiacao.length,
+      },
+      totalPago,
+      totalPendente,
+      valorBruto,
+      sorteios: bolao.sorteios.map(s => ({
+        numeroConcurso:   s.numeroConcurso,
+        dataSorteio:      s.dataSorteio.toISOString().slice(0, 10),
+        bolasSorteadas:   s.bolasSorteadas,
+        sequenciaNoBolao: s.sequenciaNoBolao,
+      })),
+      bolasJaSorteadas,
+      ranking: ranking.map((c, i) => ({
+        posicao:                i + 1,
+        numeroSequencial:       c.numeroSequencial,
+        nomeIdentificacao:      c.nomeIdentificacao,
+        totalAcertosAcumulados: c.totalAcertosAcumulados,
+        statusResultado:        c.statusResultado,
+      })),
+      distribuicaoAcertos: distribuicao
+        .map(d => ({ acertos: d.totalAcertosAcumulados, quantidade: d._count._all }))
+        .sort((a, b) => a.acertos - b.acertos),
+    };
+  }
+
   private validarCategorias(categorias: CreateCategoriaDto[]): void {
     const soma = arredondarMonetario(categorias.reduce((acc, c) => acc + c.percentual, 0));
     if (soma !== 100) {
