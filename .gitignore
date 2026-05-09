@@ -12,3 +12,6 @@ tmp/
 apps/frontend/design-prototypes/
 
 .angular
+
+# WhatsApp session data (runtime, contains auth tokens)
+.wa-sessions/
