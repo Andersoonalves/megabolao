@@ -44,6 +44,10 @@ export const appRoutes: Route[] = [
         loadComponent: () => import('./features/bolao/bolao-detalhes/bolao-detalhes.component').then(m => m.BolaoDetalhesComponent),
       },
       {
+        path: 'bolao/:id/whatsapp',
+        loadComponent: () => import('./features/bolao/bolao-whatsapp/bolao-whatsapp.component').then(m => m.BolaoWhatsappComponent),
+      },
+      {
         path: 'bolao/:id/google-drive',
         loadComponent: () => import('./features/google-drive/google-drive.component').then(m => m.GoogleDriveComponent),
       },
@@ -64,8 +68,19 @@ export const appRoutes: Route[] = [
         loadComponent: () => import('./features/premios/premios-bolao/premios-bolao.component').then(m => m.PremiosBolaoComponent),
       },
       {
+        path: 'whatsapp/nova-mensagem',
+        loadComponent: () =>
+          import('./features/whatsapp/whatsapp-envio-mensagem/whatsapp-envio-mensagem.component').then(
+            m => m.WhatsappEnvioMensagemComponent,
+          ),
+      },
+      {
         path: 'whatsapp',
         loadComponent: () => import('./features/whatsapp/whatsapp/whatsapp.component').then(m => m.WhatsAppComponent),
+      },
+      {
+        path: 'whatsapp/templates',
+        loadComponent: () => import('./features/whatsapp/templates/wa-templates.component').then(m => m.WaTemplatesComponent),
       },
       {
         path: 'relatorios',
