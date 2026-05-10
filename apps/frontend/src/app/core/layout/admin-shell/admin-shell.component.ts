@@ -29,7 +29,7 @@ const ADMIN_NAV: NavItem[] = [
   { id: 'boloes',     labelKey: 'nav.myPools',     icon: '🎲', route: '/boloes', permissoes: ['bolao.ler'] },
   { id: 'participantes', labelKey: 'nav.participants', icon: '👥', route: '/participantes', permissoes: ['participante.ler'] },
   { id: 'sorteio',       labelKey: 'nav.draws',       icon: '✦', route: '/sorteios', permissoes: ['sorteio.ler'] },
-  { id: 'premios',       labelKey: 'nav.prizes',      icon: '🏆', route: '/bolao/0/premios', permissoes: ['premio.ler'] },
+  // { id: 'premios',       labelKey: 'nav.prizes',      icon: '🏆', route: '/bolao/0/premios', permissoes: ['premio.ler'] },
   { sectionKey: 'nav.section.communication' },
   { id: 'whatsapp',   labelKey: 'nav.whatsapp',   icon: '💬', route: '/whatsapp', permissoes: ['whatsapp.ler'] },
   { sectionKey: 'nav.section.system' },

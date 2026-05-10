@@ -10,26 +10,30 @@ import { LangToggleComponent } from '../../../shared/components/lang-toggle/lang
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [FormsModule, RouterLink, TranslatePipe, LangToggleComponent],
   template: `
-    <div class="min-h-screen grid" style="grid-template-columns: 1fr 1.1fr">
+    <div
+      class="min-h-[100dvh] min-h-screen w-full max-w-[100vw] overflow-x-hidden grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
 
       <!-- Left: form -->
-      <div class="flex flex-col justify-center px-14 py-12 overflow-auto relative">
-        <div class="fixed top-4 right-4 z-[100] lg:top-6 lg:right-6 drop-shadow-md">
+      <div
+        class="flex flex-col justify-center w-full min-w-0 px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:px-8 sm:py-10 lg:px-14 lg:py-12 overflow-y-auto overscroll-y-contain relative">
+        <div
+          class="fixed z-[100] drop-shadow-md"
+          style="top: max(0.75rem, env(safe-area-inset-top, 0px)); right: max(0.75rem, env(safe-area-inset-right, 0px))">
           <nb-lang-toggle [prominent]="true" />
         </div>
-        <div class="max-w-sm w-full mx-auto">
+        <div class="max-w-sm w-full mx-auto min-w-0">
 
           <!-- Logo -->
-          <div class="flex items-center gap-3 mb-10">
-            <div class="w-10 h-10 rounded-[10px] bg-gradient-to-br from-green-700 to-green-900 text-white flex items-center justify-center font-display font-bold text-lg tracking-tight">NB</div>
-            <div>
-              <div class="font-display font-semibold text-lg">{{ 'app.name' | translate }}</div>
-              <div class="text-[11.5px] text-slate-500">{{ 'app.tagline' | translate }}</div>
+          <div class="flex items-center gap-3 mb-6 sm:mb-10 pr-14 sm:pr-0">
+            <div class="w-10 h-10 shrink-0 rounded-[10px] bg-gradient-to-br from-green-700 to-green-900 text-white flex items-center justify-center font-display font-bold text-lg tracking-tight">NB</div>
+            <div class="min-w-0">
+              <div class="font-display font-semibold text-lg truncate">{{ 'app.name' | translate }}</div>
+              <div class="text-[11.5px] text-slate-500 leading-snug">{{ 'app.tagline' | translate }}</div>
             </div>
           </div>
 
-          <h1 class="font-display text-3xl font-semibold tracking-tight mb-2">{{ 'auth.signInTitle' | translate }}</h1>
-          <p class="text-slate-500 text-[13.5px] mb-6">{{ 'auth.signInSubtitle' | translate }}</p>
+          <h1 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight mb-2">{{ 'auth.signInTitle' | translate }}</h1>
+          <p class="text-slate-500 text-[13px] sm:text-[13.5px] mb-5 sm:mb-6 leading-relaxed">{{ 'auth.signInSubtitle' | translate }}</p>
 
           @if (error()) {
             <div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{{ error() }}</div>
@@ -43,9 +47,9 @@ import { LangToggleComponent } from '../../../shared/components/lang-toggle/lang
                      [attr.placeholder]="'auth.emailPlaceholder' | translate" required />
             </div>
             <div>
-              <div class="flex justify-between mb-1.5">
+              <div class="flex flex-col gap-1 mb-1.5 sm:flex-row sm:items-center sm:justify-between">
                 <label class="text-xs font-semibold text-slate-500 tracking-wide">{{ 'auth.password' | translate }}</label>
-                <a class="text-[11.5px] text-green-700 font-semibold no-underline cursor-pointer">{{ 'auth.forgotPassword' | translate }}</a>
+                <a class="text-[11.5px] text-green-700 font-semibold no-underline cursor-pointer self-start sm:self-auto shrink-0">{{ 'auth.forgotPassword' | translate }}</a>
               </div>
               <div class="relative">
                 <input [(ngModel)]="password" name="password"
@@ -90,8 +94,8 @@ import { LangToggleComponent } from '../../../shared/components/lang-toggle/lang
         </div>
       </div>
 
-      <!-- Right: hero -->
-      <div class="hidden lg:flex items-center justify-center relative overflow-hidden"
+      <!-- Right: hero (desktop) -->
+      <div class="hidden lg:flex min-w-0 items-center justify-center relative overflow-hidden"
            style="background: linear-gradient(140deg, #065f46, #064e3b 60%, #052e2a)">
         <div class="absolute inset-0" style="background-image: radial-gradient(circle at 20% 30%, rgba(251,191,36,0.18), transparent 40%), radial-gradient(circle at 80% 70%, rgba(16,185,129,0.25), transparent 50%)"></div>
         <div class="relative text-center text-white max-w-sm px-8">
@@ -102,7 +106,7 @@ import { LangToggleComponent } from '../../../shared/components/lang-toggle/lang
           </div>
           <h2 class="font-display text-[28px] font-semibold tracking-tight mb-3">{{ 'auth.heroTitle' | translate }}</h2>
           <p class="text-white/75 text-sm leading-relaxed">{{ 'auth.heroSubtitle' | translate }}</p>
-          <div class="flex justify-center gap-8 mt-10 text-xs text-white/60">
+          <div class="flex flex-wrap justify-center gap-6 sm:gap-8 mt-10 text-xs text-white/60">
             <div><strong class="text-white font-display text-xl block">9.244</strong>{{ 'auth.heroStatCotas' | translate }}</div>
             <div><strong class="text-white font-display text-xl block">22</strong>{{ 'auth.heroStatPremiados' | translate }}</div>
             <div><strong class="text-white font-display text-xl block">R$ 184k</strong>{{ 'auth.heroStatArrec' | translate }}</div>

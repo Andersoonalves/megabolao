@@ -1,4 +1,5 @@
 import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
+import { existsSync, readlinkSync, rmSync } from 'fs';
 import { join } from 'path';
 import { Client, LocalAuth } from 'whatsapp-web.js';
 import { BusinessException } from '../../common/exceptions/business.exception';
@@ -35,6 +36,8 @@ export class WhatsAppClientManager implements OnModuleDestroy {
       return { status: 'CARREGANDO' };
     }
 
+    this.limparLockOrfao(tenantId);
+
     const client = new Client({
       authStrategy: new LocalAuth({
         clientId: tenantId,
@@ -42,20 +45,39 @@ export class WhatsAppClientManager implements OnModuleDestroy {
       }),
       puppeteer: {
         headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+        ],
       },
     });
 
     const entry: SessionEntry = { client, status: 'CARREGANDO' };
     this.sessions.set(tenantId, entry);
 
+    const timeoutHandle = setTimeout(() => {
+      if (entry.status === 'CARREGANDO') {
+        this.logger.error(`Timeout na inicialização WhatsApp para tenant ${tenantId}`);
+        void entry.client.destroy().catch(() => undefined);
+        entry.status = 'DESCONECTADO';
+        this.sessions.delete(tenantId);
+      }
+    }, 60_000);
+
+    client.on('loading_screen', (percent: number, message: string) => {
+      this.logger.debug(`[${tenantId}] WAWeb carregando: ${percent}% — ${message}`);
+    });
+
     client.on('qr', (qr: string) => {
+      clearTimeout(timeoutHandle);
       entry.status = 'AGUARDANDO_QR';
       entry.qrCode = qr;
       this.logger.debug(`QR gerado para tenant ${tenantId}`);
     });
 
     client.on('ready', () => {
+      clearTimeout(timeoutHandle);
       entry.status = 'CONECTADO';
       delete entry.qrCode;
       const info = (client as Client & { info?: { wid?: { user?: string } } }).info;
@@ -64,18 +86,26 @@ export class WhatsAppClientManager implements OnModuleDestroy {
     });
 
     client.on('auth_failure', () => {
+      clearTimeout(timeoutHandle);
       entry.status = 'DESCONECTADO';
       this.sessions.delete(tenantId);
       this.logger.warn(`Falha de autenticação WhatsApp para tenant ${tenantId}`);
     });
 
     client.on('disconnected', () => {
+      clearTimeout(timeoutHandle);
       entry.status = 'DESCONECTADO';
       this.sessions.delete(tenantId);
       this.logger.warn(`WhatsApp desconectado para tenant ${tenantId}`);
     });
 
-    void client.initialize(); // Assíncrono — progresso via getStatus() polling
+    client.initialize().catch((err: unknown) => {
+      clearTimeout(timeoutHandle);
+      this.logger.error(`Falha ao inicializar WhatsApp para tenant ${tenantId}`, err);
+      entry.status = 'DESCONECTADO';
+      this.sessions.delete(tenantId);
+    });
+
     return { status: 'CARREGANDO' };
   }
 
@@ -114,6 +144,28 @@ export class WhatsAppClientManager implements OnModuleDestroy {
       throw new BusinessException('WA_DESCONECTADO', 'WhatsApp não está conectado para este tenant');
     }
     await entry.client.sendMessage(grupoId, mensagem);
+  }
+
+  private limparLockOrfao(tenantId: string): void {
+    const sessionDir = join(process.cwd(), '.wa-sessions', `session-${tenantId}`);
+    const lockFile = join(sessionDir, 'SingletonLock');
+    if (!existsSync(lockFile)) return;
+
+    try {
+      // SingletonLock é symlink no formato "hostname-PID"
+      const target = readlinkSync(lockFile);
+      const pid = parseInt(target.split('-').pop() ?? '', 10);
+      if (!isNaN(pid)) {
+        process.kill(pid, 'SIGKILL');
+        this.logger.warn(`Chrome órfão (PID ${pid}) encerrado para tenant ${tenantId}`);
+      }
+    } catch {
+      // Processo já morto ou symlink ilegível — segue
+    }
+
+    // Limpa toda a pasta: tentativas anteriores corrompem o perfil Chrome
+    rmSync(sessionDir, { recursive: true, force: true });
+    this.logger.warn(`Pasta de sessão corrompida removida para tenant ${tenantId}`);
   }
 
   async onModuleDestroy(): Promise<void> {
