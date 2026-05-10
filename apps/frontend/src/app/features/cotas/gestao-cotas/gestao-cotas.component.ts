@@ -1,27 +1,14 @@
 import {
   Component, signal, computed, input, OnInit, ChangeDetectionStrategy, inject, effect,
-  Pipe, PipeTransform,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { ApiService } from '../../../core/services/api.service';
 import { PhoneMaskDirective, PhonePipe } from '../../../shared/phone';
 import { BackButtonComponent } from '../../../shared/components/back-button/back-button.component';
-
-// ── Pipes (declarados antes do componente que os usa) ─────────────────────────
-
-@Pipe({ name: 'localNum', standalone: true, pure: true })
-export class LocalNumPipe implements PipeTransform {
-  transform(n: number): string { return n.toLocaleString('pt-BR'); }
-}
-
-@Pipe({ name: 'brl', standalone: true, pure: true })
-export class BrlPipe implements PipeTransform {
-  transform(n: number): string {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(n);
-  }
-}
+import { BrlPipe, LocalNumPipe } from '../../../shared/pipes/locale-pipes';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -51,26 +38,26 @@ interface Paginated<T> {
 @Component({
   selector: 'nb-gestao-cotas',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [BackButtonComponent, FormsModule, RouterLink, LocalNumPipe, BrlPipe, PhoneMaskDirective, PhonePipe],
+  imports: [BackButtonComponent, FormsModule, RouterLink, LocalNumPipe, BrlPipe, PhoneMaskDirective, PhonePipe, TranslatePipe],
   template: `
     <!-- Topbar -->
     <div class="bg-white border-b border-slate-200 px-4 lg:px-7 py-3 flex items-center gap-3 sticky top-14 lg:top-0 z-10">
       <nb-back-button />
       <div class="hidden sm:flex items-center gap-2 text-[12.5px]">
-        <a routerLink="/boloes" class="text-slate-400 hover:text-slate-600 transition-colors">Bolões</a>
+        <a routerLink="/boloes" class="text-slate-400 hover:text-slate-600 transition-colors">{{ 'listaBoloes.breadcrumb' | translate }}</a>
         @if (bolao()) {
           <span class="text-slate-300">›</span>
           <span class="text-slate-500 truncate max-w-[180px]">{{ bolao()!.nome }}</span>
         }
         <span class="text-slate-300">›</span>
-        <span class="font-semibold">Cotas</span>
+        <span class="font-semibold">{{ 'gestaoCotas.title' | translate }}</span>
       </div>
       <span class="font-display font-semibold text-[14px] sm:hidden">
-        {{ bolao()?.nome ?? 'Cotas' }}
+        {{ bolao()?.nome ?? ('gestaoCotas.titleMobileFallback' | translate) }}
       </span>
       <button (click)="showModal.set(true)"
               class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-800 text-white text-sm font-semibold rounded-[10px] transition-colors shadow-sm min-h-9">
-        + Cadastrar
+        {{ 'gestaoCotas.registerBtn' | translate }}
       </button>
     </div>
 
@@ -78,7 +65,7 @@ interface Paginated<T> {
     <div class="p-4 lg:p-7">
       <div class="mb-5">
         <div class="flex items-center gap-2 mb-1">
-          <h1 class="font-display text-2xl lg:text-[26px] font-semibold tracking-tight">Cotas</h1>
+          <h1 class="font-display text-2xl lg:text-[26px] font-semibold tracking-tight">{{ 'gestaoCotas.title' | translate }}</h1>
           @if (bolao()) {
             <span class="px-2.5 py-0.5 bg-blue-50 border border-blue-200 text-blue-700 text-[12px] font-semibold rounded-full truncate max-w-[240px]">
               {{ bolao()!.nome }}
@@ -86,31 +73,29 @@ interface Paginated<T> {
           }
         </div>
         <p class="text-slate-500 text-[13.5px]">
-          {{ total() | localNum }} cotas ·
-          {{ totalPago() | localNum }} pagas ·
-          {{ totalPendente() }} pendentes
+          {{ 'gestaoCotas.subtitleLine' | translate: { total: total(), paid: totalPago(), pend: totalPendente() } }}
         </p>
       </div>
 
       <!-- KPIs -->
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
         <div class="bg-white border border-slate-200 rounded-lg p-[18px]">
-          <div class="text-[11.5px] font-semibold text-slate-500 uppercase tracking-widest">Cotas pagas</div>
+          <div class="text-[11.5px] font-semibold text-slate-500 uppercase tracking-widest">{{ 'gestaoCotas.kpiPaid' | translate }}</div>
           <div class="font-display text-[28px] font-semibold tracking-tight mt-1 tabular">{{ totalPago() | localNum }}</div>
         </div>
         <div class="bg-white border border-slate-200 rounded-lg p-[18px]">
-          <div class="text-[11.5px] font-semibold text-slate-500 uppercase tracking-widest">Cotas pendentes</div>
+          <div class="text-[11.5px] font-semibold text-slate-500 uppercase tracking-widest">{{ 'gestaoCotas.kpiPending' | translate }}</div>
           <div class="font-display text-[28px] font-semibold tracking-tight mt-1 tabular text-amber-600">{{ totalPendente() }}</div>
           @if (totalPendente() > 0) {
-            <div class="text-xs text-slate-400 mt-0.5">R$ {{ valorPendente().toFixed(2) }} a confirmar</div>
+            <div class="text-xs text-slate-400 mt-0.5">{{ 'gestaoCotas.pendingValueHint' | translate: { v: valorPendente().toFixed(2) } }}</div>
           }
         </div>
         <div class="bg-white border border-slate-200 rounded-lg p-[18px]">
-          <div class="text-[11.5px] font-semibold text-slate-500 uppercase tracking-widest">Total de cotas</div>
+          <div class="text-[11.5px] font-semibold text-slate-500 uppercase tracking-widest">{{ 'gestaoCotas.kpiTotalQuotas' | translate }}</div>
           <div class="font-display text-[28px] font-semibold tracking-tight mt-1 tabular">{{ total() | localNum }}</div>
         </div>
         <div class="bg-white border border-slate-200 rounded-lg p-[18px]">
-          <div class="text-[11.5px] font-semibold text-slate-500 uppercase tracking-widest">Arrecadação bruta</div>
+          <div class="text-[11.5px] font-semibold text-slate-500 uppercase tracking-widest">{{ 'gestaoCotas.kpiGross' | translate }}</div>
           <div class="font-display text-[28px] font-semibold tracking-tight mt-1 tabular text-green-700">{{ valorBruto() | brl }}</div>
         </div>
       </div>
@@ -126,23 +111,23 @@ interface Paginated<T> {
               <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">🔍</span>
               <input [ngModel]="busca()" (ngModelChange)="onBuscaChange($event)"
                      class="pl-8 pr-3 py-1.5 border border-slate-200 rounded-[10px] text-[12.5px] focus:outline-none focus:border-green-700 w-72"
-                     placeholder="Buscar por nome, celular ou nº da cota" />
+                     [attr.placeholder]="'gestaoCotas.searchPh' | translate" />
             </div>
             <!-- Status filter -->
             <select [ngModel]="statusFiltro()" (ngModelChange)="onStatusChange($event)"
                     class="px-2.5 py-1.5 border border-slate-200 rounded-[10px] text-[12.5px] bg-white focus:outline-none focus:border-green-700">
-              <option value="">Status: Todas</option>
-              <option value="PAGO">PAGO</option>
-              <option value="PENDENTE">PENDENTE</option>
-              <option value="INATIVO">INATIVO</option>
+              <option value="">{{ 'gestaoCotas.filterStatusAll' | translate }}</option>
+              <option value="PAGO">{{ 'gestaoCotas.payStatusPAGO' | translate }}</option>
+              <option value="PENDENTE">{{ 'gestaoCotas.payStatusPENDENTE' | translate }}</option>
+              <option value="INATIVO">{{ 'gestaoCotas.payStatusINATIVO' | translate }}</option>
             </select>
           </div>
           <div class="flex gap-2">
             <button class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-[12.5px] font-semibold rounded-[10px] text-slate-700 transition-colors">
-              ↑ Importar
+              {{ 'gestaoCotas.import' | translate }}
             </button>
             <button class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-[12.5px] font-semibold rounded-[10px] text-slate-700 transition-colors">
-              ↓ Exportar
+              {{ 'gestaoCotas.export' | translate }}
             </button>
           </div>
         </div>
@@ -157,13 +142,13 @@ interface Paginated<T> {
           <table class="w-full text-[13.5px]">
             <thead class="bg-slate-50">
               <tr>
-                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">Cota</th>
-                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">Participante</th>
-                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">Celular</th>
-                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">Palpites</th>
-                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">Acertos</th>
-                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">Pagamento</th>
-                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">Resultado</th>
+                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">{{ 'gestaoCotas.thCota' | translate }}</th>
+                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">{{ 'gestaoCotas.thParticipant' | translate }}</th>
+                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">{{ 'gestaoCotas.thPhone' | translate }}</th>
+                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">{{ 'gestaoCotas.thPicks' | translate }}</th>
+                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">{{ 'gestaoCotas.thHits' | translate }}</th>
+                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">{{ 'gestaoCotas.thPayment' | translate }}</th>
+                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">{{ 'gestaoCotas.thResult' | translate }}</th>
                 <th class="px-4 py-2.5 w-32"></th>
               </tr>
             </thead>
@@ -180,9 +165,9 @@ interface Paginated<T> {
                 <tr>
                   <td colspan="8" class="px-4 py-12 text-center text-slate-400 text-sm">
                     @if (busca() || statusFiltro()) {
-                      Nenhuma cota encontrada para o filtro atual.
+                      {{ 'gestaoCotas.emptyFiltered' | translate }}
                     } @else {
-                      Nenhuma cota cadastrada. Clique em "Cadastrar cota" para começar.
+                      {{ 'gestaoCotas.emptyNone' | translate }}
                     }
                   </td>
                 </tr>
@@ -224,7 +209,7 @@ interface Paginated<T> {
                     <td class="px-4 py-3">
                       <span class="font-mono font-bold tabular text-[14px]"
                             [class]="acertos(cota) >= 8 ? 'text-amber-600' : acertos(cota) >= 5 ? 'text-green-700' : ''">
-                        {{ acertos(cota) }}/10
+                        {{ acertos(cota) }}{{ 'gestaoCotas.hitsOfTen' | translate }}
                       </span>
                     </td>
 
@@ -233,7 +218,11 @@ interface Paginated<T> {
                       <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold tracking-wide uppercase border"
                             [class]="statusClass(cota.statusPagamento)">
                         <span class="w-1.5 h-1.5 rounded-full bg-current"></span>
-                        {{ cota.statusPagamento }}
+                        @switch (cota.statusPagamento) {
+                          @case ('PAGO') { {{ 'gestaoCotas.payStatusPAGO' | translate }} }
+                          @case ('PENDENTE') { {{ 'gestaoCotas.payStatusPENDENTE' | translate }} }
+                          @case ('INATIVO') { {{ 'gestaoCotas.payStatusINATIVO' | translate }} }
+                        }
                       </span>
                     </td>
 
@@ -241,13 +230,13 @@ interface Paginated<T> {
                     <td class="px-4 py-3">
                       @if (cota.statusResultado === 'PREMIADO') {
                         <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold tracking-wide uppercase bg-amber-50 text-amber-700 border border-amber-100">
-                          🏆 PREMIADO
+                          {{ 'gestaoCotas.badgeWinner' | translate }}
                         </span>
                       } @else if (cota.statusResultado === 'NAO_PREMIADO') {
-                        <span class="text-slate-400 text-xs">—</span>
+                        <span class="text-slate-400 text-xs">{{ 'common.emDash' | translate }}</span>
                       } @else {
                         <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold text-slate-500 bg-slate-100 border border-slate-200 uppercase tracking-wide">
-                          Em andamento
+                          {{ 'gestaoCotas.inProgress' | translate }}
                         </span>
                       }
                     </td>
@@ -258,7 +247,7 @@ interface Paginated<T> {
                         <button (click)="confirmarPagamento(cota.id)"
                                 [disabled]="confirmandoId() === cota.id"
                                 class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-green-700 hover:bg-green-800 disabled:opacity-50 text-white text-[12px] font-semibold rounded-lg transition-colors min-h-8">
-                          {{ confirmandoId() === cota.id ? '...' : '✓ Confirmar' }}
+                          {{ confirmandoId() === cota.id ? ('common.ellipsis' | translate) : ('gestaoCotas.confirmShort' | translate) }}
                         </button>
                       } @else {
                         <button class="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors text-sm">
@@ -276,17 +265,17 @@ interface Paginated<T> {
         <!-- Pagination -->
         <div class="px-5 py-3 border-t border-slate-100 flex items-center justify-between">
           <span class="text-slate-400 text-xs">
-            Mostrando {{ cotas().length }} de {{ total() | localNum }} cotas
+            {{ 'gestaoCotas.showingQuotas' | translate: { shown: cotas().length, total: total() } }}
           </span>
           <div class="flex gap-1.5">
             <button (click)="prevPage()" [disabled]="page() <= 1 || loading()"
                     class="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed text-sm font-semibold rounded-lg transition-colors">
-              Anterior
+              {{ 'common.prevPlain' | translate }}
             </button>
             <span class="px-3 py-1.5 text-sm text-slate-500">{{ page() }} / {{ totalPages() }}</span>
             <button (click)="nextPage()" [disabled]="page() >= totalPages() || loading()"
                     class="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed text-sm font-semibold rounded-lg transition-colors">
-              Próxima
+              {{ 'common.nextPlain' | translate }}
             </button>
           </div>
         </div>
@@ -302,8 +291,8 @@ interface Paginated<T> {
       <div class="fixed right-0 top-0 h-full w-full sm:w-[460px] bg-white shadow-xl z-50 flex flex-col overflow-hidden">
         <div class="px-6 py-5 border-b border-slate-200 flex items-center justify-between flex-shrink-0">
           <div>
-            <h2 class="font-display font-semibold text-lg">Cadastrar cota</h2>
-            <p class="text-slate-400 text-xs mt-0.5">10 números únicos entre 1 e 60</p>
+            <h2 class="font-display font-semibold text-lg">{{ 'gestaoCotas.modalRegisterTitle' | translate }}</h2>
+            <p class="text-slate-400 text-xs mt-0.5">{{ 'gestaoCotas.modalRegisterHint' | translate }}</p>
           </div>
           <button (click)="closeModal()" class="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">
             ✕
@@ -314,13 +303,13 @@ interface Paginated<T> {
 
           <!-- Busca de participante -->
           <div class="relative">
-            <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">Buscar participante</label>
+            <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">{{ 'gestaoCotas.searchParticipant' | translate }}</label>
             <div class="relative">
               <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">🔍</span>
               <input [ngModel]="buscaParticipante()" (ngModelChange)="onBuscaParticipanteChange($event)"
                      name="buscaParticipante" autocomplete="off"
                      class="w-full pl-8 pr-8 py-2.5 border border-slate-200 rounded-[10px] text-sm focus:outline-none focus:border-green-700"
-                     placeholder="Nome ou celular do participante" />
+                     [attr.placeholder]="'gestaoCotas.searchParticipantPh' | translate" />
               @if (buscandoParticipante()) {
                 <span class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs animate-pulse">…</span>
               }
@@ -343,39 +332,39 @@ interface Paginated<T> {
                       <div class="font-semibold text-[13px] truncate">{{ p.nome }}</div>
                       <div class="text-[11px] text-slate-400 font-mono">{{ p.numeroCelular | phone }}</div>
                     </div>
-                    <span class="ml-auto text-[10px] text-slate-400 flex-shrink-0">{{ p.totalCotas }} cota(s)</span>
+                    <span class="ml-auto text-[10px] text-slate-400 flex-shrink-0">{{ 'gestaoCotas.cotasSuffix' | translate: { n: p.totalCotas } }}</span>
                   </button>
                 }
                 @if (totalResultados() > resultadosBusca().length) {
                   <div class="px-4 py-2 text-[11px] text-slate-400 text-center bg-slate-50">
-                    +{{ totalResultados() - resultadosBusca().length }} resultados — refine a busca
+                    {{ 'gestaoCotas.refineSearch' | translate: { n: totalResultados() - resultadosBusca().length } }}
                   </div>
                 }
               </div>
             }
             @if (participanteVinculado()) {
               <p class="text-[11px] text-green-700 font-semibold mt-1.5 flex items-center gap-1">
-                <span>✓</span> Participante selecionado — campos preenchidos
-                <button type="button" (click)="limparParticipante()" class="ml-auto text-slate-400 hover:text-slate-600">↩ trocar</button>
+                <span>✓</span> {{ 'gestaoCotas.selectedHint' | translate }}
+                <button type="button" (click)="limparParticipante()" class="ml-auto text-slate-400 hover:text-slate-600">{{ 'gestaoCotas.swap' | translate }}</button>
               </p>
             }
           </div>
 
           <!-- Nome -->
           <div>
-            <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">Nome do participante *</label>
+            <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">{{ 'gestaoCotas.nomeLabel' | translate }}</label>
             <input [ngModel]="novaNome()" (ngModelChange)="novaNome.set($event)" name="novaNome"
                    [readonly]="participanteVinculado()"
                    class="w-full px-3 py-2.5 border rounded-[10px] text-sm focus:outline-none uppercase transition-colors"
                    [class]="participanteVinculado()
                      ? 'border-green-200 bg-green-50 text-green-900 cursor-not-allowed'
                      : 'border-slate-200 focus:border-green-700'"
-                   placeholder="NOME COMPLETO" />
+                   [attr.placeholder]="'gestaoCotas.nomePh' | translate" />
           </div>
 
           <!-- Celular -->
           <div>
-            <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">Celular</label>
+            <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">{{ 'gestaoCotas.celularLabel' | translate }}</label>
             <input phoneMask [ngModel]="novaCelular()" (ngModelChange)="onCelularChange($event)" name="novaCelular"
                    type="tel" inputmode="numeric"
                    [readonly]="participanteVinculado()"
@@ -383,12 +372,12 @@ interface Paginated<T> {
                    [class]="participanteVinculado()
                      ? 'border-green-200 bg-green-50 text-green-900 cursor-not-allowed'
                      : 'border-slate-200 focus:border-green-700'"
-                   placeholder="(83) 99999-9999" />
+                   [attr.placeholder]="'gestaoCotas.celularPh' | translate" />
           </div>
 
           <!-- Abas de cotas -->
           <div>
-            <label class="block text-xs font-semibold text-slate-500 mb-2 tracking-wide">Palpites</label>
+            <label class="block text-xs font-semibold text-slate-500 mb-2 tracking-wide">{{ 'gestaoCotas.palpites' | translate }}</label>
 
             <!-- Tab headers + botão adicionar -->
             <div class="flex flex-wrap gap-1.5 mb-3">
@@ -398,9 +387,9 @@ interface Paginated<T> {
                         [class]="cotaAtualIdx() === $index
                           ? 'bg-green-700 text-white border-green-700'
                           : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'">
-                  Cota {{ $index + 1 }}
+                  {{ 'gestaoCotas.cotaTab' | translate: { n: $index + 1 } }}
                   <span class="font-mono" [class]="cotas.length === 10 ? 'text-green-300' : ''">
-                    {{ cotas.length }}/10
+                    {{ cotas.length }}{{ 'gestaoCotas.hitsOfTen' | translate }}
                   </span>
                   @if (todasCotas().length > 1) {
                     <span (click)="$event.stopPropagation(); removerCota($index)"
@@ -411,7 +400,7 @@ interface Paginated<T> {
               <!-- Botão adicionar cota — inline com as abas -->
               <button type="button" (click)="adicionarCota()"
                       class="flex items-center gap-1 px-3 py-1.5 rounded-lg text-[12px] font-bold border-2 border-dashed border-green-400 text-green-700 bg-green-50 hover:bg-green-100 hover:border-green-600 transition-colors">
-                + Nova cota
+                {{ 'gestaoCotas.addQuotaTab' | translate }}
               </button>
             </div>
 
@@ -450,24 +439,25 @@ interface Paginated<T> {
         <!-- Footer -->
         <div class="px-6 py-4 border-t border-slate-200 flex gap-2.5 flex-shrink-0">
           <button (click)="closeModal()" class="flex-1 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 font-semibold text-sm rounded-[10px] transition-colors">
-            Cancelar
+            {{ 'common.cancel' | translate }}
           </button>
           <button (click)="cadastrarCota()"
                   [disabled]="!podeSubmitModal() || modalLoading()"
                   class="flex-1 py-2.5 bg-green-700 hover:bg-green-800 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold text-sm rounded-[10px] transition-colors shadow-sm">
-            {{ modalLoading() ? 'Cadastrando...' : todasCotas().length > 1 ? 'Cadastrar ' + todasCotas().length + ' cotas' : 'Cadastrar' }}
+            {{ modalLoading() ? ('gestaoCotas.cadastrando' | translate) : (todasCotas().length > 1 ? ('gestaoCotas.cadastrarN' | translate: { n: todasCotas().length }) : ('gestaoCotas.cadastrar' | translate)) }}
           </button>
         </div>
       </div>
     }
   `,
 })
-export class GestaoCotagsComponent implements OnInit {
+export class GestaoCotasComponent implements OnInit {
   // Route param (withComponentInputBinding)
   readonly id = input<string>('');
 
   private readonly api    = inject(ApiService);
   private readonly router = inject(Router);
+  private readonly translate = inject(TranslateService);
 
   // ── List state ───────────────────────────────────────────────────────────────
   bolao         = signal<{ nome: string; valorCota: number } | null>(null);
@@ -546,11 +536,11 @@ export class GestaoCotagsComponent implements OnInit {
       if (first?.id) {
         await this.router.navigate(['/bolao', first.id, 'cotas'], { replaceUrl: true });
       } else {
-        this.error.set('Nenhum bolão encontrado. Crie um bolão primeiro.');
+        this.error.set(this.translate.instant('gestaoCotas.errNoBolao'));
         this.loading.set(false);
       }
     } catch {
-      this.error.set('Erro ao carregar bolão ativo.');
+      this.error.set(this.translate.instant('gestaoCotas.errLoadBolao'));
       this.loading.set(false);
     }
   }
@@ -581,7 +571,7 @@ export class GestaoCotagsComponent implements OnInit {
       this.sorteios.set(sorteiosRes);
       if (bolaoRes) this.bolao.set(bolaoRes);
     } catch {
-      this.error.set('Erro ao carregar cotas. Verifique a conexão com a API.');
+      this.error.set(this.translate.instant('gestaoCotas.errLoadCotas'));
       this.cotas.set([]);
     } finally {
       this.loading.set(false);
@@ -622,7 +612,7 @@ export class GestaoCotagsComponent implements OnInit {
         cotas.map(c => c.id === cotaId ? { ...c, statusPagamento: 'PAGO' as const } : c),
       );
     } catch {
-      this.error.set('Erro ao confirmar pagamento. Tente novamente.');
+      this.error.set(this.translate.instant('gestaoCotas.errConfirmPay'));
     } finally {
       this.confirmandoId.set('');
     }
@@ -755,7 +745,8 @@ export class GestaoCotagsComponent implements OnInit {
       this.closeModal();
       await this.loadCotas();
     } catch (err: unknown) {
-      const msg = (err as { error?: { message?: string } })?.error?.message ?? 'Erro ao cadastrar cota.';
+      const msg = (err as { error?: { message?: string } })?.error?.message
+        ?? this.translate.instant('gestaoCotas.errCadastrarCota');
       this.modalError.set(msg);
     } finally {
       this.modalLoading.set(false);

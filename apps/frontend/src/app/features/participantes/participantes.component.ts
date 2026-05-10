@@ -2,6 +2,7 @@ import {
   Component, signal, computed, OnInit, ChangeDetectionStrategy, inject,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../core/services/api.service';
 import { PhoneMaskDirective, PhonePipe } from '../../shared/phone';
@@ -29,28 +30,28 @@ interface Paginated<T> { data: T[]; total: number; page: number; perPage: number
 @Component({
   selector: 'nb-participantes',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [BackButtonComponent, FormsModule, PhoneMaskDirective, PhonePipe],
+  imports: [BackButtonComponent, FormsModule, PhoneMaskDirective, PhonePipe, TranslatePipe],
   template: `
     <!-- Topbar -->
     <div class="bg-white border-b border-slate-200 px-4 lg:px-7 py-3 flex items-center gap-3 sticky top-14 lg:top-0 z-10">
       <nb-back-button />
       <div class="hidden sm:flex items-center gap-2 text-[12.5px]">
-        <span class="text-slate-400">Dashboard</span>
+        <span class="text-slate-400">{{ 'participantes.breadcrumbDashboard' | translate }}</span>
         <span class="text-slate-300">›</span>
-        <span class="font-semibold">Participantes</span>
+        <span class="font-semibold">{{ 'participantes.pageTitle' | translate }}</span>
       </div>
-      <span class="font-display font-semibold text-[14px] sm:hidden">Participantes</span>
+      <span class="font-display font-semibold text-[14px] sm:hidden">{{ 'participantes.pageTitle' | translate }}</span>
       <button (click)="abrirModalCriar()"
               class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-800 text-white text-sm font-semibold rounded-[10px] transition-colors shadow-sm min-h-9">
-        + Novo participante
+        {{ 'participantes.new' | translate }}
       </button>
     </div>
 
     <!-- Page -->
     <div class="p-4 lg:p-7">
       <div class="mb-5">
-        <h1 class="font-display text-2xl lg:text-[26px] font-semibold tracking-tight mb-1">Banco de participantes</h1>
-        <p class="text-slate-500 text-[13.5px]">{{ total() }} participantes cadastrados neste tenant</p>
+        <h1 class="font-display text-2xl lg:text-[26px] font-semibold tracking-tight mb-1">{{ 'participantes.bankTitle' | translate }}</h1>
+        <p class="text-slate-500 text-[13.5px]">{{ 'participantes.subtitleCount' | translate:{ n: total() } }}</p>
       </div>
 
       <!-- Main card -->
@@ -62,7 +63,7 @@ interface Paginated<T> { data: T[]; total: number; page: number; perPage: number
             <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">🔍</span>
             <input [ngModel]="busca()" (ngModelChange)="onBuscaChange($event)"
                    class="w-full pl-8 pr-3 py-1.5 border border-slate-200 rounded-[10px] text-[12.5px] focus:outline-none focus:border-green-700"
-                   placeholder="Buscar por nome, celular ou e-mail" />
+                   [placeholder]="'participantes.searchPlaceholder' | translate" />
           </div>
         </div>
 
@@ -75,11 +76,11 @@ interface Paginated<T> { data: T[]; total: number; page: number; perPage: number
           <table class="w-full text-[13.5px]">
             <thead class="bg-slate-50">
               <tr>
-                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-5 py-2.5">Participante</th>
-                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">Celular</th>
-                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">E-mail</th>
-                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">Bolões</th>
-                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">Cotas</th>
+                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-5 py-2.5">{{ 'participantes.thParticipant' | translate }}</th>
+                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">{{ 'participantes.thPhone' | translate }}</th>
+                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">{{ 'participantes.thEmail' | translate }}</th>
+                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">{{ 'participantes.thPools' | translate }}</th>
+                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">{{ 'participantes.thQuotas' | translate }}</th>
                 <th class="px-4 py-2.5 w-28"></th>
               </tr>
             </thead>
@@ -95,8 +96,8 @@ interface Paginated<T> { data: T[]; total: number; page: number; perPage: number
               } @else if (participantes().length === 0) {
                 <tr>
                   <td colspan="6" class="px-5 py-12 text-center text-slate-400 text-sm">
-                    @if (busca()) { Nenhum resultado para "{{ busca() }}". }
-                    @else { Nenhum participante cadastrado. Clique em "+ Novo participante" para começar. }
+                    @if (busca()) { {{ 'participantes.emptySearch' | translate:{ q: busca() } }} }
+                    @else { {{ 'participantes.empty' | translate }} }
                   </td>
                 </tr>
               } @else {
@@ -137,11 +138,11 @@ interface Paginated<T> { data: T[]; total: number; page: number; perPage: number
                       <div class="flex items-center gap-1">
                         <button (click)="abrirModalEditar(p)"
                                 class="px-2.5 py-1.5 text-[12px] font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200">
-                          Editar
+                          {{ 'participantes.edit' | translate }}
                         </button>
                         <button (click)="confirmarExcluir(p)"
                                 class="px-2.5 py-1.5 text-[12px] font-semibold text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-red-100">
-                          Excluir
+                          {{ 'participantes.exclude' | translate }}
                         </button>
                       </div>
                     </td>
@@ -159,7 +160,7 @@ interface Paginated<T> { data: T[]; total: number; page: number; perPage: number
               <div class="p-4"><div class="h-4 bg-slate-100 rounded animate-pulse w-3/4 mb-2"></div><div class="h-3 bg-slate-100 rounded animate-pulse w-1/2"></div></div>
             }
           } @else if (participantes().length === 0) {
-            <div class="p-8 text-center text-slate-400 text-sm">Nenhum participante cadastrado.</div>
+            <div class="p-8 text-center text-slate-400 text-sm">{{ 'participantes.emptyMobile' | translate }}</div>
           } @else {
             @for (p of participantes(); track p.id) {
               <div class="p-4">
@@ -180,9 +181,9 @@ interface Paginated<T> { data: T[]; total: number; page: number; perPage: number
                   </div>
                 </div>
                 <div class="mt-2 flex items-center gap-3 text-[11px] text-slate-500">
-                  <span>{{ p.boloes.length }} bolão(ões)</span>
+                  <span>{{ 'participantes.poolsCount' | translate:{ n: p.boloes.length } }}</span>
                   <span>·</span>
-                  <span>{{ p.totalCotas }} cota(s)</span>
+                  <span>{{ 'participantes.quotasCount' | translate:{ n: p.totalCotas } }}</span>
                 </div>
               </div>
             }
@@ -191,16 +192,16 @@ interface Paginated<T> { data: T[]; total: number; page: number; perPage: number
 
         <!-- Paginação -->
         <div class="px-5 py-3 border-t border-slate-100 flex items-center justify-between">
-          <span class="text-slate-400 text-xs">Mostrando {{ participantes().length }} de {{ total() }}</span>
+          <span class="text-slate-400 text-xs">{{ 'common.showingOf' | translate:{ shown: participantes().length, total: total() } }}</span>
           <div class="flex gap-1.5">
             <button (click)="prevPage()" [disabled]="page() <= 1 || loading()"
                     class="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed text-sm font-semibold rounded-lg transition-colors">
-              Anterior
+              {{ 'common.prevPlain' | translate }}
             </button>
             <span class="px-3 py-1.5 text-sm text-slate-500">{{ page() }} / {{ totalPages() }}</span>
             <button (click)="nextPage()" [disabled]="page() >= totalPages() || loading()"
                     class="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed text-sm font-semibold rounded-lg transition-colors">
-              Próxima
+              {{ 'common.nextPlain' | translate }}
             </button>
           </div>
         </div>
@@ -213,7 +214,7 @@ interface Paginated<T> { data: T[]; total: number; page: number; perPage: number
       <div class="fixed right-0 top-0 h-full w-full sm:w-[440px] bg-white shadow-xl z-50 flex flex-col overflow-hidden">
         <div class="px-6 py-5 border-b border-slate-200 flex items-center justify-between flex-shrink-0">
           <h2 class="font-display font-semibold text-lg">
-            {{ editando() ? 'Editar participante' : 'Novo participante' }}
+            {{ editando() ? ('participantes.modalEditTitle' | translate) : ('participantes.modalNewTitle' | translate) }}
           </h2>
           <button (click)="fecharModal()" class="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">✕</button>
         </div>
@@ -222,48 +223,48 @@ interface Paginated<T> { data: T[]; total: number; page: number; perPage: number
 
           <!-- Nome -->
           <div>
-            <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">Nome *</label>
+            <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">{{ 'participantes.labelName' | translate }}</label>
             <input [ngModel]="fNome()" (ngModelChange)="fNome.set($event)"
                    class="w-full px-3 py-2.5 border border-slate-200 rounded-[10px] text-sm focus:outline-none focus:border-green-700 uppercase"
-                   placeholder="NOME COMPLETO" />
+                   [placeholder]="'participantes.namePh' | translate" />
           </div>
 
           <!-- Celular (só no criar) -->
           @if (!editando()) {
             <div>
-              <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">Celular *</label>
+              <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">{{ 'participantes.labelPhoneCreate' | translate }}</label>
               <input phoneMask [ngModel]="fCelular()" (ngModelChange)="fCelular.set($event)"
                      type="tel" inputmode="numeric"
                      class="w-full px-3 py-2.5 border border-slate-200 rounded-[10px] text-sm font-mono focus:outline-none focus:border-green-700"
-                     placeholder="(83) 99999-9999" />
-              <p class="text-[11px] text-slate-400 mt-1">10 ou 11 dígitos, somente números</p>
+                     [placeholder]="'gestaoCotas.celularPh' | translate" />
+              <p class="text-[11px] text-slate-400 mt-1">{{ 'participantes.phoneHintDigits' | translate }}</p>
             </div>
           } @else {
             <div>
-              <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">Celular</label>
+              <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">{{ 'participantes.labelPhoneEdit' | translate }}</label>
               <div class="px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-[10px] text-sm font-mono text-slate-500">
                 {{ fCelular() | phone }}
               </div>
-              <p class="text-[11px] text-slate-400 mt-1">Celular não pode ser alterado</p>
+              <p class="text-[11px] text-slate-400 mt-1">{{ 'participantes.phoneReadonlyHint' | translate }}</p>
             </div>
           }
 
           <!-- E-mail -->
           <div>
-            <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">E-mail</label>
+            <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">{{ 'participantes.labelEmail' | translate }}</label>
             <input [ngModel]="fEmail()" (ngModelChange)="fEmail.set($event)"
                    type="email"
                    class="w-full px-3 py-2.5 border border-slate-200 rounded-[10px] text-sm focus:outline-none focus:border-green-700"
-                   placeholder="participante@email.com" />
+                   [placeholder]="'participantes.emailPh' | translate" />
           </div>
 
           <!-- Observações -->
           <div>
-            <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">Observações</label>
+            <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">{{ 'participantes.labelNotes' | translate }}</label>
             <textarea [ngModel]="fObservacoes()" (ngModelChange)="fObservacoes.set($event)"
                       rows="3"
                       class="w-full px-3 py-2.5 border border-slate-200 rounded-[10px] text-sm focus:outline-none focus:border-green-700 resize-none"
-                      placeholder="Cliente VIP, referência de fulano..."></textarea>
+                      [placeholder]="'participantes.notesPh' | translate"></textarea>
           </div>
 
           @if (modalError()) {
@@ -273,11 +274,11 @@ interface Paginated<T> { data: T[]; total: number; page: number; perPage: number
 
         <div class="px-6 py-4 border-t border-slate-200 flex gap-2.5 flex-shrink-0">
           <button (click)="fecharModal()" class="flex-1 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 font-semibold text-sm rounded-[10px] transition-colors">
-            Cancelar
+            {{ 'common.cancel' | translate }}
           </button>
           <button (click)="salvar()" [disabled]="!podeSubmit() || modalLoading()"
                   class="flex-1 py-2.5 bg-green-700 hover:bg-green-800 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold text-sm rounded-[10px] transition-colors shadow-sm">
-            {{ modalLoading() ? 'Salvando...' : editando() ? 'Salvar' : 'Cadastrar' }}
+            {{ modalLoading() ? ('participantes.saving' | translate) : editando() ? ('common.save' | translate) : ('participantes.register' | translate) }}
           </button>
         </div>
       </div>
@@ -287,18 +288,18 @@ interface Paginated<T> { data: T[]; total: number; page: number; perPage: number
     @if (excluindo()) {
       <div class="fixed inset-0 bg-black/40 z-40 flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-xl max-w-sm w-full p-6">
-          <h3 class="font-display font-semibold text-lg mb-2">Excluir participante?</h3>
+          <h3 class="font-display font-semibold text-lg mb-2">{{ 'participantes.deleteTitle' | translate }}</h3>
           <p class="text-slate-500 text-sm mb-1">
-            <strong class="text-slate-700">{{ excluindo()!.nome }}</strong> será removido do banco de participantes.
+            {{ 'participantes.deleteIntro' | translate:{ name: excluindo()!.nome } }}
           </p>
-          <p class="text-slate-400 text-xs mb-5">Esta ação não pode ser desfeita. Cotas vinculadas permanecem no histórico.</p>
+          <p class="text-slate-400 text-xs mb-5">{{ 'participantes.deleteWarn' | translate }}</p>
           <div class="flex gap-2.5">
             <button (click)="excluindo.set(null)" class="flex-1 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 font-semibold text-sm rounded-[10px] transition-colors">
-              Cancelar
+              {{ 'common.cancel' | translate }}
             </button>
             <button (click)="excluir()" [disabled]="modalLoading()"
                     class="flex-1 py-2.5 bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white font-semibold text-sm rounded-[10px] transition-colors">
-              {{ modalLoading() ? 'Excluindo...' : 'Excluir' }}
+              {{ modalLoading() ? ('common.deleting' | translate) : ('common.delete' | translate) }}
             </button>
           </div>
         </div>
@@ -308,6 +309,7 @@ interface Paginated<T> { data: T[]; total: number; page: number; perPage: number
 })
 export class ParticipantesComponent implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly translate = inject(TranslateService);
 
   // ── List state ───────────────────────────────────────────────────────────────
   participantes = signal<Participante[]>([]);
@@ -356,7 +358,7 @@ export class ParticipantesComponent implements OnInit {
       this.total.set(res.total);
       this.totalPages.set(res.totalPages);
     } catch {
-      this.error.set('Erro ao carregar participantes.');
+      this.error.set(this.translate.instant('errors.loadParticipants'));
     } finally {
       this.loading.set(false);
     }
@@ -425,7 +427,7 @@ export class ParticipantesComponent implements OnInit {
       this.fecharModal();
       await this.load();
     } catch (err: unknown) {
-      const msg = (err as { error?: { message?: string } })?.error?.message ?? 'Erro ao salvar.';
+      const msg = (err as { error?: { message?: string } })?.error?.message ?? this.translate.instant('errors.saveGeneric');
       this.modalError.set(msg);
     } finally {
       this.modalLoading.set(false);
@@ -446,7 +448,7 @@ export class ParticipantesComponent implements OnInit {
       this.excluindo.set(null);
       await this.load();
     } catch (err: unknown) {
-      const msg = (err as { error?: { message?: string } })?.error?.message ?? 'Erro ao excluir.';
+      const msg = (err as { error?: { message?: string } })?.error?.message ?? this.translate.instant('errors.deleteParticipant');
       this.error.set(msg);
       this.excluindo.set(null);
     } finally {

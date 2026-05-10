@@ -1,4 +1,5 @@
 import { Component, signal, OnInit, ChangeDetectionStrategy, inject } from '@angular/core';
+import { TranslatePipe } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../../core/services/api.service';
 
@@ -19,12 +20,12 @@ const DEMO_BOLAO_ID = '00000000-0000-0000-0000-000000000002';
 @Component({
   selector: 'nb-portal-ranking',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [],
+  imports: [TranslatePipe],
   template: `
     <!-- Header -->
     <div class="bg-green-800 text-white px-4 pt-12 pb-5">
-      <h1 class="font-display text-[22px] font-semibold tracking-tight mb-1">Ranking</h1>
-      <p class="text-white/60 text-[13px]">{{ total() }} cotas participando</p>
+      <h1 class="font-display text-[22px] font-semibold tracking-tight mb-1">{{ 'portal.nav.ranking' | translate }}</h1>
+      <p class="text-white/60 text-[13px]">{{ 'portalRanking.subtitle' | translate:{ n: total() } }}</p>
     </div>
 
     <div class="px-4 py-4">
@@ -38,7 +39,7 @@ const DEMO_BOLAO_ID = '00000000-0000-0000-0000-000000000002';
         }
       } @else if (ranking().length === 0) {
         <div class="text-center py-12 text-slate-400 text-sm">
-          Nenhum resultado disponível ainda.
+          {{ 'portalRanking.empty' | translate }}
         </div>
       } @else {
         <div class="bg-white rounded-2xl overflow-hidden shadow-sm border border-slate-100">
@@ -54,7 +55,7 @@ const DEMO_BOLAO_ID = '00000000-0000-0000-0000-000000000002';
               <!-- Nome + cota -->
               <div class="flex-1 min-w-0">
                 <div class="font-semibold text-[13.5px] truncate">{{ r.nomeIdentificacao }}</div>
-                <div class="text-[11px] text-slate-400 font-mono">cota #{{ r.numeroSequencial }}</div>
+                <div class="text-[11px] text-slate-400 font-mono">{{ 'portalRanking.quotaNum' | translate:{ n: r.numeroSequencial } }}</div>
               </div>
 
               <!-- Acertos -->
@@ -69,12 +70,12 @@ const DEMO_BOLAO_ID = '00000000-0000-0000-0000-000000000002';
           <div class="flex justify-center gap-2 mt-4">
             <button (click)="prevPage()" [disabled]="page() <= 1"
                     class="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold disabled:opacity-40">
-              ← Anterior
+              {{ 'common.prev' | translate }}
             </button>
-            <span class="px-3 py-2 text-sm text-slate-400">{{ page() }}/{{ totalPages() }}</span>
+            <span class="px-3 py-2 text-sm text-slate-400">{{ 'portalRanking.pageOf' | translate:{ current: page(), total: totalPages() } }}</span>
             <button (click)="nextPage()" [disabled]="page() >= totalPages()"
                     class="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold disabled:opacity-40">
-              Próxima →
+              {{ 'common.next' | translate }}
             </button>
           </div>
         }

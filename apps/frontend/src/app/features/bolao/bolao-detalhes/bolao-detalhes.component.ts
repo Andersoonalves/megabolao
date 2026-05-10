@@ -1,6 +1,7 @@
 import { Component, signal, input, OnInit, ChangeDetectionStrategy, inject, effect } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { DecimalPipe, CurrencyPipe, DatePipe } from '@angular/common';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 import { BolasGridComponent } from '../../../shared/components/bolas-grid/bolas-grid.component';
 import { BadgeComponent } from '../../../shared/components/badge/badge.component';
@@ -38,14 +39,6 @@ interface DashboardData {
   distribuicaoAcertos: { acertos: number; quantidade: number }[];
 }
 
-const TIPO_LABELS: Record<CategoriaTipo, string> = {
-  TAXA_ADMINISTRATIVA:     'Taxa adm.',
-  ACERTOS_EXATOS:          'Acertos exatos',
-  MAIOR_PONTUACAO_SORTEIO: 'Maior pont. sorteio',
-  MAIOR_PONTUACAO_GERAL:   'Maior pont. geral',
-  MENOR_PONTUACAO_GERAL:   'Menor pont. geral',
-};
-
 const TIPO_CHIP: Record<CategoriaTipo, string> = {
   TAXA_ADMINISTRATIVA:     'bg-slate-100 text-slate-700',
   ACERTOS_EXATOS:          'bg-green-50 text-green-800',
@@ -57,29 +50,29 @@ const TIPO_CHIP: Record<CategoriaTipo, string> = {
 @Component({
   selector: 'nb-bolao-detalhes',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [BackButtonComponent, RouterLink, DecimalPipe, CurrencyPipe, DatePipe, BolasGridComponent, BadgeComponent],
+  imports: [BackButtonComponent, RouterLink, DecimalPipe, CurrencyPipe, DatePipe, BolasGridComponent, BadgeComponent, TranslatePipe],
   template: `
     <!-- Topbar -->
     <div class="bg-white border-b border-slate-200 px-4 lg:px-7 py-3 flex items-center gap-3 sticky top-14 lg:top-0 z-10">
       <nb-back-button />
       <div class="hidden sm:flex items-center gap-2 text-[12.5px]">
-        <a routerLink="/boloes" class="text-slate-400 hover:text-slate-600 transition-colors">Bolões</a>
+        <a routerLink="/boloes" class="text-slate-400 hover:text-slate-600 transition-colors">{{ 'bolaoDetalhes.breadcrumbPools' | translate }}</a>
         @if (data()?.bolao) {
           <span class="text-slate-300">›</span>
           <span class="font-semibold truncate max-w-[200px]">{{ data()!.bolao.nome }}</span>
         }
         <span class="text-slate-300">›</span>
-        <span class="text-slate-400">Detalhes</span>
+        <span class="text-slate-400">{{ 'bolaoDetalhes.breadcrumbDetails' | translate }}</span>
       </div>
-      <span class="font-display font-semibold text-[14px] sm:hidden">Detalhes</span>
+      <span class="font-display font-semibold text-[14px] sm:hidden">{{ 'bolaoDetalhes.breadcrumbDetails' | translate }}</span>
       <div class="flex gap-2">
         <a [routerLink]="['/bolao', id(), 'cotas']"
            class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-sm font-semibold rounded-[10px] no-underline text-slate-900 transition-colors min-h-9">
-          🎫 Cotas
+          {{ 'common.viewQuotas' | translate }}
         </a>
         <a routerLink="/sorteios"
            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-800 text-white text-sm font-semibold rounded-[10px] no-underline transition-colors shadow-sm min-h-9">
-          ✦ <span class="hidden sm:inline">Registrar sorteio</span><span class="sm:hidden">Sorteio</span>
+          ✦ <span class="hidden sm:inline">{{ 'bolaoDetalhes.registerDraw' | translate }}</span><span class="sm:hidden">{{ 'bolaoDetalhes.registerDrawShort' | translate }}</span>
         </a>
       </div>
     </div>
@@ -105,41 +98,43 @@ const TIPO_CHIP: Record<CategoriaTipo, string> = {
             <h1 class="font-display text-[26px] font-semibold tracking-tight">{{ d.bolao.nome }}</h1>
             <span class="px-2 py-0.5 rounded-full text-[11px] font-bold uppercase"
                   [class]="d.bolao.status === 'EM_ANDAMENTO' ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-500'">
-              {{ statusLabel(d.bolao.status) }}
+              {{ ('dashboardAdmin.status.' + d.bolao.status) | translate }}
             </span>
           </div>
           <p class="text-slate-500 text-[13.5px]">
-            @if (d.bolao.dataInicio) { Iniciado em {{ d.bolao.dataInicio | date:'dd/MMM/yyyy' }} · }
-            {{ d.bolao.categorias }} categoria(s) · {{ d.sorteios.length }} sorteio(s)
+            @if (d.bolao.dataInicio) {
+              {{ 'bolaoDetalhes.metaStarted' | translate }} {{ d.bolao.dataInicio | date:'dd/MMM/yyyy' }}{{ 'bolaoDetalhes.metaSep' | translate }}
+            }
+            {{ 'bolaoDetalhes.metaCategories' | translate:{ cats: d.bolao.categorias, draws: d.sorteios.length } }}
           </p>
         </div>
 
         <!-- KPIs -->
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
           <div class="bg-white border border-slate-200 rounded-lg p-[18px]">
-            <div class="text-[11.5px] font-semibold text-slate-500 uppercase tracking-widest mb-1">🎫 Cotas pagas</div>
+            <div class="text-[11.5px] font-semibold text-slate-500 uppercase tracking-widest mb-1">{{ 'bolaoDetalhes.kpiPaidQuotas' | translate }}</div>
             <div class="font-display text-[28px] font-semibold tracking-tight tabular">{{ d.totalPago | number }}</div>
-            @if (d.totalPendente > 0) { <div class="text-[11.5px] text-amber-600 mt-0.5">{{ d.totalPendente }} pendente(s)</div> }
+            @if (d.totalPendente > 0) { <div class="text-[11.5px] text-amber-600 mt-0.5">{{ 'bolaoDetalhes.pendingSuffix' | translate:{ n: d.totalPendente } }}</div> }
           </div>
           <div class="bg-white border border-slate-200 rounded-lg p-[18px]">
-            <div class="text-[11.5px] font-semibold text-slate-500 uppercase tracking-widest mb-1">💰 Arrecadação</div>
+            <div class="text-[11.5px] font-semibold text-slate-500 uppercase tracking-widest mb-1">{{ 'bolaoDetalhes.kpiRevenue' | translate }}</div>
             <div class="font-display text-[22px] font-semibold tracking-tight text-green-700 tabular">{{ d.valorBruto | currency:'BRL':'symbol':'1.0-0' }}</div>
-            <div class="text-[11.5px] text-slate-400 mt-0.5">{{ d.bolao.valorCota | currency:'BRL':'symbol':'1.2-2' }} / cota</div>
+            <div class="text-[11.5px] text-slate-400 mt-0.5">{{ d.bolao.valorCota | currency:'BRL':'symbol':'1.2-2' }}{{ 'bolaoDetalhes.perQuota' | translate }}</div>
           </div>
           <div class="bg-white border border-slate-200 rounded-lg p-[18px]">
-            <div class="text-[11.5px] font-semibold text-slate-500 uppercase tracking-widest mb-1">🏆 Melhor pontuação</div>
+            <div class="text-[11.5px] font-semibold text-slate-500 uppercase tracking-widest mb-1">{{ 'bolaoDetalhes.kpiBest' | translate }}</div>
             @if (d.ranking.length > 0) {
               <div class="font-display text-[28px] font-semibold tracking-tight tabular text-amber-600">{{ d.ranking[0].totalAcertosAcumulados }}/10</div>
               <div class="text-[11.5px] text-slate-400 mt-0.5 truncate">#{{ d.ranking[0].numeroSequencial }} · {{ firstName(d.ranking[0].nomeIdentificacao) }}</div>
             } @else {
               <div class="font-display text-[28px] font-semibold tracking-tight text-slate-300">—</div>
-              <div class="text-[11.5px] text-slate-400 mt-0.5">Nenhum sorteio ainda</div>
+              <div class="text-[11.5px] text-slate-400 mt-0.5">{{ 'bolaoDetalhes.noDrawYet' | translate }}</div>
             }
           </div>
           <div class="bg-white border border-slate-200 rounded-lg p-[18px]">
-            <div class="text-[11.5px] font-semibold text-slate-500 uppercase tracking-widest mb-1">📅 Sorteios</div>
+            <div class="text-[11.5px] font-semibold text-slate-500 uppercase tracking-widest mb-1">{{ 'bolaoDetalhes.sorteios' | translate }}</div>
             <div class="font-display text-[28px] font-semibold tracking-tight tabular">{{ d.sorteios.length }}</div>
-            @if (d.sorteios.length > 0) { <div class="text-[11.5px] text-slate-400 mt-0.5">Último: concurso {{ d.sorteios[d.sorteios.length-1].numeroConcurso }}</div> }
+            @if (d.sorteios.length > 0) { <div class="text-[11.5px] text-slate-400 mt-0.5">{{ 'bolaoDetalhes.lastDraw' | translate:{ n: d.sorteios[d.sorteios.length-1].numeroConcurso } }}</div> }
           </div>
         </div>
 
@@ -147,12 +142,12 @@ const TIPO_CHIP: Record<CategoriaTipo, string> = {
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
           <div class="bg-white border border-slate-200 rounded-lg">
             <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
-              <h3 class="font-display font-semibold text-[15px]">Distribuição de pontuação</h3>
-              <span class="text-slate-400 text-xs">{{ d.totalPago | number }} cotas pagas</span>
+              <h3 class="font-display font-semibold text-[15px]">{{ 'bolaoDetalhes.chartTitle' | translate }}</h3>
+              <span class="text-slate-400 text-xs">{{ 'bolaoDetalhes.chartCaptionPaid' | translate:{ n: d.totalPago } }}</span>
             </div>
             <div class="p-5">
               @if (d.distribuicaoAcertos.length === 0) {
-                <div class="h-44 flex items-center justify-center text-slate-400 text-sm">Nenhum dado ainda</div>
+                <div class="h-44 flex items-center justify-center text-slate-400 text-sm">{{ 'bolaoDetalhes.chartEmpty' | translate }}</div>
               } @else {
                 <div class="flex items-end gap-1 h-44">
                   @for (acc of acertosRange; track acc) {
@@ -166,24 +161,24 @@ const TIPO_CHIP: Record<CategoriaTipo, string> = {
                     </div>
                   }
                 </div>
-                <div class="text-[11.5px] text-slate-400 text-center mt-1.5">acertos acumulados</div>
+                <div class="text-[11.5px] text-slate-400 text-center mt-1.5">{{ 'bolaoDetalhes.hitsAxis' | translate }}</div>
               }
             </div>
           </div>
 
           <div class="bg-white border border-slate-200 rounded-lg">
             <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
-              <h3 class="font-display font-semibold text-[15px]">Bolas sorteadas</h3>
+              <h3 class="font-display font-semibold text-[15px]">{{ 'bolaoDetalhes.ballsTitle' | translate }}</h3>
               <span class="text-slate-400 text-xs">{{ d.bolasJaSorteadas.length }}/60</span>
             </div>
             <div class="p-5">
               @if (d.bolasJaSorteadas.length === 0) {
-                <div class="h-36 flex items-center justify-center text-slate-400 text-sm">Nenhum sorteio registrado</div>
+                <div class="h-36 flex items-center justify-center text-slate-400 text-sm">{{ 'bolaoDetalhes.ballsEmpty' | translate }}</div>
               } @else {
                 <nb-bolas-grid [drawn]="d.bolasJaSorteadas" size="sm" [cols]="10" />
                 <div class="flex gap-4 mt-3.5 text-[11.5px]">
-                  <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-green-700 inline-block"></span> sorteada ({{ d.bolasJaSorteadas.length }})</span>
-                  <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full border border-slate-200 inline-block"></span> não sorteada ({{ 60 - d.bolasJaSorteadas.length }})</span>
+                  <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-green-700 inline-block"></span> {{ 'bolaoDetalhes.legendDrawnCount' | translate:{ n: d.bolasJaSorteadas.length } }}</span>
+                  <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full border border-slate-200 inline-block"></span> {{ 'bolaoDetalhes.legendNotDrawn' | translate:{ n: 60 - d.bolasJaSorteadas.length } }}</span>
                 </div>
               }
             </div>
@@ -194,19 +189,19 @@ const TIPO_CHIP: Record<CategoriaTipo, string> = {
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
           <div class="bg-white border border-slate-200 rounded-lg overflow-hidden">
             <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
-              <h3 class="font-display font-semibold text-[15px]">Top ranking</h3>
-              <a [routerLink]="['/bolao', id(), 'cotas']" class="text-xs text-green-700 font-semibold no-underline">Ver cotas ›</a>
+              <h3 class="font-display font-semibold text-[15px]">{{ 'bolaoDetalhes.topTitle' | translate }}</h3>
+              <a [routerLink]="['/bolao', id(), 'cotas']" class="text-xs text-green-700 font-semibold no-underline">{{ 'common.viewQuotas' | translate }} ›</a>
             </div>
             @if (d.ranking.length === 0) {
-              <div class="p-8 text-center text-slate-400 text-sm">Nenhuma cota paga ainda</div>
+              <div class="p-8 text-center text-slate-400 text-sm">{{ 'bolaoDetalhes.topEmpty' | translate }}</div>
             } @else {
               <table class="w-full text-[13.5px]">
                 <thead class="bg-slate-50">
                   <tr>
-                    <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-3 py-2.5">Pos</th>
-                    <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-3 py-2.5">Cota</th>
-                    <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-3 py-2.5">Participante</th>
-                    <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-3 py-2.5">Acertos</th>
+                    <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-3 py-2.5">{{ 'bolaoDetalhes.thPos' | translate }}</th>
+                    <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-3 py-2.5">{{ 'bolaoDetalhes.thQuota' | translate }}</th>
+                    <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-3 py-2.5">{{ 'bolaoDetalhes.thParticipant' | translate }}</th>
+                    <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-3 py-2.5">{{ 'bolaoDetalhes.thHits' | translate }}</th>
                     <th class="px-3 py-2.5"></th>
                   </tr>
                 </thead>
@@ -227,7 +222,7 @@ const TIPO_CHIP: Record<CategoriaTipo, string> = {
                       </td>
                       <td class="px-3 py-3">
                         <nb-badge [variant]="r.statusResultado === 'PREMIADO' ? 'warn' : 'default'" [dot]="true">
-                          {{ r.statusResultado === 'PREMIADO' ? 'Premiado' : 'Em andamento' }}
+                          {{ (r.statusResultado === 'PREMIADO' ? 'bolaoDetalhes.rankingBadgePremiado' : 'bolaoDetalhes.rankingBadgeAndamento') | translate }}
                         </nb-badge>
                       </td>
                     </tr>
@@ -239,17 +234,17 @@ const TIPO_CHIP: Record<CategoriaTipo, string> = {
 
           <div class="bg-white border border-slate-200 rounded-lg">
             <div class="px-5 py-4 border-b border-slate-200">
-              <h3 class="font-display font-semibold text-[15px]">Sorteios realizados</h3>
+              <h3 class="font-display font-semibold text-[15px]">{{ 'bolaoDetalhes.drawsTitle' | translate }}</h3>
             </div>
             @if (d.sorteios.length === 0) {
-              <div class="p-8 text-center text-slate-400 text-sm">Nenhum sorteio registrado ainda.</div>
+              <div class="p-8 text-center text-slate-400 text-sm">{{ 'bolaoDetalhes.drawsEmpty' | translate }}</div>
             } @else {
               <div class="divide-y divide-slate-100 overflow-y-auto max-h-[420px]">
                 @for (s of d.sorteios.slice().reverse(); track s.numeroConcurso) {
                   <div class="px-5 py-3.5">
                     <div class="flex items-center justify-between mb-2">
                       <div>
-                        <span class="font-semibold text-[13px]">Concurso {{ s.numeroConcurso }}</span>
+                        <span class="font-semibold text-[13px]">{{ 'bolaoDetalhes.concurso' | translate:{ n: s.numeroConcurso } }}</span>
                         <span class="text-slate-400 text-[12px] ml-2">· {{ s.dataSorteio | date:'dd/MM/yyyy' }}</span>
                       </div>
                       <span class="text-[11px] text-slate-400">{{ s.sequenciaNoBolao }}º</span>
@@ -269,15 +264,15 @@ const TIPO_CHIP: Record<CategoriaTipo, string> = {
         <div class="bg-white border border-slate-200 rounded-lg mb-5">
           <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between gap-3">
             <div>
-              <h3 class="font-display font-semibold text-[15px]">Categorias de premiação</h3>
+              <h3 class="font-display font-semibold text-[15px]">{{ 'bolaoDetalhes.categoriesTitle' | translate }}</h3>
               <p class="text-[11.5px] text-slate-400 mt-0.5">
-                {{ d.categorias.length }} categoria(s) · soma 100% · valor estimado sobre {{ d.valorBruto | currency:'BRL':'symbol':'1.0-0' }}
+                {{ 'bolaoDetalhes.categoriasResumo' | translate:{ n: d.categorias.length, bruto: (d.valorBruto | currency:'BRL':'symbol':'1.0-0') } }}
               </p>
             </div>
           </div>
 
           @if (d.categorias.length === 0) {
-            <div class="p-8 text-center text-slate-400 text-sm">Nenhuma categoria cadastrada.</div>
+            <div class="p-8 text-center text-slate-400 text-sm">{{ 'bolaoDetalhes.categoriesEmpty' | translate }}</div>
           } @else {
             <!-- Mobile: cards -->
             <div class="lg:hidden divide-y divide-slate-100">
@@ -292,7 +287,7 @@ const TIPO_CHIP: Record<CategoriaTipo, string> = {
                         </span>
                         @if (c.acumulaSemGanhador) {
                           <span class="px-2 py-0.5 rounded-full text-[10.5px] font-semibold bg-gold-50 text-gold-700">
-                            ↻ acumula
+                            {{ 'bolaoDetalhes.acumulaChip' | translate }}
                           </span>
                         }
                       </div>
@@ -312,7 +307,7 @@ const TIPO_CHIP: Record<CategoriaTipo, string> = {
                   </div>
                   @if (c.valorAcumuladoAnterior > 0) {
                     <div class="text-[11px] text-amber-600 mt-1">
-                      + {{ c.valorAcumuladoAnterior | currency:'BRL':'symbol':'1.2-2' }} acumulado de bolão anterior
+                      {{ 'bolaoDetalhes.acumuladoBolaoAnterior' | translate:{ v: (c.valorAcumuladoAnterior | currency:'BRL':'symbol':'1.2-2') } }}
                     </div>
                   }
                 </div>
@@ -324,11 +319,11 @@ const TIPO_CHIP: Record<CategoriaTipo, string> = {
               <thead class="bg-slate-50">
                 <tr>
                   <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-5 py-2.5 w-12">#</th>
-                  <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-3 py-2.5">Categoria</th>
-                  <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-3 py-2.5">Tipo</th>
-                  <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-3 py-2.5">Detalhe</th>
-                  <th class="text-right text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-3 py-2.5">Percentual</th>
-                  <th class="text-right text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-5 py-2.5">Valor estimado</th>
+                  <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-3 py-2.5">{{ 'bolaoDetalhes.thCategory' | translate }}</th>
+                  <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-3 py-2.5">{{ 'bolaoDetalhes.thType' | translate }}</th>
+                  <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-3 py-2.5">{{ 'bolaoDetalhes.thDetail' | translate }}</th>
+                  <th class="text-right text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-3 py-2.5">{{ 'bolaoDetalhes.thPercent' | translate }}</th>
+                  <th class="text-right text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-5 py-2.5">{{ 'bolaoDetalhes.thEstimated' | translate }}</th>
                 </tr>
               </thead>
               <tbody>
@@ -340,7 +335,7 @@ const TIPO_CHIP: Record<CategoriaTipo, string> = {
                         <span class="font-semibold">{{ c.nome }}</span>
                         @if (c.acumulaSemGanhador) {
                           <span class="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-gold-50 text-gold-700"
-                                title="Acumula para o próximo bolão se não houver ganhador">↻</span>
+                                [title]="'bolaoDetalhes.acumulaTitle' | translate">↻</span>
                         }
                       </div>
                     </td>
@@ -350,7 +345,7 @@ const TIPO_CHIP: Record<CategoriaTipo, string> = {
                       </span>
                     </td>
                     <td class="px-3 py-3 text-slate-500 text-[12.5px]">
-                      {{ categoriaDetalhe(c) || '—' }}
+                      {{ categoriaDetalhe(c) || ('bolaoDetalhes.dash' | translate) }}
                     </td>
                     <td class="px-3 py-3 text-right font-display font-semibold tabular text-green-700">
                       {{ c.percentual | number:'1.0-2' }}%
@@ -358,7 +353,7 @@ const TIPO_CHIP: Record<CategoriaTipo, string> = {
                     <td class="px-5 py-3 text-right tabular">
                       <div class="font-semibold">{{ valorEstimado(c, d.valorBruto) | currency:'BRL':'symbol':'1.0-0' }}</div>
                       @if (c.valorAcumuladoAnterior > 0) {
-                        <div class="text-[11px] text-amber-600">+ {{ c.valorAcumuladoAnterior | currency:'BRL':'symbol':'1.2-2' }} acum.</div>
+                        <div class="text-[11px] text-amber-600">{{ 'bolaoDetalhes.acumShort' | translate:{ v: (c.valorAcumuladoAnterior | currency:'BRL':'symbol':'1.2-2') } }}</div>
                       }
                     </td>
                   </tr>
@@ -366,7 +361,7 @@ const TIPO_CHIP: Record<CategoriaTipo, string> = {
               </tbody>
               <tfoot class="bg-slate-50">
                 <tr>
-                  <td colspan="4" class="px-5 py-2.5 text-[11.5px] font-semibold text-slate-500 uppercase tracking-widest">Total</td>
+                  <td colspan="4" class="px-5 py-2.5 text-[11.5px] font-semibold text-slate-500 uppercase tracking-widest">{{ 'bolaoDetalhes.totalRow' | translate }}</td>
                   <td class="px-3 py-2.5 text-right font-display font-semibold tabular text-slate-700">
                     {{ totalPercentual(d.categorias) | number:'1.0-2' }}%
                   </td>
@@ -385,6 +380,7 @@ const TIPO_CHIP: Record<CategoriaTipo, string> = {
 export class BolaoDetalhesComponent implements OnInit {
   readonly id  = input<string>('');
   private readonly api = inject(ApiService);
+  private readonly translate = inject(TranslateService);
 
   loading = signal(true);
   error   = signal('');
@@ -405,7 +401,7 @@ export class BolaoDetalhesComponent implements OnInit {
       const d = await firstValueFrom(this.api.get<DashboardData>(`/boloes/${this.id()}/dashboard`));
       this.data.set(d);
     } catch {
-      this.error.set('Erro ao carregar detalhes do bolão.');
+      this.error.set(this.translate.instant('errors.loadDetails'));
     } finally {
       this.loading.set(false);
     }
@@ -415,11 +411,9 @@ export class BolaoDetalhesComponent implements OnInit {
   barH(d: DashboardData, acc: number): number { const max = Math.max(...d.distribuicaoAcertos.map(x => x.quantidade), 1); return (this.qtd(d, acc) / max) * 100; }
   firstName(nome: string): string { return nome.split(' ').slice(0, 2).join(' '); }
   pad(n: number): string { return String(n).padStart(2, '0'); }
-  statusLabel(s: string): string {
-    return ({ EM_ANDAMENTO: 'Em andamento', A_SER_INICIADO: 'A iniciar', FINALIZADO: 'Finalizado' } as Record<string, string>)[s] ?? s;
+  tipoLabel(t: CategoriaTipo): string {
+    return this.translate.instant(`bolaoDetalhes.tipo.${t}`);
   }
-
-  tipoLabel(t: CategoriaTipo): string { return TIPO_LABELS[t]; }
   chipClass(t: CategoriaTipo): string { return TIPO_CHIP[t]; }
 
   /**
@@ -427,17 +421,18 @@ export class BolaoDetalhesComponent implements OnInit {
    * Retorna string vazia quando o tipo não tem detalhe específico.
    */
   categoriaDetalhe(c: CategoriaItem): string {
+    const t = this.translate;
     switch (c.tipo) {
       case 'ACERTOS_EXATOS':
-        return c.acertosAlvo != null ? `${c.acertosAlvo} acertos` : '';
+        return c.acertosAlvo != null ? t.instant('bolaoDetalhes.catDetalhe.acertos', { n: c.acertosAlvo }) : '';
       case 'MAIOR_PONTUACAO_SORTEIO':
-        return c.sorteioReferencia != null ? `${c.sorteioReferencia}º sorteio` : '';
+        return c.sorteioReferencia != null ? t.instant('bolaoDetalhes.catDetalhe.sorteio', { n: c.sorteioReferencia }) : '';
       case 'MAIOR_PONTUACAO_GERAL':
-        return 'maior acumulado geral';
+        return t.instant('bolaoDetalhes.catDetalhe.maiorGeral');
       case 'MENOR_PONTUACAO_GERAL':
-        return 'menor acumulado geral';
+        return t.instant('bolaoDetalhes.catDetalhe.menorGeral');
       case 'TAXA_ADMINISTRATIVA':
-        return 'retida pela administração';
+        return t.instant('bolaoDetalhes.catDetalhe.taxa');
       default:
         return '';
     }

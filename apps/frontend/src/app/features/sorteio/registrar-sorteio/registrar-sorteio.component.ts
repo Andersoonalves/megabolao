@@ -4,6 +4,7 @@ import {
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { ApiService } from '../../../core/services/api.service';
 import { BackButtonComponent } from '../../../shared/components/back-button/back-button.component';
 
@@ -23,30 +24,29 @@ interface RegistroResult {
 @Component({
   selector: 'nb-registrar-sorteio',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [BackButtonComponent, FormsModule],
+  imports: [BackButtonComponent, FormsModule, TranslatePipe],
   template: `
     <!-- Topbar -->
     <div class="bg-white border-b border-slate-200 px-4 lg:px-7 py-3 flex items-center gap-3 sticky top-14 lg:top-0 z-10">
       <nb-back-button />
       <div class="flex items-center gap-2 text-[12.5px]">
-        <span class="text-slate-400">Sorteios</span>
+        <span class="text-slate-400">{{ 'registrarSorteio.breadcrumb' | translate }}</span>
         <span class="text-slate-300">›</span>
-        <span class="font-semibold">Registrar resultado</span>
+        <span class="font-semibold">{{ 'registrarSorteio.breadcrumbAction' | translate }}</span>
       </div>
       <button (click)="submit()"
               [disabled]="!valido() || loading()"
               class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-800 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-[10px] transition-colors shadow-sm">
-        {{ loading() ? 'Registrando...' : '✓ Registrar e calcular acertos' }}
+        {{ loading() ? ('registrarSorteio.submitting' | translate) : ('registrarSorteio.submit' | translate) }}
       </button>
     </div>
 
     <!-- Page -->
     <div class="p-4 lg:p-7 max-w-[1100px]">
       <div class="mb-6">
-        <h1 class="font-display text-[26px] font-semibold tracking-tight mb-1">Registrar resultado Mega-Sena</h1>
+        <h1 class="font-display text-[26px] font-semibold tracking-tight mb-1">{{ 'registrarSorteio.title' | translate }}</h1>
         <p class="text-slate-500 text-[13.5px]">
-          O resultado será aplicado a <strong>todos os bolões em andamento</strong>.
-          O cálculo de acertos ocorre em segundo plano via BullMQ.
+          {{ 'registrarSorteio.subtitle1' | translate }}<strong>{{ 'registrarSorteio.subtitleBold' | translate }}</strong>{{ 'registrarSorteio.subtitle2' | translate }}
         </p>
       </div>
 
@@ -60,8 +60,8 @@ interface RegistroResult {
         <div class="mb-5 p-3.5 bg-green-50 border border-green-200 rounded-xl text-sm text-green-800 flex flex-col gap-1">
           <div class="flex items-center gap-2">
             <span>✓</span>
-            <strong>Concurso {{ ultimoConcurso() }} registrado!</strong>
-            Job de cálculo disparado para {{ ultimosBoloes() }} bolão(s).
+            <strong>{{ 'registrarSorteio.successTitle' | translate:{ n: ultimoConcurso() } }}</strong>
+            {{ 'registrarSorteio.successJob' | translate:{ b: ultimosBoloes() } }}
           </div>
         </div>
       }
@@ -71,26 +71,26 @@ interface RegistroResult {
         <!-- Formulário -->
         <div class="bg-white border border-slate-200 rounded-lg">
           <div class="px-5 py-4 border-b border-slate-200">
-            <h3 class="font-display font-semibold text-[15px]">Dados do concurso</h3>
+            <h3 class="font-display font-semibold text-[15px]">{{ 'registrarSorteio.cardTitle' | translate }}</h3>
           </div>
 
           <div class="p-5">
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
               <div>
                 <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">
-                  Número do concurso <span class="text-red-500">*</span>
+                  {{ 'registrarSorteio.numConcurso' | translate }} <span class="text-red-500">*</span>
                 </label>
                 <input [ngModel]="numeroConcurso()" (ngModelChange)="numeroConcurso.set(+$event)"
                        name="concurso" type="number" inputmode="numeric" min="1"
                        class="w-full px-3 py-2.5 border rounded-[10px] text-sm font-mono focus:outline-none tabular"
                        [class]="numeroConcurso() > 0 ? 'border-slate-200 focus:border-green-700' : 'border-red-300 bg-red-50'"
-                       placeholder="Ex: 3001" />
+                       [placeholder]="'registrarSorteio.numPh' | translate" />
                 @if (numeroConcurso() === 0) {
-                  <p class="text-[11px] text-red-600 mt-1">⚠ Informe o número do concurso</p>
+                  <p class="text-[11px] text-red-600 mt-1">{{ 'registrarSorteio.numRequired' | translate }}</p>
                 }
               </div>
               <div>
-                <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">Data do sorteio</label>
+                <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">{{ 'registrarSorteio.dataSorteio' | translate }}</label>
                 <input [ngModel]="dataSorteio()" (ngModelChange)="dataSorteio.set($event)"
                        name="data" type="date"
                        class="w-full px-3 py-2.5 border border-slate-200 rounded-[10px] text-sm focus:outline-none focus:border-green-700" />
@@ -100,7 +100,7 @@ interface RegistroResult {
             <!-- Picker bolas -->
             <div class="flex items-center justify-between mb-3">
               <label class="text-xs font-semibold text-slate-500 tracking-wide">
-                Bolas sorteadas · selecione 6 números
+                {{ 'registrarSorteio.bolasLabel' | translate }}
               </label>
               <span class="font-mono text-[12px]"
                     [class]="bolasSelected().length === 6 ? 'text-green-700 font-bold' : 'text-slate-400'">
@@ -124,7 +124,7 @@ interface RegistroResult {
               <div>
                 <div class="text-[12px] font-semibold mb-2"
                      [class]="bolasSelected().length === 6 ? 'text-green-900' : 'text-slate-500'">
-                  {{ bolasSelected().length === 6 ? 'Bolas em ordem crescente' : 'Selecione as 6 bolas' }}
+                  {{ bolasSelected().length === 6 ? ('registrarSorteio.ballsOrdered' | translate) : ('registrarSorteio.ballsPickSix' | translate) }}
                 </div>
                 <div class="flex gap-2 flex-wrap">
                   @if (bolasSelected().length > 0) {
@@ -134,7 +134,7 @@ interface RegistroResult {
                       </span>
                     }
                   } @else {
-                    <span class="text-slate-400 text-[12px]">nenhuma selecionada</span>
+                    <span class="text-slate-400 text-[12px]">{{ 'registrarSorteio.noneSelected' | translate }}</span>
                   }
                 </div>
               </div>
@@ -151,7 +151,7 @@ interface RegistroResult {
           <!-- Concursos recentes -->
           <div class="bg-white border border-slate-200 rounded-lg">
             <div class="px-4 py-3.5 border-b border-slate-200">
-              <h3 class="font-display font-semibold text-[14px]">Concursos recentes</h3>
+              <h3 class="font-display font-semibold text-[14px]">{{ 'registrarSorteio.recentTitle' | translate }}</h3>
             </div>
             <div class="p-4 flex flex-col gap-3">
               @if (loadingRecentes()) {
@@ -162,7 +162,7 @@ interface RegistroResult {
                   </div>
                 }
               } @else if (recentes().length === 0) {
-                <p class="text-slate-400 text-[12.5px] text-center py-3">Nenhum sorteio registrado.</p>
+                <p class="text-slate-400 text-[12.5px] text-center py-3">{{ 'registrarSorteio.recentEmpty' | translate }}</p>
               } @else {
                 @for (s of recentes(); track s.id) {
                   <div class="p-3 border border-slate-200 rounded-[10px]">
@@ -178,9 +178,9 @@ interface RegistroResult {
                       }
                     </div>
                     @if (s.processado) {
-                      <div class="mt-2 text-[10.5px] text-green-700 font-semibold">✓ Acertos calculados</div>
+                      <div class="mt-2 text-[10.5px] text-green-700 font-semibold">{{ 'registrarSorteio.processedOk' | translate }}</div>
                     } @else {
-                      <div class="mt-2 text-[10.5px] text-amber-600 font-semibold">⟳ Processando...</div>
+                      <div class="mt-2 text-[10.5px] text-amber-600 font-semibold">{{ 'registrarSorteio.processing' | translate }}</div>
                     }
                   </div>
                 }
@@ -191,7 +191,7 @@ interface RegistroResult {
           <div class="p-3.5 bg-amber-50 border border-amber-100 rounded-lg flex gap-2.5">
             <span class="text-amber-600 flex-shrink-0 text-sm mt-0.5">⚡</span>
             <p class="text-[12px] text-amber-800 leading-relaxed">
-              <strong>Encerramento automático:</strong> se alguma cota atingir 10 acertos acumulados, o bolão é finalizado e os prêmios calculados.
+              <strong>{{ 'registrarSorteio.tipTitle' | translate }}</strong> {{ 'registrarSorteio.tipBody' | translate }}
             </p>
           </div>
         </aside>
@@ -202,6 +202,7 @@ interface RegistroResult {
 export class RegistrarSorteioComponent implements OnInit {
   private readonly api    = inject(ApiService);
   private readonly router = inject(Router);
+  private readonly translate = inject(TranslateService);
 
   numeroConcurso = signal(0);
   dataSorteio    = signal(new Date().toISOString().split('T')[0]);
@@ -265,7 +266,7 @@ export class RegistrarSorteioComponent implements OnInit {
       await this.loadRecentes();
     } catch (err: unknown) {
       const msg = (err as { error?: { message?: string } })?.error?.message
-        ?? 'Erro ao registrar sorteio.';
+        ?? this.translate.instant('errors.registerDraw');
       this.error.set(msg);
     } finally {
       this.loading.set(false);
@@ -274,7 +275,8 @@ export class RegistrarSorteioComponent implements OnInit {
 
   pad(n: number): string { return String(n).padStart(2, '0'); }
   fmtDate(iso: string): string {
-    try { return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }); }
+    const loc = this.translate.currentLang?.startsWith('en') ? 'en-US' : 'pt-BR';
+    try { return new Date(iso).toLocaleDateString(loc, { day: '2-digit', month: 'short' }); }
     catch { return iso; }
   }
 }

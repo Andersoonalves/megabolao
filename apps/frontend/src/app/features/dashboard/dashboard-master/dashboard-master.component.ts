@@ -1,26 +1,11 @@
 import {
   Component, signal, computed, OnInit, ChangeDetectionStrategy, inject,
-  Pipe, PipeTransform,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { ApiService } from '../../../core/services/api.service';
-
-// ── Pipes ─────────────────────────────────────────────────────────────────────
-
-@Pipe({ name: 'mNum', standalone: true, pure: true })
-export class MNumPipe implements PipeTransform {
-  transform(n: number): string { return n.toLocaleString('pt-BR'); }
-}
-
-@Pipe({ name: 'mBrl', standalone: true, pure: true })
-export class MBrlPipe implements PipeTransform {
-  transform(n: number): string {
-    if (n >= 1_000_000) return `R$ ${(n / 1_000_000).toFixed(1)}M`;
-    if (n >= 1_000)     return `R$ ${(n / 1_000).toFixed(0)}k`;
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(n);
-  }
-}
+import { BrlPipe, LocalNumPipe } from '../../../shared/pipes/locale-pipes';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -66,24 +51,24 @@ const STATIC_STATS: Record<string, Omit<TenantDisplay, keyof TenantResponse>> = 
 @Component({
   selector: 'nb-dashboard-master',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, MNumPipe, MBrlPipe],
+  imports: [RouterLink, LocalNumPipe, BrlPipe, TranslatePipe],
   template: `
     <!-- Topbar -->
     <div class="bg-white border-b border-slate-200 px-4 lg:px-7 py-3 flex items-center justify-between gap-4 sticky top-14 lg:top-0 z-10">
       <div class="hidden sm:flex items-center gap-2 text-[12.5px]">
-        <span class="text-slate-400">Plataforma</span>
+        <span class="text-slate-400">{{ 'dashboardMaster.breadcrumb' | translate }}</span>
         <span class="text-slate-300">›</span>
-        <span class="font-semibold">Visão geral</span>
+        <span class="font-semibold">{{ 'dashboardMaster.overview' | translate }}</span>
       </div>
-      <span class="font-display font-semibold text-[14px] sm:hidden">Plataforma</span>
+      <span class="font-display font-semibold text-[14px] sm:hidden">{{ 'dashboardMaster.breadcrumb' | translate }}</span>
       <div class="flex gap-2">
         <a routerLink="/tenants"
            class="inline-flex items-center px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-sm font-semibold rounded-[10px] no-underline text-slate-700 transition-colors min-h-9 hidden sm:inline-flex">
-          Ver todos
+          {{ 'dashboardMaster.viewAll' | translate }}
         </a>
         <a routerLink="/tenants/novo"
            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-800 text-white text-sm font-semibold rounded-[10px] no-underline transition-colors shadow-sm min-h-9">
-          + Novo tenant
+          {{ 'dashboardMaster.newTenant' | translate }}
         </a>
       </div>
     </div>
@@ -91,45 +76,43 @@ const STATIC_STATS: Record<string, Omit<TenantDisplay, keyof TenantResponse>> = 
     <!-- Page -->
     <div class="p-4 lg:p-7">
       <div class="mb-6">
-        <h1 class="font-display text-2xl lg:text-[26px] font-semibold tracking-tight mb-1">Visão geral da plataforma</h1>
+        <h1 class="font-display text-2xl lg:text-[26px] font-semibold tracking-tight mb-1">{{ 'dashboardMaster.title' | translate }}</h1>
         <p class="text-slate-500 text-[13.5px]">
-          {{ tenants().length }} tenants ·
-          {{ ativosCount() }} ativos ·
-          última atualização há 2 min
+          {{ 'dashboardMaster.subtitle' | translate: { n: tenants().length, a: ativosCount() } }}
         </p>
       </div>
 
       <!-- KPIs -->
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
         <div class="bg-white border border-slate-200 rounded-lg p-[18px]">
-          <div class="text-[11.5px] font-semibold text-slate-500 uppercase tracking-widest">Tenants ativos</div>
+          <div class="text-[11.5px] font-semibold text-slate-500 uppercase tracking-widest">{{ 'dashboardMaster.kpiTenants' | translate }}</div>
           <div class="font-display text-[28px] font-semibold tracking-tight mt-1 tabular">{{ ativosCount() }}</div>
-          <div class="text-xs text-green-700 mt-0.5">↑ +1 este mês</div>
+          <div class="text-xs text-green-700 mt-0.5">{{ 'dashboardMaster.kpiGrowth' | translate }}</div>
         </div>
         <div class="bg-white border border-slate-200 rounded-lg p-[18px]">
-          <div class="text-[11.5px] font-semibold text-slate-500 uppercase tracking-widest">Bolões ativos</div>
+          <div class="text-[11.5px] font-semibold text-slate-500 uppercase tracking-widest">{{ 'dashboardMaster.kpiPools' | translate }}</div>
           <div class="font-display text-[28px] font-semibold tracking-tight mt-1 tabular">{{ totalBoloes() }}</div>
         </div>
         <div class="bg-white border border-slate-200 rounded-lg p-[18px]">
-          <div class="text-[11.5px] font-semibold text-slate-500 uppercase tracking-widest">Cotas pagas (rede)</div>
-          <div class="font-display text-[28px] font-semibold tracking-tight mt-1 tabular text-blue-600">{{ totalCotas() | mNum }}</div>
+          <div class="text-[11.5px] font-semibold text-slate-500 uppercase tracking-widest">{{ 'dashboardMaster.kpiQuotas' | translate }}</div>
+          <div class="font-display text-[28px] font-semibold tracking-tight mt-1 tabular text-blue-600">{{ totalCotas() | localNum }}</div>
         </div>
         <div class="bg-white border border-slate-200 rounded-lg p-[18px]">
-          <div class="text-[11.5px] font-semibold text-slate-500 uppercase tracking-widest">Arrecadação total</div>
-          <div class="font-display text-[28px] font-semibold tracking-tight mt-1 tabular text-green-700">{{ totalArrec() | mBrl }}</div>
+          <div class="text-[11.5px] font-semibold text-slate-500 uppercase tracking-widest">{{ 'dashboardMaster.kpiRevenue' | translate }}</div>
+          <div class="font-display text-[28px] font-semibold tracking-tight mt-1 tabular text-green-700">{{ totalArrec() | brl:'compact' }}</div>
         </div>
       </div>
 
       <!-- Tenants table -->
       <div class="bg-white border border-slate-200 rounded-lg overflow-hidden mb-5">
         <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between gap-3 flex-wrap">
-          <h3 class="font-display font-semibold text-[15px]">Tenants</h3>
+          <h3 class="font-display font-semibold text-[15px]">{{ 'dashboardMaster.sectionTenants' | translate }}</h3>
           <div class="flex gap-2">
-            <button class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-[12.5px] font-semibold rounded-[10px] text-slate-700 transition-colors">
-              Filtrar
+            <button type="button" class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-[12.5px] font-semibold rounded-[10px] text-slate-700 transition-colors">
+              {{ 'dashboardMaster.filter' | translate }}
             </button>
-            <button class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-[12.5px] font-semibold rounded-[10px] text-slate-700 transition-colors">
-              ↓ Exportar
+            <button type="button" class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-[12.5px] font-semibold rounded-[10px] text-slate-700 transition-colors">
+              {{ 'dashboardMaster.export' | translate }}
             </button>
           </div>
         </div>
@@ -142,13 +125,13 @@ const STATIC_STATS: Record<string, Omit<TenantDisplay, keyof TenantResponse>> = 
           <table class="w-full text-[13.5px]">
             <thead class="bg-slate-50">
               <tr>
-                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5 min-w-[200px]">Empresa</th>
-                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5 hidden md:table-cell">Slug</th>
-                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">Status</th>
-                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5 hidden lg:table-cell">Bolões</th>
-                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5 hidden lg:table-cell">Cotas</th>
-                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5 hidden sm:table-cell">Arrecadação</th>
-                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5 hidden xl:table-cell">Admins</th>
+                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5 min-w-[200px]">{{ 'dashboardMaster.thCompany' | translate }}</th>
+                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5 hidden md:table-cell">{{ 'dashboardMaster.thSlug' | translate }}</th>
+                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">{{ 'dashboardMaster.thStatus' | translate }}</th>
+                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5 hidden lg:table-cell">{{ 'dashboardMaster.thPools' | translate }}</th>
+                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5 hidden lg:table-cell">{{ 'dashboardMaster.thQuotas' | translate }}</th>
+                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5 hidden sm:table-cell">{{ 'dashboardMaster.thRevenue' | translate }}</th>
+                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5 hidden xl:table-cell">{{ 'dashboardMaster.thAdmins' | translate }}</th>
                 <th class="px-4 py-2.5 w-24"></th>
               </tr>
             </thead>
@@ -170,8 +153,8 @@ const STATIC_STATS: Record<string, Omit<TenantDisplay, keyof TenantResponse>> = 
               } @else if (tenants().length === 0) {
                 <tr>
                   <td colspan="8" class="px-4 py-12 text-center text-slate-400 text-sm">
-                    Nenhum tenant cadastrado.
-                    <a routerLink="/tenants" class="text-green-700 font-semibold ml-1 no-underline">Criar primeiro tenant →</a>
+                    {{ 'dashboardMaster.emptyTenants' | translate }}
+                    <a routerLink="/tenants" class="text-green-700 font-semibold ml-1 no-underline">{{ 'dashboardMaster.createFirstTenant' | translate }}</a>
                   </td>
                 </tr>
               } @else {
@@ -200,7 +183,7 @@ const STATIC_STATS: Record<string, Omit<TenantDisplay, keyof TenantResponse>> = 
                       <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold tracking-wide uppercase border"
                             [class]="statusClass(t.status)">
                         <span class="w-1.5 h-1.5 rounded-full bg-current"></span>
-                        {{ t.status }}
+                        {{ tenantStatusKey(t.status) | translate }}
                       </span>
                     </td>
 
@@ -208,11 +191,11 @@ const STATIC_STATS: Record<string, Omit<TenantDisplay, keyof TenantResponse>> = 
                     <td class="px-4 py-3 tabular text-center hidden lg:table-cell">{{ stats(t).boloes }}</td>
 
                     <!-- Cotas -->
-                    <td class="px-4 py-3 tabular hidden lg:table-cell">{{ stats(t).cotas | mNum }}</td>
+                    <td class="px-4 py-3 tabular hidden lg:table-cell">{{ stats(t).cotas | localNum }}</td>
 
                     <!-- Arrecadação -->
                     <td class="px-4 py-3 font-mono font-semibold tabular text-[13px] hidden sm:table-cell">
-                      {{ stats(t).arrec | mBrl }}
+                      {{ stats(t).arrec | brl:'compact' }}
                     </td>
 
                     <!-- Admins -->
@@ -221,8 +204,8 @@ const STATIC_STATS: Record<string, Omit<TenantDisplay, keyof TenantResponse>> = 
                     <!-- Actions -->
                     <td class="px-4 py-3">
                       <div class="flex gap-1 justify-end">
-                        <button class="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-green-700 hover:bg-green-50 rounded-lg transition-colors text-sm" title="Ver detalhes">👁</button>
-                        <button class="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors text-sm" title="Mais opções">⋯</button>
+                        <button type="button" class="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-green-700 hover:bg-green-50 rounded-lg transition-colors text-sm" [attr.title]="'dashboardMaster.titleDetails' | translate">👁</button>
+                        <button type="button" class="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors text-sm" [attr.title]="'dashboardMaster.titleMore' | translate">⋯</button>
                       </div>
                     </td>
                   </tr>
@@ -234,7 +217,7 @@ const STATIC_STATS: Record<string, Omit<TenantDisplay, keyof TenantResponse>> = 
 
         @if (!loading() && tenants().length > 0) {
           <div class="px-5 py-3 border-t border-slate-100 text-xs text-slate-400">
-            {{ tenants().length }} tenants exibidos
+            {{ 'dashboardMaster.tenantsShown' | translate: { n: tenants().length } }}
           </div>
         }
       </div>
@@ -245,17 +228,17 @@ const STATIC_STATS: Record<string, Omit<TenantDisplay, keyof TenantResponse>> = 
         <!-- Atividade recente -->
         <div class="bg-white border border-slate-200 rounded-lg">
           <div class="px-5 py-4 border-b border-slate-200">
-            <h3 class="font-display font-semibold text-[15px]">Atividade recente</h3>
+            <h3 class="font-display font-semibold text-[15px]">{{ 'dashboardMaster.activity' | translate }}</h3>
           </div>
           <div>
-            @for (a of atividades; track a.what) {
+            @for (a of atividades; track a.whatKey) {
               <div class="flex items-start gap-3 px-5 py-3.5 border-b border-slate-100 last:border-0">
                 <div class="w-8 h-8 rounded-[8px] bg-slate-100 text-slate-600 flex items-center justify-center text-sm flex-shrink-0 mt-0.5">
                   {{ a.icon }}
                 </div>
                 <div class="flex-1 min-w-0">
-                  <div class="text-[13px] font-semibold">{{ a.what }}</div>
-                  <div class="text-[11.5px] text-slate-400">{{ a.who }} · {{ a.when }}</div>
+                  <div class="text-[13px] font-semibold">{{ a.whatKey | translate }}</div>
+                  <div class="text-[11.5px] text-slate-400">{{ a.whoKey | translate }} · {{ a.whenKey | translate }}</div>
                 </div>
               </div>
             }
@@ -265,19 +248,19 @@ const STATIC_STATS: Record<string, Omit<TenantDisplay, keyof TenantResponse>> = 
         <!-- Saúde do sistema -->
         <div class="bg-white border border-slate-200 rounded-lg">
           <div class="px-5 py-4 border-b border-slate-200">
-            <h3 class="font-display font-semibold text-[15px]">Saúde do sistema</h3>
+            <h3 class="font-display font-semibold text-[15px]">{{ 'dashboardMaster.health' | translate }}</h3>
           </div>
           <div class="p-5 flex flex-col gap-4">
-            @for (h of saude; track h.label) {
+            @for (h of saude; track h.labelKey) {
               <div class="flex items-center justify-between">
                 <div>
-                  <div class="text-[13px] font-semibold">{{ h.label }}</div>
-                  <div class="text-[11.5px] text-slate-400 mt-0.5">{{ h.detalhe }}</div>
+                  <div class="text-[13px] font-semibold">{{ h.labelKey | translate }}</div>
+                  <div class="text-[11.5px] text-slate-400 mt-0.5">{{ h.detalheKey | translate }}</div>
                 </div>
                 <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold tracking-wide uppercase border"
                       [class]="h.ok ? 'bg-green-50 text-green-800 border-green-200' : 'bg-amber-50 text-amber-700 border-amber-100'">
                   <span class="w-1.5 h-1.5 rounded-full bg-current"></span>
-                  {{ h.status }}
+                  {{ h.statusKey | translate }}
                 </span>
               </div>
             }
@@ -289,6 +272,7 @@ const STATIC_STATS: Record<string, Omit<TenantDisplay, keyof TenantResponse>> = 
 })
 export class DashboardMasterComponent implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly translate = inject(TranslateService);
 
   // ── State ──────────────────────────────────────────────────────────────────
   tenants = signal<TenantDisplay[]>([]);
@@ -303,19 +287,19 @@ export class DashboardMasterComponent implements OnInit {
 
   // ── Static data ────────────────────────────────────────────────────────────
   atividades = [
-    { icon: '✦', who: 'Bolão CG',        what: 'Sorteio #2994 registrado',             when: 'há 12 min' },
-    { icon: '+', who: 'Sorte Total RJ',   what: 'Novo bolão criado · 4 categorias',    when: 'há 1h' },
-    { icon: '🏆', who: 'Bolão CG',        what: '22 prêmios calculados · R$ 27.732',   when: 'há 2h' },
-    { icon: '💬', who: 'Loteria do João', what: 'WhatsApp reconectado',                when: 'ontem' },
-    { icon: '⏸', who: 'Mega Vizinhos',   what: 'Tenant suspenso',                     when: 'ontem' },
+    { icon: '✦', whoKey: 'dashboardMaster.act1Who', whatKey: 'dashboardMaster.act1What', whenKey: 'dashboardMaster.act1When' },
+    { icon: '+', whoKey: 'dashboardMaster.act2Who', whatKey: 'dashboardMaster.act2What', whenKey: 'dashboardMaster.act2When' },
+    { icon: '🏆', whoKey: 'dashboardMaster.act3Who', whatKey: 'dashboardMaster.act3What', whenKey: 'dashboardMaster.act3When' },
+    { icon: '💬', whoKey: 'dashboardMaster.act4Who', whatKey: 'dashboardMaster.act4What', whenKey: 'dashboardMaster.act4When' },
+    { icon: '⏸', whoKey: 'dashboardMaster.act5Who', whatKey: 'dashboardMaster.act5What', whenKey: 'dashboardMaster.act5When' },
   ];
 
   saude = [
-    { label: 'Supabase PostgreSQL',  detalhe: '12ms p95',                      status: 'OPERACIONAL', ok: true  },
-    { label: 'Supabase Auth',        detalhe: '0 falhas',                       status: 'OPERACIONAL', ok: true  },
-    { label: 'BullMQ workers',       detalhe: '3 jobs/min · Redis Upstash',     status: 'OPERACIONAL', ok: true  },
-    { label: 'WhatsApp sessões',     detalhe: 'Mega Vizinhos desconectado',     status: '3 / 4',       ok: false },
-    { label: 'Cobertura de testes',  detalhe: 'BolaoService 91%',               status: '84,2%',       ok: true  },
+    { labelKey: 'dashboardMaster.health1Label', detalheKey: 'dashboardMaster.health1Detail', statusKey: 'dashboardMaster.health1Status', ok: true },
+    { labelKey: 'dashboardMaster.health2Label', detalheKey: 'dashboardMaster.health2Detail', statusKey: 'dashboardMaster.health2Status', ok: true },
+    { labelKey: 'dashboardMaster.health3Label', detalheKey: 'dashboardMaster.health3Detail', statusKey: 'dashboardMaster.health3Status', ok: true },
+    { labelKey: 'dashboardMaster.health4Label', detalheKey: 'dashboardMaster.health4Detail', statusKey: 'dashboardMaster.health4Status', ok: false },
+    { labelKey: 'dashboardMaster.health5Label', detalheKey: 'dashboardMaster.health5Detail', statusKey: 'dashboardMaster.health5Status', ok: true },
   ];
 
   // ── Lifecycle ──────────────────────────────────────────────────────────────
@@ -332,7 +316,7 @@ export class DashboardMasterComponent implements OnInit {
       );
       this.tenants.set(res.data.map(t => this.enrich(t)));
     } catch {
-      this.error.set('Erro ao carregar tenants. Exibindo dados de demonstração.');
+      this.error.set(this.translate.instant('dashboardMaster.errLoadTenants'));
       // Fallback: dados estáticos do protótipo
       this.tenants.set(DEMO_TENANTS.map(t => this.enrich(t)));
     } finally {
@@ -358,6 +342,12 @@ export class DashboardMasterComponent implements OnInit {
     if (s === 'ATIVO')    return 'bg-green-50 text-green-800 border-green-200';
     if (s === 'SUSPENSO') return 'bg-amber-50 text-amber-700 border-amber-100';
     return 'bg-red-50 text-red-700 border-red-200';
+  }
+
+  tenantStatusKey(s: TenantResponse['status']): string {
+    if (s === 'ATIVO') return 'tenants.statusATIVO';
+    if (s === 'SUSPENSO') return 'tenants.statusSUSPENSO';
+    return 'tenants.statusINATIVO';
   }
 }
 

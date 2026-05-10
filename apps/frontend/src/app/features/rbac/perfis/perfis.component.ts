@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 import { CodigoPermissao, ModuloComPermissoes, Perfil } from '@nossobolao/shared-types';
 import { AuthService } from '../../../core/services/auth.service';
@@ -11,29 +12,29 @@ import { SePermissaoDirective } from '../../../shared/directives/se-permissao.di
 @Component({
   selector: 'nb-perfis',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, BackButtonComponent, SePermissaoDirective],
+  imports: [FormsModule, BackButtonComponent, SePermissaoDirective, TranslatePipe],
   template: `
     <!-- Topbar -->
     <div class="bg-white border-b border-slate-200 px-4 lg:px-7 py-3 flex items-center gap-3 sticky top-14 lg:top-0 z-10">
       <nb-back-button />
       <div class="hidden sm:flex items-center gap-2 text-[12.5px]">
-        <span class="text-slate-400">Sistema</span>
+        <span class="text-slate-400">{{ 'nav.section.system' | translate }}</span>
         <span class="text-slate-300">›</span>
-        <span class="font-semibold">Perfis &amp; Permissões</span>
+        <span class="font-semibold">{{ 'perfis.pageTitle' | translate }}</span>
       </div>
-      <span class="font-display font-semibold text-[14px] sm:hidden">Perfis</span>
+      <span class="font-display font-semibold text-[14px] sm:hidden">{{ 'perfis.topbarShort' | translate }}</span>
       <button *nbSe="'perfil.criar'" (click)="abrirModalCriar()"
               class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-800 text-white text-sm font-semibold rounded-[10px] transition-colors shadow-sm min-h-9">
-        + Novo perfil
+        {{ 'perfis.new' | translate }}
       </button>
     </div>
 
     <!-- Page -->
     <div class="p-4 lg:p-7">
       <div class="mb-5">
-        <h1 class="font-display text-2xl lg:text-[26px] font-semibold tracking-tight mb-1">Perfis &amp; Permissões</h1>
+        <h1 class="font-display text-2xl lg:text-[26px] font-semibold tracking-tight mb-1">{{ 'perfis.pageTitle' | translate }}</h1>
         <p class="text-slate-500 text-[13.5px]">
-          {{ perfis().length }} perfil(is) cadastrado(s) — perfis de sistema não podem ser excluídos.
+          {{ 'perfis.subtitle' | translate:{ n: perfis().length } }}
         </p>
       </div>
 
@@ -47,10 +48,10 @@ import { SePermissaoDirective } from '../../../shared/directives/se-permissao.di
           <table class="w-full text-[13.5px]">
             <thead class="bg-slate-50">
               <tr>
-                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-5 py-2.5">Perfil</th>
-                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">Permissões</th>
-                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">Usuários</th>
-                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">Status</th>
+                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-5 py-2.5">{{ 'perfis.thProfile' | translate }}</th>
+                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">{{ 'perfis.thPermissions' | translate }}</th>
+                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">{{ 'perfis.thUsers' | translate }}</th>
+                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">{{ 'perfis.thStatus' | translate }}</th>
                 <th class="px-4 py-2.5 w-32"></th>
               </tr>
             </thead>
@@ -63,7 +64,7 @@ import { SePermissaoDirective } from '../../../shared/directives/se-permissao.di
                 }
               } @else if (perfis().length === 0) {
                 <tr><td colspan="5" class="px-5 py-12 text-center text-slate-400 text-sm">
-                  Nenhum perfil cadastrado.
+                  {{ 'perfis.empty' | translate }}
                 </td></tr>
               } @else {
                 @for (p of perfis(); track p.id) {
@@ -72,7 +73,7 @@ import { SePermissaoDirective } from '../../../shared/directives/se-permissao.di
                       <div class="flex items-center gap-2">
                         <div class="font-semibold">{{ p.nome }}</div>
                         @if (p.sistema) {
-                          <span class="px-1.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-100 rounded text-[10px] font-semibold">SISTEMA</span>
+                          <span class="px-1.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-100 rounded text-[10px] font-semibold">{{ 'perfis.badgeSystem' | translate }}</span>
                         }
                       </div>
                       @if (p.descricao) {
@@ -83,21 +84,21 @@ import { SePermissaoDirective } from '../../../shared/directives/se-permissao.di
                     <td class="px-4 py-3 font-mono text-[12.5px]">{{ p.totalUsuarios ?? 0 }}</td>
                     <td class="px-4 py-3">
                       @if (p.ativo) {
-                        <span class="px-1.5 py-0.5 bg-green-50 text-green-700 border border-green-100 rounded text-[10px] font-semibold">ATIVO</span>
+                        <span class="px-1.5 py-0.5 bg-green-50 text-green-700 border border-green-100 rounded text-[10px] font-semibold">{{ 'perfis.badgeActive' | translate }}</span>
                       } @else {
-                        <span class="px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded text-[10px] font-semibold">INATIVO</span>
+                        <span class="px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded text-[10px] font-semibold">{{ 'perfis.badgeInactive' | translate }}</span>
                       }
                     </td>
                     <td class="px-4 py-3">
                       <div class="flex items-center gap-1">
                         <button *nbSe="'perfil.editar'" (click)="abrirModalEditar(p)"
                                 class="px-2.5 py-1.5 text-[12px] font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200">
-                          Editar
+                          {{ 'perfis.edit' | translate }}
                         </button>
                         @if (!p.sistema) {
                           <button *nbSe="'perfil.excluir'" (click)="confirmarExcluir(p)"
                                   class="px-2.5 py-1.5 text-[12px] font-semibold text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-red-100">
-                            Excluir
+                            {{ 'perfis.exclude' | translate }}
                           </button>
                         }
                       </div>
@@ -116,7 +117,7 @@ import { SePermissaoDirective } from '../../../shared/directives/se-permissao.di
               <div class="p-4"><div class="h-4 bg-slate-100 rounded animate-pulse w-3/4 mb-2"></div><div class="h-3 bg-slate-100 rounded animate-pulse w-1/2"></div></div>
             }
           } @else if (perfis().length === 0) {
-            <div class="p-8 text-center text-slate-400 text-sm">Nenhum perfil cadastrado.</div>
+            <div class="p-8 text-center text-slate-400 text-sm">{{ 'perfis.empty' | translate }}</div>
           } @else {
             @for (p of perfis(); track p.id) {
               <div class="p-4">
@@ -125,19 +126,19 @@ import { SePermissaoDirective } from '../../../shared/directives/se-permissao.di
                     <div class="flex items-center gap-2 flex-wrap">
                       <div class="font-semibold text-[13.5px]">{{ p.nome }}</div>
                       @if (p.sistema) {
-                        <span class="px-1.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-100 rounded text-[10px] font-semibold">SISTEMA</span>
+                        <span class="px-1.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-100 rounded text-[10px] font-semibold">{{ 'perfis.badgeSystem' | translate }}</span>
                       }
                       @if (!p.ativo) {
-                        <span class="px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded text-[10px] font-semibold">INATIVO</span>
+                        <span class="px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded text-[10px] font-semibold">{{ 'perfis.badgeInactive' | translate }}</span>
                       }
                     </div>
                     @if (p.descricao) {
                       <div class="text-slate-400 text-[12px] mt-0.5">{{ p.descricao }}</div>
                     }
                     <div class="mt-2 flex items-center gap-3 text-[11px] text-slate-500">
-                      <span>{{ p.permissoes.length }} permissão(ões)</span>
+                      <span>{{ 'perfis.permsCount' | translate:{ n: p.permissoes.length } }}</span>
                       <span>·</span>
-                      <span>{{ p.totalUsuarios ?? 0 }} usuário(s)</span>
+                      <span>{{ 'perfis.usersCount' | translate:{ n: p.totalUsuarios ?? 0 } }}</span>
                     </div>
                   </div>
                   <div class="flex gap-1 flex-shrink-0">
@@ -162,7 +163,7 @@ import { SePermissaoDirective } from '../../../shared/directives/se-permissao.di
       <div class="fixed right-0 top-0 h-full w-full sm:w-[560px] bg-white shadow-xl z-50 flex flex-col overflow-hidden">
         <div class="px-6 py-5 border-b border-slate-200 flex items-center justify-between flex-shrink-0">
           <h2 class="font-display font-semibold text-lg">
-            {{ editando() ? 'Editar perfil' : 'Novo perfil' }}
+            {{ editando() ? ('perfis.modalEdit' | translate) : ('perfis.modalNew' | translate) }}
           </h2>
           <button (click)="fecharModal()" class="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">✕</button>
         </div>
@@ -171,40 +172,40 @@ import { SePermissaoDirective } from '../../../shared/directives/se-permissao.di
 
           <!-- Nome -->
           <div>
-            <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">Nome *</label>
+            <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">{{ 'perfis.labelName' | translate }}</label>
             <input [ngModel]="fNome()" (ngModelChange)="fNome.set($event)"
                    [disabled]="editandoPerfilSistema()"
                    class="w-full px-3 py-2.5 border border-slate-200 rounded-[10px] text-sm focus:outline-none focus:border-green-700 disabled:bg-slate-50 disabled:text-slate-500"
-                   placeholder="Ex.: Financeiro" />
+                   [placeholder]="'perfis.namePh' | translate" />
             @if (editandoPerfilSistema()) {
-              <p class="text-[11px] text-slate-400 mt-1">Nome de perfil de sistema não pode ser alterado.</p>
+              <p class="text-[11px] text-slate-400 mt-1">{{ 'perfis.systemNameHint' | translate }}</p>
             }
           </div>
 
           <!-- Descrição -->
           <div>
-            <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">Descrição</label>
+            <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">{{ 'perfis.labelDesc' | translate }}</label>
             <textarea [ngModel]="fDescricao()" (ngModelChange)="fDescricao.set($event)"
                       rows="2"
                       class="w-full px-3 py-2.5 border border-slate-200 rounded-[10px] text-sm focus:outline-none focus:border-green-700 resize-none"
-                      placeholder="Para que serve este perfil?"></textarea>
+                      [placeholder]="'perfis.descPh' | translate"></textarea>
           </div>
 
           <!-- Prioridade + Ativo -->
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">Prioridade</label>
+              <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">{{ 'perfis.labelPriority' | translate }}</label>
               <input [ngModel]="fPrioridade()" (ngModelChange)="fPrioridade.set(+$event)"
                      type="number" min="0" max="999" inputmode="numeric"
                      class="w-full px-3 py-2.5 border border-slate-200 rounded-[10px] text-sm font-mono focus:outline-none focus:border-green-700" />
-              <p class="text-[11px] text-slate-400 mt-1">0–999, maior = mais privilegiado.</p>
+              <p class="text-[11px] text-slate-400 mt-1">{{ 'perfis.priorityHint' | translate }}</p>
             </div>
             <div>
-              <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">Status</label>
+              <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">{{ 'perfis.labelStatus' | translate }}</label>
               <label class="flex items-center gap-2 mt-2.5">
                 <input type="checkbox" [checked]="fAtivo()" (change)="fAtivo.set(!fAtivo())"
                        class="w-4 h-4 accent-green-700" />
-                <span class="text-sm">Ativo</span>
+                <span class="text-sm">{{ 'perfis.activeLabel' | translate }}</span>
               </label>
             </div>
           </div>
@@ -213,14 +214,14 @@ import { SePermissaoDirective } from '../../../shared/directives/se-permissao.di
           <div>
             <div class="flex items-center justify-between mb-2">
               <label class="block text-xs font-semibold text-slate-500 tracking-wide">
-                Permissões ({{ fPermissoes().size }})
+                {{ 'perfis.permsHeader' | translate:{ n: fPermissoes().size } }}
               </label>
               <div class="flex gap-1.5">
                 <button (click)="marcarTodas()"
-                        class="text-[11px] font-semibold text-green-700 hover:text-green-800">Marcar todas</button>
+                        class="text-[11px] font-semibold text-green-700 hover:text-green-800">{{ 'perfis.markAll' | translate }}</button>
                 <span class="text-slate-300 text-[11px]">·</span>
                 <button (click)="limparPermissoes()"
-                        class="text-[11px] font-semibold text-slate-500 hover:text-slate-700">Limpar</button>
+                        class="text-[11px] font-semibold text-slate-500 hover:text-slate-700">{{ 'perfis.clearPerms' | translate }}</button>
               </div>
             </div>
             @if (catalogoLoading()) {
@@ -236,7 +237,7 @@ import { SePermissaoDirective } from '../../../shared/directives/se-permissao.di
                       </div>
                       <button type="button" (click)="toggleModulo(mod, $event)"
                               class="text-[10.5px] font-semibold text-green-700 hover:text-green-800 px-1.5 py-0.5 rounded">
-                        {{ moduloMarcado(mod) ? 'Desmarcar' : 'Marcar' }}
+                        {{ moduloMarcado(mod) ? ('perfis.unmarkModule' | translate) : ('perfis.markModule' | translate) }}
                       </button>
                     </summary>
                     <div class="px-3 pb-3 pt-1 flex flex-col gap-1.5 border-t border-slate-200 bg-white">
@@ -257,7 +258,7 @@ import { SePermissaoDirective } from '../../../shared/directives/se-permissao.di
                             }
                             @if (!auth.temPermissao(perm.codigo) && !auth.isMaster()) {
                               <div class="text-[10.5px] text-orange-600 font-semibold mt-0.5">
-                                Você não possui esta permissão e não pode atribuí-la.
+                                {{ 'perfis.noPermToAssign' | translate }}
                               </div>
                             }
                           </div>
@@ -278,11 +279,11 @@ import { SePermissaoDirective } from '../../../shared/directives/se-permissao.di
         <div class="px-6 py-4 border-t border-slate-200 flex gap-2.5 flex-shrink-0">
           <button (click)="fecharModal()"
                   class="flex-1 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 font-semibold text-sm rounded-[10px] transition-colors">
-            Cancelar
+            {{ 'common.cancel' | translate }}
           </button>
           <button (click)="salvar()" [disabled]="!podeSubmit() || modalLoading()"
                   class="flex-1 py-2.5 bg-green-700 hover:bg-green-800 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold text-sm rounded-[10px] transition-colors shadow-sm">
-            {{ modalLoading() ? 'Salvando...' : editando() ? 'Salvar' : 'Criar' }}
+            {{ modalLoading() ? ('perfis.saving' | translate) : editando() ? ('common.save' | translate) : ('perfis.create' | translate) }}
           </button>
         </div>
       </div>
@@ -292,19 +293,19 @@ import { SePermissaoDirective } from '../../../shared/directives/se-permissao.di
     @if (excluindo()) {
       <div class="fixed inset-0 bg-black/40 z-40 flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-xl max-w-sm w-full p-6">
-          <h3 class="font-display font-semibold text-lg mb-2">Excluir perfil?</h3>
+          <h3 class="font-display font-semibold text-lg mb-2">{{ 'perfis.deleteTitle' | translate }}</h3>
           <p class="text-slate-500 text-sm mb-1">
-            <strong class="text-slate-700">{{ excluindo()!.nome }}</strong> será removido.
+            {{ 'perfis.deleteIntro' | translate:{ name: excluindo()!.nome } }}
           </p>
-          <p class="text-slate-400 text-xs mb-5">Usuários atribuídos ficarão sem este perfil. Não é possível excluir um perfil em uso.</p>
+          <p class="text-slate-400 text-xs mb-5">{{ 'perfis.deleteWarn' | translate }}</p>
           <div class="flex gap-2.5">
             <button (click)="excluindo.set(null)"
                     class="flex-1 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 font-semibold text-sm rounded-[10px] transition-colors">
-              Cancelar
+              {{ 'common.cancel' | translate }}
             </button>
             <button (click)="excluir()" [disabled]="modalLoading()"
                     class="flex-1 py-2.5 bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white font-semibold text-sm rounded-[10px] transition-colors">
-              {{ modalLoading() ? 'Excluindo...' : 'Excluir' }}
+              {{ modalLoading() ? ('common.deleting' | translate) : ('common.delete' | translate) }}
             </button>
           </div>
         </div>
@@ -316,6 +317,7 @@ export class PerfisComponent implements OnInit {
   readonly auth = inject(AuthService);
   private readonly perfisApi = inject(PerfilService);
   private readonly permissoesApi = inject(PermissaoService);
+  private readonly translate = inject(TranslateService);
 
   perfis    = signal<Perfil[]>([]);
   loading   = signal(false);
@@ -354,7 +356,7 @@ export class PerfisComponent implements OnInit {
       const data = await firstValueFrom(this.perfisApi.findAll());
       this.perfis.set(data);
     } catch {
-      this.error.set('Erro ao carregar perfis.');
+      this.error.set(this.translate.instant('errors.loadProfiles'));
     } finally {
       this.loading.set(false);
     }
@@ -467,7 +469,7 @@ export class PerfisComponent implements OnInit {
       this.fecharModal();
       await this.load();
     } catch (err: unknown) {
-      const msg = (err as { error?: { message?: string } })?.error?.message ?? 'Erro ao salvar.';
+      const msg = (err as { error?: { message?: string } })?.error?.message ?? this.translate.instant('errors.saveGeneric');
       this.modalError.set(msg);
     } finally {
       this.modalLoading.set(false);
@@ -488,7 +490,7 @@ export class PerfisComponent implements OnInit {
       this.excluindo.set(null);
       await this.load();
     } catch (err: unknown) {
-      const msg = (err as { error?: { message?: string } })?.error?.message ?? 'Erro ao excluir.';
+      const msg = (err as { error?: { message?: string } })?.error?.message ?? this.translate.instant('errors.deleteProfile');
       this.error.set(msg);
       this.excluindo.set(null);
     } finally {

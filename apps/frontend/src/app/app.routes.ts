@@ -49,7 +49,7 @@ export const appRoutes: Route[] = [
       },
       {
         path: 'bolao/:id/cotas',
-        loadComponent: () => import('./features/cotas/gestao-cotas/gestao-cotas.component').then(m => m.GestaoCotagsComponent),
+        loadComponent: () => import('./features/cotas/gestao-cotas/gestao-cotas.component').then(m => m.GestaoCotasComponent),
       },
       {
         path: 'sorteios',

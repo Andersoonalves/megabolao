@@ -1,6 +1,7 @@
 import {
   Component, signal, computed, OnInit, ChangeDetectionStrategy, inject,
 } from '@angular/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../../core/services/api.service';
 import { AuthService } from '../../../core/services/auth.service';
@@ -47,17 +48,17 @@ interface BolaoData {
 @Component({
   selector: 'nb-portal-cotas',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [],
+  imports: [TranslatePipe],
   template: `
     <!-- Header verde ─────────────────────────────────────────────────────── -->
     <div style="background: linear-gradient(180deg, #065f46, #1a4436)" class="text-white">
       <!-- Top bar -->
       <div class="flex items-center justify-between px-4 pt-12 pb-4">
         <div>
-          <div class="text-[11.5px] text-white/70 mb-1">Olá,</div>
+          <div class="text-[11.5px] text-white/70 mb-1">{{ 'portalCotas.hello' | translate }}</div>
           <h1 class="font-display text-[20px] font-semibold tracking-tight">{{ nomeParticipante() }}</h1>
         </div>
-        <button (click)="signOut()" class="w-9 h-9 flex items-center justify-center text-white/60 hover:text-white transition-colors rounded-lg" title="Sair">
+        <button (click)="signOut()" class="w-9 h-9 flex items-center justify-center text-white/60 hover:text-white transition-colors rounded-lg" [title]="'portalCotas.signOutTitle' | translate">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
             <polyline points="16 17 21 12 16 7"/>
@@ -69,21 +70,21 @@ interface BolaoData {
       <!-- Stats strip -->
       <div class="flex gap-3 px-4 pb-5">
         <div class="flex-1 bg-white/10 backdrop-blur-sm rounded-xl px-3 py-2.5">
-          <div class="text-[10px] text-white/60 uppercase tracking-wider">COTAS</div>
+          <div class="text-[10px] text-white/60 uppercase tracking-wider">{{ 'portalCotas.statQuotas' | translate }}</div>
           <div class="font-display text-[20px] font-semibold">{{ totalCotas() }}</div>
         </div>
         <div class="flex-1 bg-white/10 backdrop-blur-sm rounded-xl px-3 py-2.5">
-          <div class="text-[10px] text-white/60 uppercase tracking-wider">MELHOR</div>
-          <div class="font-display text-[20px] font-semibold">{{ melhorAcertos() }}<span class="text-sm font-normal text-white/70"> ac.</span></div>
+          <div class="text-[10px] text-white/60 uppercase tracking-wider">{{ 'portalCotas.statBest' | translate }}</div>
+          <div class="font-display text-[20px] font-semibold">{{ melhorAcertos() }}<span class="text-sm font-normal text-white/70">{{ 'portalCotas.statHitsShort' | translate }}</span></div>
         </div>
         @if (totalPremio() > 0) {
           <div class="flex-1 rounded-xl px-3 py-2.5" style="background: #f59e0b">
-            <div class="text-[10px] text-white/80 uppercase tracking-wider">PRÊMIO</div>
+            <div class="text-[10px] text-white/80 uppercase tracking-wider">{{ 'portalCotas.statPrize' | translate }}</div>
             <div class="font-display text-[16px] font-semibold">{{ fmtBrl(totalPremio()) }}</div>
           </div>
         } @else {
           <div class="flex-1 bg-white/10 backdrop-blur-sm rounded-xl px-3 py-2.5">
-            <div class="text-[10px] text-white/60 uppercase tracking-wider">POSIÇÃO</div>
+            <div class="text-[10px] text-white/60 uppercase tracking-wider">{{ 'portalCotas.statPosition' | translate }}</div>
             <div class="font-display text-[20px] font-semibold">{{ melhorPosicao() > 0 ? melhorPosicao() + 'º' : '—' }}</div>
           </div>
         }
@@ -111,8 +112,8 @@ interface BolaoData {
       } @else if (boloesData().length === 0) {
         <div class="bg-white rounded-2xl p-6 text-center shadow-sm">
           <div class="text-3xl mb-3">🎫</div>
-          <p class="text-slate-500 text-sm">Nenhuma cota encontrada para este número.</p>
-          <p class="text-slate-400 text-xs mt-1">Entre em contato com o administrador do bolão.</p>
+          <p class="text-slate-500 text-sm">{{ 'portalCotas.emptyError' | translate }}</p>
+          <p class="text-slate-400 text-xs mt-1">{{ 'portalCotas.emptyHint' | translate }}</p>
         </div>
       } @else {
         @for (bd of boloesData(); track bd.bolao.id) {
@@ -120,7 +121,13 @@ interface BolaoData {
             <!-- Nome do bolão -->
             <div class="flex items-center justify-between px-1">
               <span class="font-display font-semibold text-[15px]">{{ bd.bolao.nome }}</span>
-              <span class="text-[11.5px] text-slate-400">{{ bd.cotas.length }} cota{{ bd.cotas.length !== 1 ? 's' : '' }}</span>
+              <span class="text-[11.5px] text-slate-400">
+                @if (bd.cotas.length === 1) {
+                  {{ 'portalCotas.quotaSingle' | translate }}
+                } @else {
+                  {{ 'portalCotas.quotaMany' | translate:{ n: bd.cotas.length } }}
+                }
+              </span>
             </div>
 
             @for (cota of bd.cotas; track cota.id) {
@@ -134,11 +141,11 @@ interface BolaoData {
                   <div class="flex items-start justify-between gap-2">
                     <div>
                       <div class="font-display font-semibold text-[14.5px]">{{ bd.bolao.nome }}</div>
-                      <div class="text-slate-400 text-[11.5px] mt-0.5">Cota #{{ cota.numeroSequencial }}</div>
+                      <div class="text-slate-400 text-[11.5px] mt-0.5">{{ 'portalCotas.quotaNum' | translate:{ n: cota.numeroSequencial } }}</div>
                     </div>
                     <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-semibold tracking-wide uppercase border flex-shrink-0 mt-0.5"
                           [class]="resultadoBadgeClass(cota.statusResultado)">
-                      {{ resultadoBadgeText(cota.statusResultado) }}
+                      {{ ('portalCotas.badge.' + cota.statusResultado) | translate }}
                     </span>
                   </div>
                 </div>
@@ -151,7 +158,7 @@ interface BolaoData {
 
                 <!-- Palpites -->
                 <div class="px-4 pt-4 pb-3">
-                  <div class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-2.5">Seus palpites</div>
+                  <div class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-2.5">{{ 'portalCotas.yourPicks' | translate }}</div>
                   <div class="flex flex-wrap gap-1.5">
                     @for (n of cota.palpites; track n) {
                       <span class="w-8 h-8 rounded-full flex items-center justify-center font-mono font-semibold text-[11.5px] border transition-all"
@@ -164,10 +171,10 @@ interface BolaoData {
                   @if (bd.allDrawn.length > 0) {
                     <div class="flex gap-3 mt-2.5 text-[11px] text-slate-400">
                       <span class="flex items-center gap-1">
-                        <span class="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block"></span> acertou
+                        <span class="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block"></span> {{ 'portalCotas.legendHit' | translate }}
                       </span>
                       <span class="flex items-center gap-1">
-                        <span class="w-2.5 h-2.5 rounded-full bg-green-700 inline-block"></span> sorteada
+                        <span class="w-2.5 h-2.5 rounded-full bg-green-700 inline-block"></span> {{ 'portalCotas.legendDrawn' | translate }}
                       </span>
                     </div>
                   }
@@ -177,18 +184,18 @@ interface BolaoData {
                 <div class="border-t border-slate-100">
                   <div class="flex">
                     <div class="flex-1 px-4 py-3 border-r border-slate-100">
-                      <div class="text-[10.5px] text-slate-400">Acertos acumulados</div>
+                      <div class="text-[10.5px] text-slate-400">{{ 'portalCotas.accHits' | translate }}</div>
                       <div class="font-mono font-bold text-[15px] mt-0.5">{{ cota.totalAcertosAcumulados }}<span class="text-slate-300 font-normal">/10</span></div>
                     </div>
                     <div class="flex-1 px-4 py-3 border-r border-slate-100">
-                      <div class="text-[10.5px] text-slate-400">Pagamento</div>
+                      <div class="text-[10.5px] text-slate-400">{{ 'portalCotas.payment' | translate }}</div>
                       <div class="text-[12px] font-semibold mt-0.5"
                            [class]="cota.statusPagamento === 'PAGO' ? 'text-green-700' : 'text-amber-600'">
-                        {{ cota.statusPagamento }}
+                        {{ ('portalCotas.payStatus.' + cota.statusPagamento) | translate }}
                       </div>
                     </div>
                     <div class="flex-1 px-4 py-3">
-                      <div class="text-[10.5px] text-slate-400">Sorteios</div>
+                      <div class="text-[10.5px] text-slate-400">{{ 'portalCotas.draws' | translate }}</div>
                       <div class="text-[12px] font-semibold mt-0.5">{{ bd.sorteios.length }}</div>
                     </div>
                   </div>
@@ -199,7 +206,7 @@ interface BolaoData {
             <!-- Sorteios realizados -->
             @if (bd.sorteios.length > 0) {
               <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
-                <div class="font-display font-semibold text-[14px] mb-3">Sorteios realizados</div>
+                <div class="font-display font-semibold text-[14px] mb-3">{{ 'portalCotas.drawsDone' | translate }}</div>
                 <div class="flex flex-col gap-3">
                   @for (s of bd.sorteios; track s.id) {
                     <div class="flex items-start gap-3 py-2.5 border-b border-slate-100 last:border-0">
@@ -228,6 +235,7 @@ interface BolaoData {
 export class PortalCotasComponent implements OnInit {
   private readonly api  = inject(ApiService);
   private readonly auth = inject(AuthService);
+  private readonly translate = inject(TranslateService);
 
   boloesData = signal<BolaoData[]>([]);
   loading    = signal(false);
@@ -241,7 +249,7 @@ export class PortalCotasComponent implements OnInit {
 
   nomeParticipante = computed(() => {
     const cotas = this.boloesData().flatMap(b => b.cotas);
-    return cotas[0]?.nomeIdentificacao.split(' ')[0] ?? this.auth.user()?.celular ?? 'Participante';
+    return cotas[0]?.nomeIdentificacao.split(' ')[0] ?? this.auth.user()?.celular ?? this.translate.instant('portalCotas.participantFallback');
   });
 
   ngOnInit(): void {
@@ -283,7 +291,7 @@ export class PortalCotasComponent implements OnInit {
 
       this.boloesData.set(result);
     } catch {
-      this.error.set('Erro ao carregar seus dados. Tente novamente.');
+      this.error.set(this.translate.instant('portalCotas.errorLoad'));
       // Fallback demo
       this.boloesData.set(DEMO_DATA);
     } finally {
@@ -311,12 +319,6 @@ export class PortalCotasComponent implements OnInit {
     if (status === 'PREMIADO')    return 'bg-amber-50 text-amber-700 border-amber-200';
     if (status === 'NAO_PREMIADO') return 'bg-slate-100 text-slate-500 border-slate-200';
     return 'bg-blue-50 text-blue-600 border-blue-200';
-  }
-
-  resultadoBadgeText(status: string): string {
-    if (status === 'PREMIADO')    return '🏆 Premiado';
-    if (status === 'NAO_PREMIADO') return 'Não premiado';
-    return 'Em andamento';
   }
 
   fmtBrl(n: number): string {

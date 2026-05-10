@@ -3,6 +3,7 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../../core/services/api.service';
 import { BackButtonComponent } from '../../../shared/components/back-button/back-button.component';
@@ -26,14 +27,6 @@ interface CategoriaForm {
   acumulaSemGanhador: boolean;
 }
 
-const TIPO_LABELS: Record<CategoriaTipo, string> = {
-  TAXA_ADMINISTRATIVA:      'Taxa adm.',
-  ACERTOS_EXATOS:           'Acertos exatos',
-  MAIOR_PONTUACAO_SORTEIO:  'Maior pont. sorteio',
-  MAIOR_PONTUACAO_GERAL:    'Maior pont. geral',
-  MENOR_PONTUACAO_GERAL:    'Menor pont. geral',
-};
-
 // Categoria inicial baseada no BOLAO_REF (soma = 100%)
 const INITIAL_CATS: CategoriaForm[] = [
   { _id: '1', nome: 'Taxa Administrativa',    tipo: 'TAXA_ADMINISTRATIVA',     acertosAlvo: null, sorteioReferencia: null, percentual: 15, acumulaSemGanhador: false },
@@ -50,26 +43,26 @@ let _nextId = 10;
 @Component({
   selector: 'nb-criar-bolao',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [BackButtonComponent, FormsModule, RouterLink],
+  imports: [BackButtonComponent, FormsModule, RouterLink, TranslatePipe],
   template: `
     <!-- Topbar -->
     <div class="bg-white border-b border-slate-200 px-4 lg:px-7 py-3 flex items-center gap-3 sticky top-14 lg:top-0 z-10">
       <nb-back-button />
       <div class="flex items-center gap-2 text-[12.5px]">
-        <span class="text-slate-400">Bolão CG</span>
+        <span class="text-slate-400">{{ 'criarBolao.brand' | translate }}</span>
         <span class="text-slate-300">›</span>
-        <span class="text-slate-400">Bolões</span>
+        <span class="text-slate-400">{{ 'criarBolao.breadcrumbPools' | translate }}</span>
         <span class="text-slate-300">›</span>
-        <span class="font-semibold">Criar</span>
+        <span class="font-semibold">{{ 'criarBolao.breadcrumbCreate' | translate }}</span>
       </div>
       <div class="flex gap-2">
         <a routerLink="/dashboard"
            class="inline-flex items-center px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-sm font-semibold rounded-[10px] no-underline text-slate-700 transition-colors">
-          Cancelar
+          {{ 'criarBolao.cancel' | translate }}
         </a>
         <button (click)="submit()" [disabled]="!valido() || loading()"
                 class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-800 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-[10px] transition-colors shadow-sm">
-          ✓ {{ loading() ? 'Criando...' : 'Criar bolão' }}
+          ✓ {{ loading() ? ('criarBolao.creating' | translate) : ('criarBolao.submit' | translate) }}
         </button>
       </div>
     </div>
@@ -77,8 +70,8 @@ let _nextId = 10;
     <!-- Page -->
     <div class="p-4 lg:p-7">
       <div class="mb-6">
-        <h1 class="font-display text-2xl lg:text-[26px] font-semibold tracking-tight mb-1">Novo bolão</h1>
-        <p class="text-slate-500 text-[13.5px]">Defina dados do bolão e as categorias. Após criado, as categorias são imutáveis.</p>
+        <h1 class="font-display text-2xl lg:text-[26px] font-semibold tracking-tight mb-1">{{ 'criarBolao.title' | translate }}</h1>
+        <p class="text-slate-500 text-[13.5px]">{{ 'criarBolao.subtitle' | translate }}</p>
       </div>
 
       @if (error()) {
@@ -95,22 +88,22 @@ let _nextId = 10;
           <!-- Card 1: Dados do bolão -->
           <div class="bg-white border border-slate-200 rounded-lg">
             <div class="px-5 py-4 border-b border-slate-200">
-              <h3 class="font-display font-semibold text-[15px]">1. Dados do bolão</h3>
+              <h3 class="font-display font-semibold text-[15px]">{{ 'criarBolao.card1' | translate }}</h3>
             </div>
             <div class="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div class="col-span-2">
-                <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">Nome do bolão</label>
+                <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">{{ 'criarBolao.nomeLabel' | translate }}</label>
                 <input [(ngModel)]="nome" name="nome"
                        class="w-full px-3 py-2.5 border border-slate-200 rounded-[10px] text-sm focus:outline-none focus:border-green-700"
-                       placeholder="Ex: Bolão Mega 2995" />
+                       [placeholder]="'criarBolao.nomePh' | translate" />
               </div>
               <div>
-                <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">Data de início prevista</label>
+                <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">{{ 'criarBolao.dataInicio' | translate }}</label>
                 <input [(ngModel)]="dataInicio" name="dataInicio" type="date"
                        class="w-full px-3 py-2.5 border border-slate-200 rounded-[10px] text-sm focus:outline-none focus:border-green-700" />
               </div>
               <div>
-                <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">Valor da cota (R$)</label>
+                <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">{{ 'criarBolao.valorCota' | translate }}</label>
                 <input [(ngModel)]="valorCota" name="valorCota" type="number" min="0.01" step="0.01" inputmode="decimal"
                        class="w-full px-3 py-2.5 border border-slate-200 rounded-[10px] text-sm focus:outline-none focus:border-green-700 tabular" />
               </div>
@@ -121,12 +114,12 @@ let _nextId = 10;
           <div class="bg-white border border-slate-200 rounded-lg overflow-hidden">
             <div class="px-5 py-4 border-b border-slate-200 flex items-start justify-between">
               <div>
-                <h3 class="font-display font-semibold text-[15px]">2. Categorias de premiação</h3>
-                <p class="text-slate-400 text-xs mt-0.5">Defina N categorias livres. A soma deve fechar exatamente 100%.</p>
+                <h3 class="font-display font-semibold text-[15px]">{{ 'criarBolao.card2' | translate }}</h3>
+                <p class="text-slate-400 text-xs mt-0.5">{{ 'criarBolao.card2Hint' | translate }}</p>
               </div>
               <button (click)="addCategoria()"
                       class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-sm font-semibold rounded-[10px] text-slate-700 transition-colors flex-shrink-0">
-                + Categoria
+                {{ 'criarBolao.addCategory' | translate }}
               </button>
             </div>
 
@@ -136,11 +129,11 @@ let _nextId = 10;
                 <thead class="bg-slate-50">
                   <tr>
                     <th class="w-8 px-3 py-2.5"></th>
-                    <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-3 py-2.5 min-w-[160px]">Nome</th>
-                    <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-3 py-2.5 min-w-[150px]">Tipo</th>
-                    <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-3 py-2.5 min-w-[140px]">Condição</th>
-                    <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-3 py-2.5 w-[100px]">Percentual</th>
-                    <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-3 py-2.5 w-[80px]">Acumula</th>
+                    <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-3 py-2.5 min-w-[160px]">{{ 'criarBolao.thNome' | translate }}</th>
+                    <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-3 py-2.5 min-w-[150px]">{{ 'criarBolao.thTipo' | translate }}</th>
+                    <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-3 py-2.5 min-w-[140px]">{{ 'criarBolao.thCondicao' | translate }}</th>
+                    <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-3 py-2.5 w-[100px]">{{ 'criarBolao.thPercent' | translate }}</th>
+                    <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-3 py-2.5 w-[80px]">{{ 'criarBolao.thAcumula' | translate }}</th>
                     <th class="w-8 px-3 py-2.5"></th>
                   </tr>
                 </thead>
@@ -161,8 +154,8 @@ let _nextId = 10;
                         <select [value]="cat.tipo"
                                 (change)="onTipoChange(i, $any($event.target).value)"
                                 class="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-[11.5px] focus:outline-none focus:border-green-700 bg-white">
-                          @for (tipo of tipoOptions; track tipo.value) {
-                            <option [value]="tipo.value">{{ tipo.label }}</option>
+                          @for (tipo of tipoOptions; track tipo) {
+                            <option [value]="tipo">{{ ('bolaoDetalhes.tipo.' + tipo) | translate }}</option>
                           }
                         </select>
                       </td>
@@ -175,7 +168,7 @@ let _nextId = 10;
                                    (input)="update(i, 'acertosAlvo', +$any($event.target).value || null)"
                                    type="number" min="1" max="10" inputmode="numeric"
                                    class="w-16 px-2 py-1.5 border border-slate-200 rounded-lg text-[12.5px] text-center focus:outline-none focus:border-green-700 tabular" />
-                            <span class="text-slate-400 text-xs whitespace-nowrap">acertos</span>
+                            <span class="text-slate-400 text-xs whitespace-nowrap">{{ 'criarBolao.acertosShort' | translate }}</span>
                           </div>
                         } @else if (cat.tipo === 'MAIOR_PONTUACAO_SORTEIO') {
                           <div class="flex items-center gap-1.5">
@@ -183,7 +176,7 @@ let _nextId = 10;
                                    (input)="update(i, 'sorteioReferencia', +$any($event.target).value || null)"
                                    type="number" min="1" inputmode="numeric"
                                    class="w-16 px-2 py-1.5 border border-slate-200 rounded-lg text-[12.5px] text-center focus:outline-none focus:border-green-700 tabular" />
-                            <span class="text-slate-400 text-xs whitespace-nowrap">º sorteio</span>
+                            <span class="text-slate-400 text-xs whitespace-nowrap">{{ 'criarBolao.sorteioShort' | translate }}</span>
                           </div>
                         } @else {
                           <span class="text-slate-400 text-[12px]">{{ condicaoTexto(cat) }}</span>
@@ -208,7 +201,7 @@ let _nextId = 10;
                                  (change)="update(i, 'acumulaSemGanhador', $any($event.target).checked)"
                                  type="checkbox"
                                  class="accent-green-700 w-3.5 h-3.5" />
-                          Sim
+                          {{ 'criarBolao.yes' | translate }}
                         </label>
                       </td>
 
@@ -233,7 +226,7 @@ let _nextId = 10;
                   {{ somaMsg() }}
                 </div>
                 <div class="text-slate-400 text-[11.5px] mt-0.5">
-                  {{ categorias().length }} categorias · validação em tempo real
+                  {{ 'criarBolao.somaFooter' | translate:{ n: categorias().length } }}
                 </div>
               </div>
               <div class="flex items-center gap-3">
@@ -258,7 +251,7 @@ let _nextId = 10;
           <!-- Preview -->
           <div class="bg-white border border-slate-200 rounded-lg">
             <div class="px-4 py-3.5 border-b border-slate-200">
-              <h3 class="font-display font-semibold text-[14px]">Pré-visualização</h3>
+              <h3 class="font-display font-semibold text-[14px]">{{ 'criarBolao.preview' | translate }}</h3>
             </div>
             <div class="p-4 flex flex-col gap-2.5">
               @for (cat of categorias(); track cat._id; let i = $index) {
@@ -266,14 +259,14 @@ let _nextId = 10;
                   <div class="w-1.5 h-6 rounded-sm flex-shrink-0"
                        [style.background]="barColor(cat.tipo, i)"></div>
                   <div class="flex-1 min-w-0">
-                    <div class="font-semibold truncate">{{ cat.nome || '(sem nome)' }}</div>
+                    <div class="font-semibold truncate">{{ cat.nome || ('criarBolao.semNome' | translate) }}</div>
                     <div class="text-slate-400 text-[11px]">{{ condicaoTexto(cat) }}</div>
                   </div>
                   <div class="font-mono font-semibold text-[12px] tabular">{{ cat.percentual }}%</div>
                 </div>
               }
               @if (categorias().length === 0) {
-                <div class="text-slate-400 text-xs text-center py-4">Nenhuma categoria adicionada</div>
+                <div class="text-slate-400 text-xs text-center py-4">{{ 'criarBolao.emptyCats' | translate }}</div>
               }
             </div>
           </div>
@@ -282,7 +275,7 @@ let _nextId = 10;
           <div class="p-3.5 bg-green-50 border border-green-200 rounded-lg flex gap-2.5">
             <span class="text-green-700 flex-shrink-0 text-sm mt-0.5">✦</span>
             <p class="text-[12px] text-green-900 leading-relaxed">
-              <strong>Após criação, categorias são imutáveis.</strong> Apenas o Master pode alterar em casos excepcionais.
+              <strong>{{ 'criarBolao.immutableBold' | translate }}</strong> {{ 'criarBolao.immutableRest' | translate }}
             </p>
           </div>
 
@@ -305,6 +298,7 @@ let _nextId = 10;
 export class CriarBolaoComponent {
   private readonly api = inject(ApiService);
   private readonly router = inject(Router);
+  private readonly translate = inject(TranslateService);
 
   // ── Form state ───────────────────────────────────────────────────────────────
   nome       = '';
@@ -322,31 +316,41 @@ export class CriarBolaoComponent {
 
   valido = computed(() => this.soma() === 100 && this.errosValidacao().length === 0);
 
-  errosValidacao = computed(() => {
+  readonly tipoOptions: CategoriaTipo[] = [
+    'TAXA_ADMINISTRATIVA',
+    'ACERTOS_EXATOS',
+    'MAIOR_PONTUACAO_SORTEIO',
+    'MAIOR_PONTUACAO_GERAL',
+    'MENOR_PONTUACAO_GERAL',
+  ];
+
+  errosValidacao(): string[] {
+    const t = this.translate;
     const erros: string[] = [];
     if (this.soma() !== 100) {
       const diff = Math.round((100 - this.soma()) * 100) / 100;
-      erros.push(diff > 0 ? `Faltam ${diff}% para fechar 100%` : `Soma excedida em ${-diff}%`);
+      erros.push(diff > 0
+        ? t.instant('criarBolao.errSomaFalta', { diff })
+        : t.instant('criarBolao.errSomaExcede', { diff: Math.abs(diff) }));
     }
     for (const cat of this.categorias()) {
       if (cat.tipo === 'ACERTOS_EXATOS' && (!cat.acertosAlvo || cat.acertosAlvo < 1 || cat.acertosAlvo > 10)) {
-        erros.push(`"${cat.nome}": acertosAlvo deve ser 1–10`);
+        erros.push(t.instant('criarBolao.errAcertos', { nome: cat.nome }));
       }
       if (cat.tipo === 'MAIOR_PONTUACAO_SORTEIO' && !cat.sorteioReferencia) {
-        erros.push(`"${cat.nome}": informe o número do sorteio de referência`);
+        erros.push(t.instant('criarBolao.errSorteio', { nome: cat.nome }));
       }
     }
     return erros;
-  });
+  }
 
   // ── Template helpers ─────────────────────────────────────────────────────────
-  readonly tipoOptions = Object.entries(TIPO_LABELS).map(([value, label]) => ({ value, label }));
-
-  somaMsg() {
+  somaMsg(): string {
+    const t = this.translate;
     const s = this.soma();
-    if (s === 100) return '✓ Soma fechada — bolão pronto para criação';
-    if (s > 100)  return `Soma excedida em ${Math.round((s - 100) * 100) / 100}%`;
-    return `Faltam ${Math.round((100 - s) * 100) / 100}% para fechar 100%`;
+    if (s === 100) return t.instant('criarBolao.somaOk');
+    if (s > 100) return t.instant('criarBolao.somaOver', { v: Math.round((s - 100) * 100) / 100 });
+    return t.instant('criarBolao.somaUnder', { v: Math.round((100 - s) * 100) / 100 });
   }
 
   somaBarColor() {
@@ -375,12 +379,19 @@ export class CriarBolaoComponent {
   }
 
   condicaoTexto(cat: CategoriaForm): string {
+    const t = this.translate;
     switch (cat.tipo) {
-      case 'TAXA_ADMINISTRATIVA':     return '—';
-      case 'ACERTOS_EXATOS':          return cat.acertosAlvo ? `${cat.acertosAlvo} acertos acumulados` : '…';
-      case 'MAIOR_PONTUACAO_SORTEIO': return cat.sorteioReferencia ? `${cat.sorteioReferencia}º sorteio` : '…';
-      case 'MAIOR_PONTUACAO_GERAL':   return 'Maior pontuação ao encerrar';
-      case 'MENOR_PONTUACAO_GERAL':   return 'Menor pontuação ao encerrar';
+      case 'TAXA_ADMINISTRATIVA': return t.instant('criarBolao.condTaxa');
+      case 'ACERTOS_EXATOS':
+        return cat.acertosAlvo
+          ? t.instant('criarBolao.condAcertos', { n: cat.acertosAlvo })
+          : t.instant('criarBolao.condAcertosPending');
+      case 'MAIOR_PONTUACAO_SORTEIO':
+        return cat.sorteioReferencia
+          ? t.instant('criarBolao.condSorteio', { n: cat.sorteioReferencia })
+          : t.instant('criarBolao.condAcertosPending');
+      case 'MAIOR_PONTUACAO_GERAL': return t.instant('criarBolao.condMaiorGeral');
+      case 'MENOR_PONTUACAO_GERAL': return t.instant('criarBolao.condMenorGeral');
     }
   }
 
@@ -409,7 +420,7 @@ export class CriarBolaoComponent {
   addCategoria(): void {
     const id = String(++_nextId);
     this.categorias.update(cats => [...cats, {
-      _id: id, nome: 'Nova categoria', tipo: 'ACERTOS_EXATOS',
+      _id: id, nome: this.translate.instant('criarBolao.newCategoryName'), tipo: 'ACERTOS_EXATOS',
       acertosAlvo: null, sorteioReferencia: null, percentual: 0, acumulaSemGanhador: false,
     }]);
   }
@@ -445,7 +456,7 @@ export class CriarBolaoComponent {
       await this.router.navigate(['/dashboard']);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message
-        : (err as { error?: { message?: string } })?.error?.message ?? 'Erro ao criar bolão';
+        : (err as { error?: { message?: string } })?.error?.message ?? this.translate.instant('errors.createPool');
       this.error.set(msg);
     } finally {
       this.loading.set(false);

@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 import { Perfil, UsuarioRBAC } from '@nossobolao/shared-types';
 import { AuthService } from '../../../core/services/auth.service';
@@ -12,28 +13,28 @@ import { PhoneMaskDirective } from '../../../shared/phone';
 @Component({
   selector: 'nb-usuarios',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, BackButtonComponent, SePermissaoDirective, PhoneMaskDirective],
+  imports: [FormsModule, BackButtonComponent, SePermissaoDirective, PhoneMaskDirective, TranslatePipe],
   template: `
     <!-- Topbar -->
     <div class="bg-white border-b border-slate-200 px-4 lg:px-7 py-3 flex items-center gap-3 sticky top-14 lg:top-0 z-10">
       <nb-back-button />
       <div class="hidden sm:flex items-center gap-2 text-[12.5px]">
-        <span class="text-slate-400">Sistema</span>
+        <span class="text-slate-400">{{ 'nav.section.system' | translate }}</span>
         <span class="text-slate-300">›</span>
-        <span class="font-semibold">Usuários</span>
+        <span class="font-semibold">{{ 'nav.users' | translate }}</span>
       </div>
-      <span class="font-display font-semibold text-[14px] sm:hidden">Usuários</span>
+      <span class="font-display font-semibold text-[14px] sm:hidden">{{ 'nav.users' | translate }}</span>
       <button *nbSe="'usuario.criar'" (click)="abrirModalConvidar()"
               class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-800 text-white text-sm font-semibold rounded-[10px] transition-colors shadow-sm min-h-9">
-        + Convidar usuário
+        {{ 'usuarios.invite' | translate }}
       </button>
     </div>
 
     <!-- Page -->
     <div class="p-4 lg:p-7">
       <div class="mb-5">
-        <h1 class="font-display text-2xl lg:text-[26px] font-semibold tracking-tight mb-1">Usuários do tenant</h1>
-        <p class="text-slate-500 text-[13.5px]">{{ usuarios().length }} usuário(s) com acesso a este tenant.</p>
+        <h1 class="font-display text-2xl lg:text-[26px] font-semibold tracking-tight mb-1">{{ 'usuarios.pageTitle' | translate }}</h1>
+        <p class="text-slate-500 text-[13.5px]">{{ 'usuarios.subtitle' | translate:{ n: usuarios().length } }}</p>
       </div>
 
       @if (error()) {
@@ -45,10 +46,10 @@ import { PhoneMaskDirective } from '../../../shared/phone';
           <table class="w-full text-[13.5px]">
             <thead class="bg-slate-50">
               <tr>
-                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-5 py-2.5">Usuário</th>
-                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">Papel</th>
-                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">Perfis</th>
-                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">Permissões</th>
+                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-5 py-2.5">{{ 'usuarios.thUser' | translate }}</th>
+                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">{{ 'usuarios.thRole' | translate }}</th>
+                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">{{ 'usuarios.thProfiles' | translate }}</th>
+                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">{{ 'usuarios.thPermissions' | translate }}</th>
                 <th class="px-4 py-2.5 w-44"></th>
               </tr>
             </thead>
@@ -61,7 +62,7 @@ import { PhoneMaskDirective } from '../../../shared/phone';
                 }
               } @else if (usuarios().length === 0) {
                 <tr><td colspan="5" class="px-5 py-12 text-center text-slate-400 text-sm">
-                  Nenhum usuário cadastrado.
+                  {{ 'usuarios.empty' | translate }}
                 </td></tr>
               } @else {
                 @for (u of usuarios(); track u.id) {
@@ -100,12 +101,12 @@ import { PhoneMaskDirective } from '../../../shared/phone';
                       <div class="flex items-center gap-1">
                         <button *nbSe="'usuario.atribuir_perfil'" (click)="abrirModalPerfis(u)"
                                 class="px-2.5 py-1.5 text-[12px] font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200">
-                          Perfis
+                          {{ 'usuarios.profilesBtn' | translate }}
                         </button>
                         @if (u.id !== auth.user()?.id) {
                           <button *nbSe="'usuario.excluir'" (click)="confirmarExcluir(u)"
                                   class="px-2.5 py-1.5 text-[12px] font-semibold text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-red-100">
-                            Remover
+                            {{ 'usuarios.remove' | translate }}
                           </button>
                         }
                       </div>
@@ -124,7 +125,7 @@ import { PhoneMaskDirective } from '../../../shared/phone';
               <div class="p-4"><div class="h-4 bg-slate-100 rounded animate-pulse w-3/4 mb-2"></div><div class="h-3 bg-slate-100 rounded animate-pulse w-1/2"></div></div>
             }
           } @else if (usuarios().length === 0) {
-            <div class="p-8 text-center text-slate-400 text-sm">Nenhum usuário cadastrado.</div>
+            <div class="p-8 text-center text-slate-400 text-sm">{{ 'usuarios.empty' | translate }}</div>
           } @else {
             @for (u of usuarios(); track u.id) {
               <div class="p-4">
@@ -135,7 +136,7 @@ import { PhoneMaskDirective } from '../../../shared/phone';
                     </div>
                     <div class="min-w-0">
                       <div class="font-semibold text-[13.5px] truncate">{{ u.email }}</div>
-                      <div class="text-slate-400 text-[11px]">{{ u.papel }} · {{ u.perfis.length }} perfil(is)</div>
+                      <div class="text-slate-400 text-[11px]">{{ 'usuarios.profilesLine' | translate:{ role: u.papel, n: u.perfis.length } }}</div>
                     </div>
                   </div>
                   <div class="flex gap-1 flex-shrink-0">
@@ -160,7 +161,7 @@ import { PhoneMaskDirective } from '../../../shared/phone';
       <div class="fixed right-0 top-0 h-full w-full sm:w-[480px] bg-white shadow-xl z-50 flex flex-col overflow-hidden">
         <div class="px-6 py-5 border-b border-slate-200 flex items-center justify-between flex-shrink-0">
           <h2 class="font-display font-semibold text-lg">
-            {{ editandoPerfis() ? 'Atribuir perfis' : 'Convidar usuário' }}
+            {{ editandoPerfis() ? ('usuarios.modalAssign' | translate) : ('usuarios.modalInvite' | translate) }}
           </h2>
           <button (click)="fecharModal()" class="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">✕</button>
         </div>
@@ -169,24 +170,24 @@ import { PhoneMaskDirective } from '../../../shared/phone';
           @if (!editandoPerfis()) {
             <!-- Convidar: e-mail, nome, celular -->
             <div>
-              <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">E-mail *</label>
+              <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">{{ 'usuarios.labelEmail' | translate }}</label>
               <input [ngModel]="fEmail()" (ngModelChange)="fEmail.set($event)"
                      type="email" inputmode="email" autocomplete="off"
                      class="w-full px-3 py-2.5 border border-slate-200 rounded-[10px] text-sm focus:outline-none focus:border-green-700"
-                     placeholder="usuario@empresa.com" />
-              <p class="text-[11px] text-slate-400 mt-1">Um e-mail de convite será enviado pelo Supabase.</p>
+                     [placeholder]="'usuarios.emailPh' | translate" />
+              <p class="text-[11px] text-slate-400 mt-1">{{ 'usuarios.inviteEmailHint' | translate }}</p>
             </div>
             <div>
-              <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">Nome para exibição</label>
+              <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">{{ 'usuarios.labelDisplayName' | translate }}</label>
               <input [ngModel]="fNome()" (ngModelChange)="fNome.set($event)"
                      class="w-full px-3 py-2.5 border border-slate-200 rounded-[10px] text-sm focus:outline-none focus:border-green-700" />
             </div>
             <div>
-              <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">Celular</label>
+              <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">{{ 'usuarios.labelPhone' | translate }}</label>
               <input phoneMask [ngModel]="fCelular()" (ngModelChange)="fCelular.set($event)"
                      type="tel" inputmode="numeric"
                      class="w-full px-3 py-2.5 border border-slate-200 rounded-[10px] text-sm font-mono focus:outline-none focus:border-green-700"
-                     placeholder="(83) 99999-9999" />
+                     [placeholder]="'gestaoCotas.celularPh' | translate" />
             </div>
           } @else {
             <!-- Editar perfis: mostra dados do usuário (read-only) -->
@@ -205,14 +206,14 @@ import { PhoneMaskDirective } from '../../../shared/phone';
           <div>
             <div class="flex items-center justify-between mb-2">
               <label class="block text-xs font-semibold text-slate-500 tracking-wide">
-                Perfis ({{ fPerfilIds().size }})
+                {{ 'usuarios.profilesPicker' | translate:{ n: fPerfilIds().size } }}
               </label>
             </div>
             @if (perfisLoading()) {
               <div class="h-4 bg-slate-100 rounded animate-pulse w-3/4"></div>
             } @else if (perfisDisponiveis().length === 0) {
               <div class="p-3 bg-slate-50 border border-slate-200 rounded-[10px] text-sm text-slate-500">
-                Nenhum perfil ativo no tenant. Crie um perfil antes de convidar.
+                {{ 'usuarios.noActiveProfiles' | translate }}
               </div>
             } @else {
               <div class="flex flex-col gap-1.5">
@@ -226,9 +227,9 @@ import { PhoneMaskDirective } from '../../../shared/phone';
                       <div class="flex items-center gap-2 flex-wrap">
                         <span class="text-[13px] font-semibold">{{ p.nome }}</span>
                         @if (p.sistema) {
-                          <span class="px-1.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-100 rounded text-[10px] font-semibold">SISTEMA</span>
+                          <span class="px-1.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-100 rounded text-[10px] font-semibold">{{ 'perfis.badgeSystem' | translate }}</span>
                         }
-                        <span class="text-[10.5px] text-slate-400 font-mono">{{ p.permissoes.length }} permissão(ões)</span>
+                        <span class="text-[10.5px] text-slate-400 font-mono">{{ 'usuarios.permsSuffix' | translate:{ n: p.permissoes.length } }}</span>
                       </div>
                       @if (p.descricao) {
                         <div class="text-[11px] text-slate-400">{{ p.descricao }}</div>
@@ -248,11 +249,11 @@ import { PhoneMaskDirective } from '../../../shared/phone';
         <div class="px-6 py-4 border-t border-slate-200 flex gap-2.5 flex-shrink-0">
           <button (click)="fecharModal()"
                   class="flex-1 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 font-semibold text-sm rounded-[10px] transition-colors">
-            Cancelar
+            {{ 'common.cancel' | translate }}
           </button>
           <button (click)="salvar()" [disabled]="!podeSubmit() || modalLoading()"
                   class="flex-1 py-2.5 bg-green-700 hover:bg-green-800 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold text-sm rounded-[10px] transition-colors shadow-sm">
-            {{ modalLoading() ? 'Salvando...' : editandoPerfis() ? 'Salvar' : 'Convidar' }}
+            {{ modalLoading() ? ('usuarios.saving' | translate) : editandoPerfis() ? ('common.save' | translate) : ('usuarios.inviteBtn' | translate) }}
           </button>
         </div>
       </div>
@@ -261,19 +262,19 @@ import { PhoneMaskDirective } from '../../../shared/phone';
     @if (excluindo()) {
       <div class="fixed inset-0 bg-black/40 z-40 flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-xl max-w-sm w-full p-6">
-          <h3 class="font-display font-semibold text-lg mb-2">Remover usuário?</h3>
+          <h3 class="font-display font-semibold text-lg mb-2">{{ 'usuarios.deleteTitle' | translate }}</h3>
           <p class="text-slate-500 text-sm mb-1">
-            <strong class="text-slate-700">{{ excluindo()!.email }}</strong> perderá acesso ao tenant.
+            {{ 'usuarios.deleteIntro' | translate:{ email: excluindo()!.email } }}
           </p>
-          <p class="text-slate-400 text-xs mb-5">A conta será excluída do Supabase Auth e todos os perfis desatribuídos.</p>
+          <p class="text-slate-400 text-xs mb-5">{{ 'usuarios.deleteWarn' | translate }}</p>
           <div class="flex gap-2.5">
             <button (click)="excluindo.set(null)"
                     class="flex-1 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 font-semibold text-sm rounded-[10px] transition-colors">
-              Cancelar
+              {{ 'common.cancel' | translate }}
             </button>
             <button (click)="excluir()" [disabled]="modalLoading()"
                     class="flex-1 py-2.5 bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white font-semibold text-sm rounded-[10px] transition-colors">
-              {{ modalLoading() ? 'Removendo...' : 'Remover' }}
+              {{ modalLoading() ? ('usuarios.removing' | translate) : ('usuarios.remove' | translate) }}
             </button>
           </div>
         </div>
@@ -285,6 +286,7 @@ export class UsuariosComponent implements OnInit {
   readonly auth = inject(AuthService);
   private readonly usuariosApi = inject(UsuarioService);
   private readonly perfisApi = inject(PerfilService);
+  private readonly translate = inject(TranslateService);
 
   usuarios       = signal<UsuarioRBAC[]>([]);
   loading        = signal(false);
@@ -325,7 +327,7 @@ export class UsuariosComponent implements OnInit {
       const data = await firstValueFrom(this.usuariosApi.findAll());
       this.usuarios.set(data);
     } catch {
-      this.error.set('Erro ao carregar usuários.');
+      this.error.set(this.translate.instant('errors.loadUsers'));
     } finally {
       this.loading.set(false);
     }
@@ -396,7 +398,7 @@ export class UsuariosComponent implements OnInit {
       this.fecharModal();
       await this.load();
     } catch (err: unknown) {
-      const msg = (err as { error?: { message?: string } })?.error?.message ?? 'Erro ao salvar.';
+      const msg = (err as { error?: { message?: string } })?.error?.message ?? this.translate.instant('errors.saveGeneric');
       this.modalError.set(msg);
     } finally {
       this.modalLoading.set(false);
@@ -417,7 +419,7 @@ export class UsuariosComponent implements OnInit {
       this.excluindo.set(null);
       await this.load();
     } catch (err: unknown) {
-      const msg = (err as { error?: { message?: string } })?.error?.message ?? 'Erro ao remover.';
+      const msg = (err as { error?: { message?: string } })?.error?.message ?? this.translate.instant('errors.removeUser');
       this.error.set(msg);
       this.excluindo.set(null);
     } finally {

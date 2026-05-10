@@ -3,6 +3,7 @@ import {
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../../core/services/api.service';
 import { BackButtonComponent } from '../../../shared/components/back-button/back-button.component';
@@ -24,20 +25,20 @@ interface Paginated<T> { data: T[]; total: number; page: number; totalPages: num
 @Component({
   selector: 'nb-lista-bolaoes',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [BackButtonComponent, RouterLink, FormsModule],
+  imports: [BackButtonComponent, RouterLink, FormsModule, TranslatePipe],
   template: `
     <!-- Topbar -->
     <div class="bg-white border-b border-slate-200 px-4 lg:px-7 py-3 flex items-center gap-3 sticky top-14 lg:top-0 z-10">
       <nb-back-button />
       <div class="hidden sm:flex items-center gap-2 text-[12.5px]">
-        <span class="text-slate-400">Bolões</span>
+        <span class="text-slate-400">{{ 'listaBoloes.breadcrumb' | translate }}</span>
         <span class="text-slate-300">›</span>
-        <span class="font-semibold">Todos os bolões</span>
+        <span class="font-semibold">{{ 'listaBoloes.allPools' | translate }}</span>
       </div>
-      <span class="font-display font-semibold text-[14px] sm:hidden">Bolões</span>
+      <span class="font-display font-semibold text-[14px] sm:hidden">{{ 'listaBoloes.breadcrumb' | translate }}</span>
       <a routerLink="/bolao/novo"
          class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-800 text-white text-sm font-semibold rounded-[10px] no-underline transition-colors shadow-sm min-h-9">
-        + Novo bolão
+        {{ 'listaBoloes.new' | translate }}
       </a>
     </div>
 
@@ -204,8 +205,8 @@ interface Paginated<T> { data: T[]; total: number; page: number; totalPages: num
         <!-- Header -->
         <div class="px-6 py-5 border-b border-slate-200 flex items-center justify-between flex-shrink-0">
           <div>
-            <h2 class="font-display font-semibold text-lg">Editar bolão</h2>
-            <p class="text-slate-400 text-xs mt-0.5">Somente bolões A_SER_INICIADO podem ser editados</p>
+            <h2 class="font-display font-semibold text-lg">{{ 'listaBoloes.editTitle' | translate }}</h2>
+            <p class="text-slate-400 text-xs mt-0.5">{{ 'listaBoloes.editHint' | translate }}</p>
           </div>
           <button (click)="fecharEdicao()" class="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg text-lg">✕</button>
         </div>
@@ -221,15 +222,15 @@ interface Paginated<T> { data: T[]; total: number; page: number; totalPages: num
 
           <!-- Nome -->
           <div>
-            <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">Nome do bolão</label>
+            <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">{{ 'listaBoloes.poolNameLabel' | translate }}</label>
             <input [ngModel]="editNome()" (ngModelChange)="editNome.set($event)" name="editNome"
                    class="w-full px-3 py-2.5 border border-slate-200 rounded-[10px] text-sm focus:outline-none focus:border-green-700"
-                   placeholder="Ex: Bolão Junho 2026" />
+                   [attr.placeholder]="'listaBoloes.poolNamePlaceholder' | translate" />
           </div>
 
           <!-- Valor da cota -->
           <div>
-            <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">Valor da cota (R$)</label>
+            <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">{{ 'listaBoloes.quotaValueLabel' | translate }}</label>
             <input [ngModel]="editValorCota()" (ngModelChange)="editValorCota.set(+$event)" name="editValorCota"
                    type="number" min="0.01" step="0.01" inputmode="decimal"
                    class="w-full px-3 py-2.5 border border-slate-200 rounded-[10px] text-sm tabular focus:outline-none focus:border-green-700" />
@@ -238,13 +239,13 @@ interface Paginated<T> { data: T[]; total: number; page: number; totalPages: num
           <!-- Datas -->
           <div class="grid grid-cols-2 gap-4">
             <div>
-              <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">Data início</label>
+              <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">{{ 'listaBoloes.startDate' | translate }}</label>
               <input [ngModel]="editDataInicio()" (ngModelChange)="editDataInicio.set($event)" name="editDataInicio"
                      type="date"
                      class="w-full px-3 py-2.5 border border-slate-200 rounded-[10px] text-sm focus:outline-none focus:border-green-700" />
             </div>
             <div>
-              <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">Data término</label>
+              <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">{{ 'listaBoloes.endDate' | translate }}</label>
               <input [ngModel]="editDataTermino()" (ngModelChange)="editDataTermino.set($event)" name="editDataTermino"
                      type="date"
                      class="w-full px-3 py-2.5 border border-slate-200 rounded-[10px] text-sm focus:outline-none focus:border-green-700" />
@@ -255,11 +256,11 @@ interface Paginated<T> { data: T[]; total: number; page: number; totalPages: num
         <!-- Footer -->
         <div class="px-6 py-4 border-t border-slate-200 flex gap-2.5 flex-shrink-0">
           <button (click)="fecharEdicao()" class="flex-1 py-2.5 bg-white border border-slate-200 font-semibold text-sm rounded-[10px] hover:bg-slate-50">
-            Cancelar
+            {{ 'common.cancel' | translate }}
           </button>
           <button (click)="salvarEdicao()" [disabled]="editLoading() || !editNome().trim()"
                   class="flex-1 py-2.5 bg-green-700 hover:bg-green-800 disabled:opacity-50 text-white font-semibold text-sm rounded-[10px] shadow-sm">
-            {{ editLoading() ? 'Salvando...' : '✓ Salvar' }}
+            {{ editLoading() ? ('common.saving' | translate) : ('listaBoloes.saveWithCheck' | translate) }}
           </button>
         </div>
       </div>
@@ -268,6 +269,7 @@ interface Paginated<T> { data: T[]; total: number; page: number; totalPages: num
 })
 export class ListaBolaoesComponent implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly translate = inject(TranslateService);
 
   // ── List state ────────────────────────────────────────────────────────────────
   bolaoes      = signal<BolaoResponse[]>([]);
@@ -332,7 +334,9 @@ export class ListaBolaoesComponent implements OnInit {
     } catch (err: unknown) {
       type E = { error?: { message?: string }; status?: number };
       const e = err as E;
-      this.error.set(e.error?.message ?? `Erro ao carregar bolões${e.status ? ` [${e.status}]` : ''}`);
+      this.error.set(
+        e.error?.message ?? `${this.translate.instant('errors.loadPools')}${e.status ? ` [${e.status}]` : ''}`,
+      );
     } finally {
       this.loading.set(false);
     }
@@ -372,7 +376,9 @@ export class ListaBolaoesComponent implements OnInit {
     } catch (err: unknown) {
       type E = { error?: { message?: string }; status?: number };
       const e = err as E;
-      this.editError.set(e.error?.message ?? `Erro ao salvar${e.status ? ` [${e.status}]` : ''}`);
+      this.editError.set(
+        e.error?.message ?? `${this.translate.instant('errors.savePool')}${e.status ? ` [${e.status}]` : ''}`,
+      );
     } finally {
       this.editLoading.set(false);
     }

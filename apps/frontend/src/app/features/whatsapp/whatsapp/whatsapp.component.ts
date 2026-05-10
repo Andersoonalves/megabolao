@@ -3,6 +3,7 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { ApiService } from '../../../core/services/api.service';
 import { BackButtonComponent } from '../../../shared/components/back-button/back-button.component';
 import { QrCodeComponent } from '../../../shared/components/qr-code/qr-code.component';
@@ -18,33 +19,40 @@ interface MensagemWa {
   status: 'PENDENTE' | 'ENVIADO' | 'FALHA'; criadoEm: string;
 }
 
+interface MsgTemplateRow {
+  tipo: string;
+  nomeKey: string;
+  previewKey: string;
+  auto: boolean;
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 @Component({
   selector: 'nb-whatsapp',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [BackButtonComponent, FormsModule, QrCodeComponent],
+  imports: [BackButtonComponent, FormsModule, QrCodeComponent, TranslatePipe],
   template: `
     <!-- Topbar -->
     <div class="bg-white border-b border-slate-200 px-4 lg:px-7 py-3 flex items-center gap-3 sticky top-14 lg:top-0 z-10">
       <nb-back-button />
       <div class="hidden sm:flex items-center gap-2 text-[12.5px]">
-        <span class="text-slate-400">Bolão CG</span>
+        <span class="text-slate-400">{{ 'whatsapp.brand' | translate }}</span>
         <span class="text-slate-300">›</span>
-        <span class="font-semibold">WhatsApp</span>
+        <span class="font-semibold">{{ 'whatsapp.title' | translate }}</span>
       </div>
-      <span class="font-display font-semibold text-[14px] sm:hidden">WhatsApp</span>
+      <span class="font-display font-semibold text-[14px] sm:hidden">{{ 'whatsapp.title' | translate }}</span>
       <button (click)="abrirModalMensagem()"
               class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-800 text-white text-sm font-semibold rounded-[10px] transition-colors shadow-sm min-h-9">
-        + Nova mensagem
+        {{ 'whatsapp.newMessage' | translate }}
       </button>
     </div>
 
     <!-- Page -->
     <div class="p-4 lg:p-7">
       <div class="mb-5">
-        <h1 class="font-display text-2xl lg:text-[26px] font-semibold tracking-tight mb-1">WhatsApp</h1>
-        <p class="text-slate-500 text-[13.5px]">Sessão whatsapp-web.js · {{ grupos().length }} grupos · {{ totalEnviadas() }} mensagens este mês</p>
+        <h1 class="font-display text-2xl lg:text-[26px] font-semibold tracking-tight mb-1">{{ 'whatsapp.title' | translate }}</h1>
+        <p class="text-slate-500 text-[13.5px]">{{ 'whatsapp.subtitle' | translate: { g: grupos().length, m: totalEnviadas() } }}</p>
       </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-5">
@@ -55,7 +63,7 @@ interface MensagemWa {
           <!-- Sessão -->
           <div class="bg-white border border-slate-200 rounded-lg">
             <div class="px-4 py-3.5 border-b border-slate-200">
-              <h3 class="font-display font-semibold text-[14px]">Sessão</h3>
+              <h3 class="font-display font-semibold text-[14px]">{{ 'whatsapp.sessionTitle' | translate }}</h3>
             </div>
             <div class="p-4">
               <!-- Status indicator -->
@@ -64,9 +72,16 @@ interface MensagemWa {
                       [style.background]="statusColor()"
                       [style.box-shadow]="session()?.status === 'CONECTADO' ? '0 0 0 4px rgba(16,185,129,0.2)' : 'none'"></span>
                 <div>
-                  <div class="font-semibold text-[13.5px]">{{ statusLabel() }}</div>
+                  <div class="font-semibold text-[13.5px]">
+                    @switch (session()?.status) {
+                      @case ('CONECTADO') { {{ 'whatsapp.statusConnected' | translate }} }
+                      @case ('AGUARDANDO_QR') { {{ 'whatsapp.statusQr' | translate }} }
+                      @case ('CARREGANDO') { {{ 'whatsapp.statusConnecting' | translate }} }
+                      @default { {{ 'whatsapp.statusDisconnected' | translate }} }
+                    }
+                  </div>
                   @if (session()?.numero) {
-                    <div class="text-slate-400 text-[11.5px]">+55 {{ session()!.numero }} · sessão ativa</div>
+                    <div class="text-slate-400 text-[11.5px]">{{ 'whatsapp.sessionActiveLine' | translate: { num: session()!.numero } }}</div>
                   }
                 </div>
               </div>
@@ -77,10 +92,7 @@ interface MensagemWa {
                   <!-- Instruções -->
                   <div class="px-4 py-3 bg-slate-50 border-b border-slate-200 text-center">
                     <p class="text-[12px] text-slate-600 leading-relaxed">
-                      Abra o WhatsApp →
-                      <strong>⋮ Menu</strong> →
-                      <strong>Aparelhos conectados</strong> →
-                      <strong>Conectar aparelho</strong>
+                      {{ 'whatsapp.qrPart1' | translate }}<strong>{{ 'whatsapp.qrBold1' | translate }}</strong>{{ 'whatsapp.qrPart2' | translate }}<strong>{{ 'whatsapp.qrBold2' | translate }}</strong>{{ 'whatsapp.qrPart3' | translate }}<strong>{{ 'whatsapp.qrBold3' | translate }}</strong>
                     </p>
                   </div>
 
@@ -99,7 +111,7 @@ interface MensagemWa {
                     }
                     <div class="mt-3 flex items-center gap-1.5 text-[11.5px] text-slate-400">
                       <div class="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></div>
-                      Aguardando leitura do QR code
+                      {{ 'whatsapp.awaitingQr' | translate }}
                     </div>
                   </div>
                 </div>
@@ -109,18 +121,18 @@ interface MensagemWa {
                 @if (session()?.status === 'CONECTADO') {
                   <button (click)="desconectar()" [disabled]="acao()"
                           class="flex-1 inline-flex items-center justify-center gap-1 px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-50 text-sm font-semibold rounded-[10px] text-slate-700 transition-colors">
-                    {{ acao() ? '...' : '↺ Reconectar' }}
+                    {{ acao() ? ('whatsapp.ellipsis' | translate) : ('whatsapp.reconnect' | translate) }}
                   </button>
                 } @else {
                   <button (click)="iniciarSessao()" [disabled]="acao() || session()?.status === 'CARREGANDO'"
                           class="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-green-700 hover:bg-green-800 disabled:opacity-50 text-white text-sm font-semibold rounded-[10px] transition-colors">
-                    {{ session()?.status === 'CARREGANDO' ? '⟳ Conectando...' : '🔗 Conectar' }}
+                    {{ session()?.status === 'CARREGANDO' ? ('whatsapp.connecting' | translate) : ('whatsapp.connect' | translate) }}
                   </button>
                 }
               </div>
 
               <div class="mt-3.5 p-2.5 bg-amber-50 border border-amber-100 rounded-lg text-[11.5px] text-amber-700 leading-relaxed">
-                ⚠ Solução não-oficial. Pode requerer reconexão após atualizações do WhatsApp.
+                {{ 'whatsapp.unofficialWarn' | translate }}
               </div>
             </div>
           </div>
@@ -128,17 +140,17 @@ interface MensagemWa {
           <!-- Grupos -->
           <div class="bg-white border border-slate-200 rounded-lg">
             <div class="px-4 py-3.5 border-b border-slate-200 flex items-center justify-between">
-              <h3 class="font-display font-semibold text-[14px]">Grupos vinculados</h3>
-              <button (click)="loadGrupos()" class="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors text-sm" title="Atualizar">↺</button>
+              <h3 class="font-display font-semibold text-[14px]">{{ 'whatsapp.groupsTitle' | translate }}</h3>
+              <button (click)="loadGrupos()" class="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors text-sm" [attr.title]="'whatsapp.refreshTitle' | translate">↺</button>
             </div>
             <div>
               @if (grupos().length === 0 && session()?.status !== 'CONECTADO') {
                 <div class="px-4 py-6 text-center text-slate-400 text-[12.5px]">
-                  Conecte o WhatsApp para ver os grupos.
+                  {{ 'whatsapp.connectToSee' | translate }}
                 </div>
               } @else if (grupos().length === 0) {
                 <div class="px-4 py-6 text-center text-slate-400 text-[12.5px]">
-                  Nenhum grupo encontrado.
+                  {{ 'whatsapp.noGroups' | translate }}
                 </div>
               } @else {
                 @for (g of grupos(); track g.id; let last = $last) {
@@ -151,7 +163,7 @@ interface MensagemWa {
                       <div class="text-[13px] font-semibold truncate">{{ g.nome }}</div>
                       @if (grupoPadraoId() === g.id) {
                         <div class="text-[11px] text-green-700 font-semibold flex items-center gap-1">
-                          <span>📌</span> Grupo padrão para notificações
+                          <span>📌</span> {{ 'whatsapp.defaultGroup' | translate }}
                         </div>
                       } @else {
                         <div class="text-[11px] text-slate-400 font-mono truncate">{{ g.id.slice(0, 20) }}…</div>
@@ -160,12 +172,12 @@ interface MensagemWa {
                     @if (grupoPadraoId() === g.id) {
                       <button (click)="removerPadrao()"
                               class="text-[11px] font-semibold text-slate-400 hover:text-red-500 transition-colors px-2 py-1 rounded-lg hover:bg-red-50">
-                        Remover
+                        {{ 'whatsapp.remove' | translate }}
                       </button>
                     } @else {
                       <button (click)="definirPadrao(g.id)"
                               class="text-[11px] font-semibold text-slate-500 hover:text-green-700 transition-colors px-2 py-1 rounded-lg hover:bg-green-50 border border-slate-200 hover:border-green-300 whitespace-nowrap">
-                        📌 Definir padrão
+                        {{ 'whatsapp.setDefault' | translate }}
                       </button>
                     }
                   </div>
@@ -173,11 +185,11 @@ interface MensagemWa {
               }
               @if (grupoPadraoId() && grupos().length > 0) {
                 <div class="px-4 py-2.5 bg-green-50 border-t border-green-100 text-[11.5px] text-green-700">
-                  ✓ Notificações automáticas (sorteio, ranking) vão para <strong>{{ nomeGrupoPadrao() }}</strong>
+                  {{ 'whatsapp.notifHintBefore' | translate }}<strong>{{ nomeGrupoPadrao() }}</strong>
                 </div>
               }
               @if (loadingGrupos()) {
-                <div class="px-4 py-4 text-center text-[12px] text-slate-400">Carregando grupos…</div>
+                <div class="px-4 py-4 text-center text-[12px] text-slate-400">{{ 'whatsapp.loadingGroups' | translate }}</div>
               }
             </div>
           </div>
@@ -189,37 +201,37 @@ interface MensagemWa {
           <!-- KPIs -->
           <div class="grid grid-cols-3 gap-4">
             <div class="bg-white border border-slate-200 rounded-lg p-[18px]">
-              <div class="text-[11px] font-semibold text-slate-500 uppercase tracking-widest">Enviadas (mês)</div>
+              <div class="text-[11px] font-semibold text-slate-500 uppercase tracking-widest">{{ 'whatsapp.kpiSent' | translate }}</div>
               <div class="font-display text-[26px] font-semibold tracking-tight mt-1">{{ totalEnviadas() }}</div>
-              <div class="text-[11.5px] text-green-700 mt-0.5">{{ pctSucesso() }}% sucesso</div>
+              <div class="text-[11.5px] text-green-700 mt-0.5">{{ 'whatsapp.kpiSuccess' | translate: { p: pctSucesso() } }}</div>
             </div>
             <div class="bg-white border border-slate-200 rounded-lg p-[18px]">
-              <div class="text-[11px] font-semibold text-slate-500 uppercase tracking-widest">Falhas</div>
+              <div class="text-[11px] font-semibold text-slate-500 uppercase tracking-widest">{{ 'whatsapp.kpiFails' | translate }}</div>
               <div class="font-display text-[26px] font-semibold tracking-tight mt-1 text-amber-600">{{ totalFalhas() }}</div>
-              <div class="text-[11.5px] text-slate-400 mt-0.5">retry automático 3×</div>
+              <div class="text-[11.5px] text-slate-400 mt-0.5">{{ 'whatsapp.kpiRetry' | translate }}</div>
             </div>
             <div class="bg-white border border-slate-200 rounded-lg p-[18px]">
-              <div class="text-[11px] font-semibold text-slate-500 uppercase tracking-widest">Próximo</div>
-              <div class="font-display text-[26px] font-semibold tracking-tight mt-1 text-blue-600">Auto</div>
-              <div class="text-[11.5px] text-slate-400 mt-0.5">após próximo sorteio</div>
+              <div class="text-[11px] font-semibold text-slate-500 uppercase tracking-widest">{{ 'whatsapp.kpiNext' | translate }}</div>
+              <div class="font-display text-[26px] font-semibold tracking-tight mt-1 text-blue-600">{{ 'whatsapp.kpiNextValue' | translate }}</div>
+              <div class="text-[11.5px] text-slate-400 mt-0.5">{{ 'whatsapp.kpiNextHint' | translate }}</div>
             </div>
           </div>
 
           <!-- Templates -->
           <div class="bg-white border border-slate-200 rounded-lg">
             <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
-              <h3 class="font-display font-semibold text-[15px]">Templates de mensagem</h3>
+              <h3 class="font-display font-semibold text-[15px]">{{ 'whatsapp.templatesTitle' | translate }}</h3>
             </div>
             <div class="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
               @for (t of templates; track t.tipo) {
                 <div class="p-3.5 border border-slate-200 rounded-xl">
                   <div class="flex items-center justify-between mb-1.5">
-                    <span class="text-[13px] font-semibold">{{ t.nome }}</span>
+                    <span class="text-[13px] font-semibold">{{ t.nomeKey | translate }}</span>
                     @if (t.auto) {
-                      <span class="inline-flex items-center px-2 py-0.5 bg-green-50 text-green-700 border border-green-200 text-[9.5px] font-semibold rounded-full uppercase tracking-wide">automático</span>
+                      <span class="inline-flex items-center px-2 py-0.5 bg-green-50 text-green-700 border border-green-200 text-[9.5px] font-semibold rounded-full uppercase tracking-wide">{{ 'whatsapp.badgeAuto' | translate }}</span>
                     }
                   </div>
-                  <div class="font-mono text-[11px] text-slate-400 leading-relaxed">{{ t.preview }}</div>
+                  <div class="font-mono text-[11px] text-slate-400 leading-relaxed">{{ t.previewKey | translate }}</div>
                 </div>
               }
             </div>
@@ -228,16 +240,16 @@ interface MensagemWa {
           <!-- Histórico -->
           <div class="bg-white border border-slate-200 rounded-lg overflow-hidden">
             <div class="px-5 py-4 border-b border-slate-200">
-              <h3 class="font-display font-semibold text-[15px]">Histórico de mensagens</h3>
+              <h3 class="font-display font-semibold text-[15px]">{{ 'whatsapp.historyTitle' | translate }}</h3>
             </div>
             <div class="overflow-x-auto">
               <table class="w-full text-[13px]">
                 <thead class="bg-slate-50">
                   <tr>
-                    <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5 hidden sm:table-cell">Data</th>
-                    <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">Tipo</th>
-                    <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">Conteúdo</th>
-                    <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">Status</th>
+                    <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5 hidden sm:table-cell">{{ 'whatsapp.thDate' | translate }}</th>
+                    <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">{{ 'whatsapp.thType' | translate }}</th>
+                    <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">{{ 'whatsapp.thContent' | translate }}</th>
+                    <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">{{ 'whatsapp.thStatus' | translate }}</th>
                     <th class="px-4 py-2.5 w-24"></th>
                   </tr>
                 </thead>
@@ -254,7 +266,7 @@ interface MensagemWa {
                     }
                   } @else if (mensagens().length === 0) {
                     <tr>
-                      <td colspan="5" class="px-4 py-10 text-center text-slate-400 text-sm">Nenhuma mensagem enviada ainda.</td>
+                      <td colspan="5" class="px-4 py-10 text-center text-slate-400 text-sm">{{ 'whatsapp.emptyMsgs' | translate }}</td>
                     </tr>
                   } @else {
                     @for (m of mensagens(); track m.id) {
@@ -268,14 +280,18 @@ interface MensagemWa {
                           <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-semibold border"
                                 [class]="m.status === 'ENVIADO' ? 'bg-green-50 text-green-800 border-green-200' : m.status === 'FALHA' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-slate-100 text-slate-500 border-slate-200'">
                             <span class="w-1.5 h-1.5 rounded-full bg-current"></span>
-                            {{ m.status }}
+                            @switch (m.status) {
+                              @case ('PENDENTE') { {{ 'whatsapp.msgStatusPENDENTE' | translate }} }
+                              @case ('ENVIADO') { {{ 'whatsapp.msgStatusENVIADO' | translate }} }
+                              @case ('FALHA') { {{ 'whatsapp.msgStatusFALHA' | translate }} }
+                            }
                           </span>
                         </td>
                         <td class="px-4 py-3">
                           @if (m.status === 'FALHA') {
                             <button (click)="retry(m.id)"
                                     class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-[12px] font-semibold rounded-lg transition-colors">
-                              ↺ Reenviar
+                              {{ 'whatsapp.retryBtn' | translate }}
                             </button>
                           }
                         </td>
@@ -295,36 +311,36 @@ interface MensagemWa {
       <div class="fixed inset-0 bg-black/40 z-40" (click)="showModal.set(false)"></div>
       <div class="fixed right-0 top-0 h-full w-full sm:w-[420px] bg-white z-50 flex flex-col shadow-xl">
         <div class="px-6 py-5 border-b border-slate-200 flex items-center justify-between flex-shrink-0">
-          <h2 class="font-display font-semibold text-lg">Nova mensagem</h2>
+          <h2 class="font-display font-semibold text-lg">{{ 'whatsapp.modalTitle' | translate }}</h2>
           <button (click)="showModal.set(false)" class="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg text-lg">✕</button>
         </div>
         <div class="flex-1 overflow-y-auto p-6 flex flex-col gap-4">
           <div>
-            <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">Grupo de destino</label>
+            <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">{{ 'whatsapp.labelDestGroup' | translate }}</label>
             <select [(ngModel)]="msgGrupoId" name="grupoId"
                     class="w-full px-3 py-2.5 border border-slate-200 rounded-[10px] text-sm bg-white focus:outline-none focus:border-green-700">
-              <option value="">Selecione um grupo…</option>
+              <option value="">{{ 'whatsapp.selectGroupPh' | translate }}</option>
               @for (g of grupos(); track g.id) {
                 <option [value]="g.id">{{ g.nome }}</option>
               }
             </select>
           </div>
           <div>
-            <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">Tipo</label>
+            <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">{{ 'whatsapp.labelMsgType' | translate }}</label>
             <select [(ngModel)]="msgTipo" name="tipo"
                     class="w-full px-3 py-2.5 border border-slate-200 rounded-[10px] text-sm bg-white focus:outline-none focus:border-green-700">
-              <option value="MANUAL">Manual</option>
-              <option value="RESULTADO_SORTEIO">Resultado do sorteio</option>
-              <option value="RANKING_PARCIAL">Ranking parcial</option>
-              <option value="PREMIADOS">Premiados</option>
-              <option value="AVISO_ADMIN">Aviso administrativo</option>
+              <option value="MANUAL">{{ 'whatsapp.optManual' | translate }}</option>
+              <option value="RESULTADO_SORTEIO">{{ 'whatsapp.optResultadoSorteio' | translate }}</option>
+              <option value="RANKING_PARCIAL">{{ 'whatsapp.optRankingParcial' | translate }}</option>
+              <option value="PREMIADOS">{{ 'whatsapp.optPremiados' | translate }}</option>
+              <option value="AVISO_ADMIN">{{ 'whatsapp.optAvisoAdmin' | translate }}</option>
             </select>
           </div>
           <div>
-            <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">Mensagem</label>
+            <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">{{ 'whatsapp.labelMessage' | translate }}</label>
             <textarea [(ngModel)]="msgConteudo" name="conteudo" rows="5"
                       class="w-full px-3 py-2.5 border border-slate-200 rounded-[10px] text-sm font-mono resize-none focus:outline-none focus:border-green-700"
-                      placeholder="📣 Mensagem..."></textarea>
+                      [attr.placeholder]="'whatsapp.msgPlaceholder' | translate"></textarea>
             <div class="text-right text-[11px] text-slate-400 mt-1">{{ msgConteudo.length }}/4096</div>
           </div>
           @if (modalError()) {
@@ -332,11 +348,11 @@ interface MensagemWa {
           }
         </div>
         <div class="px-6 py-4 border-t border-slate-200 flex gap-2.5 flex-shrink-0">
-          <button (click)="showModal.set(false)" class="flex-1 py-2.5 bg-white border border-slate-200 font-semibold text-sm rounded-[10px]">Cancelar</button>
+          <button (click)="showModal.set(false)" class="flex-1 py-2.5 bg-white border border-slate-200 font-semibold text-sm rounded-[10px]">{{ 'whatsapp.cancel' | translate }}</button>
           <button (click)="enviarMensagem()"
                   [disabled]="!msgGrupoId || !msgConteudo || modalLoading()"
                   class="flex-1 py-2.5 bg-green-700 hover:bg-green-800 disabled:opacity-40 text-white font-semibold text-sm rounded-[10px] shadow-sm">
-            {{ modalLoading() ? 'Enviando…' : '→ Enfileirar' }}
+            {{ modalLoading() ? ('whatsapp.sending' | translate) : ('whatsapp.enqueue' | translate) }}
           </button>
         </div>
       </div>
@@ -345,6 +361,7 @@ interface MensagemWa {
 })
 export class WhatsAppComponent implements OnInit, OnDestroy {
   private readonly api = inject(ApiService);
+  private readonly translate = inject(TranslateService);
 
   // ── State ──────────────────────────────────────────────────────────────────
   session       = signal<SessionInfo | null>(null);
@@ -372,11 +389,11 @@ export class WhatsAppComponent implements OnInit, OnDestroy {
     return t > 0 ? Math.round(s / t * 100) : 96;
   };
 
-  readonly templates = [
-    { tipo: 'RESULTADO_SORTEIO', nome: 'Resultado do sorteio',  auto: true,  preview: '🎯 Sorteio #{concurso} — {numeros}' },
-    { tipo: 'PREMIADOS',         nome: 'Premiados',             auto: true,  preview: '🏆 Bolão encerrado! Ganhadores: {lista}' },
-    { tipo: 'RANKING_PARCIAL',   nome: 'Ranking parcial',       auto: true,  preview: '📊 Top 10 do bolão — {tabela}' },
-    { tipo: 'MANUAL',            nome: 'Aviso administrativo',  auto: false, preview: '📣 Mensagem manual livre' },
+  readonly templates: MsgTemplateRow[] = [
+    { tipo: 'RESULTADO_SORTEIO', nomeKey: 'whatsapp.tplResultadoSorteioNome', previewKey: 'whatsapp.tplResultadoSorteioPreview', auto: true },
+    { tipo: 'PREMIADOS',         nomeKey: 'whatsapp.tplPremiadosNome',       previewKey: 'whatsapp.tplPremiadosPreview',       auto: true },
+    { tipo: 'RANKING_PARCIAL',   nomeKey: 'whatsapp.tplRankingNome',         previewKey: 'whatsapp.tplRankingPreview',         auto: true },
+    { tipo: 'MANUAL',            nomeKey: 'whatsapp.tplManualNome',          previewKey: 'whatsapp.tplManualPreview',          auto: false },
   ];
 
   private readonly STORAGE_KEY = 'whatsapp_grupo_padrao';
@@ -459,7 +476,7 @@ export class WhatsAppComponent implements OnInit, OnDestroy {
       this.msgGrupoId  = '';
       await this.loadMensagens();
     } catch (err: unknown) {
-      this.modalError.set((err as { error?: { message?: string } })?.error?.message ?? 'Erro ao enfileirar mensagem');
+      this.modalError.set((err as { error?: { message?: string } })?.error?.message ?? this.translate.instant('whatsapp.queueError'));
     } finally { this.modalLoading.set(false); }
   }
 
@@ -489,28 +506,23 @@ export class WhatsAppComponent implements OnInit, OnDestroy {
   }
 
   nomeGrupoPadrao(): string {
-    return this.grupos().find(g => g.id === this.grupoPadraoId())?.nome ?? 'grupo selecionado';
-  }
-
-  statusLabel(): string {
-    const s = this.session()?.status;
-    if (s === 'CONECTADO')      return 'Conectado';
-    if (s === 'AGUARDANDO_QR')  return 'Aguardando leitura do QR';
-    if (s === 'CARREGANDO')     return 'Conectando…';
-    return 'Desconectado';
+    return this.grupos().find(g => g.id === this.grupoPadraoId())?.nome ?? this.translate.instant('whatsapp.defaultGroupName');
   }
 
   statusColor(): string {
-    const s = this.session()?.status;
-    if (s === 'CONECTADO')     return '#10b981';
-    if (s === 'AGUARDANDO_QR') return '#f59e0b';
-    if (s === 'CARREGANDO')    return '#94a3b8';
+    const st = this.session()?.status;
+    if (st === 'CONECTADO')     return '#10b981';
+    if (st === 'AGUARDANDO_QR') return '#f59e0b';
+    if (st === 'CARREGANDO')    return '#94a3b8';
     return '#ef4444';
   }
 
   fmtDt(iso: string): string {
-    try { return new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }); }
-    catch { return iso; }
+    const cur = this.translate.currentLang ?? 'pt';
+    const lang = cur.startsWith('en') ? 'en-US' : 'pt-BR';
+    try {
+      return new Date(iso).toLocaleString(lang, { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+    } catch { return iso; }
   }
 }
 

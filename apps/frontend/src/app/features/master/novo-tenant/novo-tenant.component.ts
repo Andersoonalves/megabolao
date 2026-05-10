@@ -4,6 +4,7 @@ import {
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { ApiService } from '../../../core/services/api.service';
 import { PhoneMaskDirective } from '../../../shared/phone';
 import { BackButtonComponent } from '../../../shared/components/back-button/back-button.component';
@@ -14,27 +15,27 @@ const SLUG_RE = /^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$/;
 @Component({
   selector: 'nb-novo-tenant',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [BackButtonComponent, FormsModule, RouterLink, PhoneMaskDirective],
+  imports: [BackButtonComponent, FormsModule, RouterLink, PhoneMaskDirective, TranslatePipe],
   template: `
     <!-- Topbar -->
     <div class="bg-white border-b border-slate-200 px-4 lg:px-7 py-3 flex items-center gap-3 sticky top-14 lg:top-0 z-10">
       <nb-back-button />
       <div class="hidden sm:flex items-center gap-2 text-[12.5px]">
-        <span class="text-slate-400">Plataforma</span>
+        <span class="text-slate-400">{{ 'novoTenant.breadcrumbPlatform' | translate }}</span>
         <span class="text-slate-300">›</span>
-        <a routerLink="/tenants" class="text-slate-400 hover:text-slate-700 no-underline transition-colors">Tenants</a>
+        <a routerLink="/tenants" class="text-slate-400 hover:text-slate-700 no-underline transition-colors">{{ 'novoTenant.breadcrumbTenants' | translate }}</a>
         <span class="text-slate-300">›</span>
-        <span class="font-semibold">Novo</span>
+        <span class="font-semibold">{{ 'novoTenant.breadcrumbNew' | translate }}</span>
       </div>
-      <span class="font-display font-semibold text-[14px] sm:hidden">Novo tenant</span>
+      <span class="font-display font-semibold text-[14px] sm:hidden">{{ 'novoTenant.title' | translate }}</span>
       <div class="flex gap-2">
         <a routerLink="/tenants"
            class="inline-flex items-center px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-sm font-semibold rounded-[10px] no-underline text-slate-700 transition-colors min-h-9">
-          Cancelar
+          {{ 'novoTenant.cancel' | translate }}
         </a>
-        <button (click)="submit()" [disabled]="loading()"
+        <button type="button" (click)="submit()" [disabled]="loading()"
                 class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-800 disabled:opacity-50 text-white text-sm font-semibold rounded-[10px] transition-colors shadow-sm min-h-9">
-          {{ loading() ? 'Criando...' : '✓ Criar tenant' }}
+          {{ loading() ? ('novoTenant.submitting' | translate) : ('novoTenant.submitBtn' | translate) }}
         </button>
       </div>
     </div>
@@ -42,8 +43,8 @@ const SLUG_RE = /^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$/;
     <!-- Page -->
     <div class="p-4 lg:p-7">
       <div class="mb-6">
-        <h1 class="font-display text-2xl lg:text-[26px] font-semibold tracking-tight mb-1">Novo tenant</h1>
-        <p class="text-slate-500 text-[13.5px]">Cada tenant é uma empresa isolada com seus próprios bolões, usuários e branding.</p>
+        <h1 class="font-display text-2xl lg:text-[26px] font-semibold tracking-tight mb-1">{{ 'novoTenant.title' | translate }}</h1>
+        <p class="text-slate-500 text-[13.5px]">{{ 'novoTenant.subtitle' | translate }}</p>
       </div>
 
       @if (error()) {
@@ -61,56 +62,56 @@ const SLUG_RE = /^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$/;
           <!-- Identificação -->
           <div class="bg-white border border-slate-200 rounded-lg">
             <div class="px-5 py-4 border-b border-slate-200">
-              <h3 class="font-display font-semibold text-[15px]">1. Identificação</h3>
+              <h3 class="font-display font-semibold text-[15px]">{{ 'novoTenant.card1' | translate }}</h3>
             </div>
             <div class="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
 
               <!-- Nome -->
               <div>
                 <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">
-                  Nome do tenant <span class="text-red-500">*</span>
+                  {{ 'novoTenant.labelNome' | translate }} <span class="text-red-500">*</span>
                 </label>
                 <input [ngModel]="nome()" (ngModelChange)="onNomeChange($event)" name="nome"
                        class="w-full px-3 py-2.5 border rounded-[10px] text-sm focus:outline-none transition-colors"
                        [class]="fieldErr('nome') ? 'border-red-400 focus:border-red-500 bg-red-50' : 'border-slate-200 focus:border-green-700'"
-                       placeholder="Ex: Bolão da Família Souza" />
+                       [attr.placeholder]="'novoTenant.nomePh' | translate" />
                 @if (fieldErr('nome')) {
-                  <p class="text-[11px] text-red-600 mt-1 flex items-center gap-1">⚠ {{ fieldErr('nome') }}</p>
+                  <p class="text-[11px] text-red-600 mt-1 flex items-center gap-1">⚠ {{ fieldErr('nome')! | translate }}</p>
                 }
               </div>
 
               <!-- Slug -->
               <div>
                 <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">
-                  Slug (URL) <span class="text-red-500">*</span>
+                  {{ 'novoTenant.labelSlug' | translate }} <span class="text-red-500">*</span>
                 </label>
                 <div class="flex items-center border rounded-[10px] overflow-hidden transition-colors"
                      [class]="fieldErr('slug') ? 'border-red-400 bg-red-50' : 'border-slate-200 focus-within:border-green-700'">
                   <span class="px-2.5 py-2.5 text-[11.5px] text-slate-400 bg-slate-50 border-r border-slate-200 whitespace-nowrap flex-shrink-0">
-                    nossobolao/
+                    {{ 'novoTenant.slugPrefix' | translate }}
                   </span>
                   <input [ngModel]="slug()" (ngModelChange)="slug.set($event); slugEditado.set(true)" name="slug"
                          class="flex-1 px-2.5 py-2.5 text-sm font-mono focus:outline-none bg-transparent min-w-0"
-                         placeholder="bolao-souza" />
+                         [attr.placeholder]="'novoTenant.slugPh' | translate" />
                 </div>
                 @if (fieldErr('slug')) {
-                  <p class="text-[11px] text-red-600 mt-1 flex items-center gap-1">⚠ {{ fieldErr('slug') }}</p>
+                  <p class="text-[11px] text-red-600 mt-1 flex items-center gap-1">⚠ {{ fieldErr('slug')! | translate }}</p>
                 } @else if (slug()) {
-                  <p class="text-[11px] text-green-700 mt-1">✓ portal.{{ slug() }}.nossobolao.com.br</p>
+                  <p class="text-[11px] text-green-700 mt-1">{{ 'novoTenant.slugOk' | translate: { slug: slug() } }}</p>
                 }
               </div>
 
               <!-- CNPJ -->
               <div>
-                <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">CNPJ (opcional)</label>
+                <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">{{ 'novoTenant.labelCnpj' | translate }}</label>
                 <input [ngModel]="cnpj()" (ngModelChange)="cnpj.set($event)" name="cnpj"
                        class="w-full px-3 py-2.5 border border-slate-200 rounded-[10px] text-sm font-mono focus:outline-none focus:border-green-700"
-                       placeholder="00.000.000/0000-00" />
+                       [attr.placeholder]="'novoTenant.cnpjPh' | translate" />
               </div>
 
               <!-- Taxa -->
               <div>
-                <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">Taxa administrativa (%)</label>
+                <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">{{ 'novoTenant.labelTaxa' | translate }}</label>
                 <input [ngModel]="taxa()" (ngModelChange)="taxa.set(+$event)" name="taxa"
                        type="number" min="0" max="100" step="0.01" inputmode="decimal"
                        class="w-full px-3 py-2.5 border border-slate-200 rounded-[10px] text-sm tabular focus:outline-none focus:border-green-700" />
@@ -121,75 +122,75 @@ const SLUG_RE = /^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$/;
           <!-- Admin inicial -->
           <div class="bg-white border border-slate-200 rounded-lg">
             <div class="px-5 py-4 border-b border-slate-200">
-              <h3 class="font-display font-semibold text-[15px]">2. Administrador inicial</h3>
+              <h3 class="font-display font-semibold text-[15px]">{{ 'novoTenant.card2' | translate }}</h3>
             </div>
             <div class="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
 
               <!-- Admin nome -->
               <div>
                 <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">
-                  Nome completo <span class="text-red-500">*</span>
+                  {{ 'novoTenant.labelAdminNome' | translate }} <span class="text-red-500">*</span>
                 </label>
                 <input [ngModel]="adminNome()" (ngModelChange)="adminNome.set($event)" name="adminNome"
                        class="w-full px-3 py-2.5 border rounded-[10px] text-sm focus:outline-none transition-colors"
                        [class]="fieldErr('adminNome') ? 'border-red-400 focus:border-red-500 bg-red-50' : 'border-slate-200 focus:border-green-700'"
-                       placeholder="Ex: Amanda Andrade" />
+                       [attr.placeholder]="'novoTenant.adminNomePh' | translate" />
                 @if (fieldErr('adminNome')) {
-                  <p class="text-[11px] text-red-600 mt-1 flex items-center gap-1">⚠ {{ fieldErr('adminNome') }}</p>
+                  <p class="text-[11px] text-red-600 mt-1 flex items-center gap-1">⚠ {{ fieldErr('adminNome')! | translate }}</p>
                 }
               </div>
 
               <!-- Admin email -->
               <div>
                 <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">
-                  Email <span class="text-red-500">*</span>
+                  {{ 'novoTenant.labelEmail' | translate }} <span class="text-red-500">*</span>
                 </label>
                 <input [ngModel]="adminEmail()" (ngModelChange)="adminEmail.set($event)" name="adminEmail"
                        type="email"
                        class="w-full px-3 py-2.5 border rounded-[10px] text-sm focus:outline-none transition-colors"
                        [class]="fieldErr('adminEmail') ? 'border-red-400 focus:border-red-500 bg-red-50' : 'border-slate-200 focus:border-green-700'"
-                       placeholder="amanda@empresa.com.br" />
+                       [attr.placeholder]="'novoTenant.emailPh' | translate" />
                 @if (fieldErr('adminEmail')) {
-                  <p class="text-[11px] text-red-600 mt-1 flex items-center gap-1">⚠ {{ fieldErr('adminEmail') }}</p>
+                  <p class="text-[11px] text-red-600 mt-1 flex items-center gap-1">⚠ {{ fieldErr('adminEmail')! | translate }}</p>
                 }
               </div>
 
               <!-- Celular -->
               <div>
-                <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">Celular</label>
+                <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">{{ 'novoTenant.labelCelular' | translate }}</label>
                 <input phoneMask [ngModel]="adminCelular()" (ngModelChange)="adminCelular.set($event)" name="celular"
                        type="tel" inputmode="numeric"
                        class="w-full px-3 py-2.5 border border-slate-200 rounded-[10px] text-sm font-mono focus:outline-none focus:border-green-700"
-                       placeholder="(00) 0 0000-0000" />
+                       [attr.placeholder]="'novoTenant.celularPh' | translate" />
               </div>
 
               <!-- Senha -->
               <div>
                 <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">
-                  Senha <span class="text-red-500">*</span>
+                  {{ 'novoTenant.labelSenha' | translate }} <span class="text-red-500">*</span>
                 </label>
                 <input [ngModel]="adminSenha()" (ngModelChange)="adminSenha.set($event)" name="adminSenha"
                        type="password"
                        class="w-full px-3 py-2.5 border rounded-[10px] text-sm focus:outline-none transition-colors"
                        [class]="fieldErr('adminSenha') ? 'border-red-400 focus:border-red-500 bg-red-50' : 'border-slate-200 focus:border-green-700'"
-                       placeholder="Mínimo 8 caracteres" />
+                       [attr.placeholder]="'novoTenant.senhaPh' | translate" />
                 @if (fieldErr('adminSenha')) {
-                  <p class="text-[11px] text-red-600 mt-1 flex items-center gap-1">⚠ {{ fieldErr('adminSenha') }}</p>
+                  <p class="text-[11px] text-red-600 mt-1 flex items-center gap-1">⚠ {{ fieldErr('adminSenha')! | translate }}</p>
                 }
               </div>
 
               <!-- Confirmar senha -->
               <div>
                 <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">
-                  Confirmar senha <span class="text-red-500">*</span>
+                  {{ 'novoTenant.labelConfirmSenha' | translate }} <span class="text-red-500">*</span>
                 </label>
                 <input [ngModel]="confirmarSenha()" (ngModelChange)="confirmarSenha.set($event)" name="confirmarSenha"
                        type="password"
                        class="w-full px-3 py-2.5 border rounded-[10px] text-sm focus:outline-none transition-colors"
                        [class]="fieldErr('confirmarSenha') ? 'border-red-400 focus:border-red-500 bg-red-50' : 'border-slate-200 focus:border-green-700'"
-                       placeholder="Repita a senha" />
+                       [attr.placeholder]="'novoTenant.confirmSenhaPh' | translate" />
                 @if (fieldErr('confirmarSenha')) {
-                  <p class="text-[11px] text-red-600 mt-1 flex items-center gap-1">⚠ {{ fieldErr('confirmarSenha') }}</p>
+                  <p class="text-[11px] text-red-600 mt-1 flex items-center gap-1">⚠ {{ fieldErr('confirmarSenha')! | translate }}</p>
                 }
               </div>
             </div>
@@ -198,12 +199,12 @@ const SLUG_RE = /^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$/;
           <!-- Branding -->
           <div class="bg-white border border-slate-200 rounded-lg">
             <div class="px-5 py-4 border-b border-slate-200">
-              <h3 class="font-display font-semibold text-[15px]">3. Branding</h3>
+              <h3 class="font-display font-semibold text-[15px]">{{ 'novoTenant.card3' | translate }}</h3>
             </div>
             <div class="p-5 grid grid-cols-1 sm:grid-cols-3 gap-4">
               <!-- Cor primária -->
               <div>
-                <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">Cor primária</label>
+                <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">{{ 'novoTenant.labelCor' | translate }}</label>
                 <div class="flex gap-2">
                   <div class="w-10 h-10 rounded-lg border border-slate-200 flex-shrink-0 cursor-pointer"
                        [style.background]="corPrimaria()"
@@ -219,18 +220,18 @@ const SLUG_RE = /^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$/;
 
               <!-- Logo URL -->
               <div>
-                <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">Logo (URL)</label>
+                <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">{{ 'novoTenant.labelLogo' | translate }}</label>
                 <input [ngModel]="logoUrl()" (ngModelChange)="logoUrl.set($event)" name="logo"
                        class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-green-700"
-                       placeholder="https://cdn.empresa.com/logo.png" />
+                       [attr.placeholder]="'novoTenant.logoPh' | translate" />
               </div>
 
               <!-- Nome customizado -->
               <div>
-                <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">Nome customizado</label>
+                <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">{{ 'novoTenant.labelNomeCustomShort' | translate }}</label>
                 <input [ngModel]="nomeCustomizado()" (ngModelChange)="nomeCustomizado.set($event)" name="nomeCustom"
                        class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-green-700"
-                       placeholder="Meu Bolão" />
+                       [attr.placeholder]="'novoTenant.nomeCustomPhShort' | translate" />
               </div>
             </div>
           </div>
@@ -242,7 +243,7 @@ const SLUG_RE = /^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$/;
           <!-- Preview branding -->
           <div class="bg-white border border-slate-200 rounded-lg overflow-hidden">
             <div class="px-4 py-3.5 border-b border-slate-200">
-              <h3 class="font-display font-semibold text-[14px]">Preview</h3>
+              <h3 class="font-display font-semibold text-[14px]">{{ 'novoTenant.previewTitle' | translate }}</h3>
             </div>
             <div class="p-4">
               <div class="flex items-center gap-3 mb-4">
@@ -251,8 +252,8 @@ const SLUG_RE = /^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$/;
                   {{ initials(nomeCustomizado() || nome()) }}
                 </div>
                 <div>
-                  <div class="font-display font-semibold text-[14px]">{{ nomeCustomizado() || nome() || 'NossoBolão' }}</div>
-                  <div class="text-[11px] text-slate-400">{{ slug() || 'tenant-slug' }}.nossobolao.com.br</div>
+                  <div class="font-display font-semibold text-[14px]">{{ nomeCustomizado() || nome() || ('novoTenant.previewFallbackName' | translate) }}</div>
+                  <div class="text-[11px] text-slate-400">{{ slug() || ('novoTenant.previewSlugFallback' | translate) }}.nossobolao.com.br</div>
                 </div>
               </div>
               <div class="text-[11.5px] text-slate-500 space-y-1.5">
@@ -260,7 +261,7 @@ const SLUG_RE = /^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$/;
                   <div class="w-3 h-3 rounded-sm flex-shrink-0" [style.background]="corPrimaria()"></div>
                   <span class="font-mono">{{ corPrimaria() }}</span>
                 </div>
-                <div>Taxa administrativa: <strong>{{ taxa() }}%</strong></div>
+                <div>{{ 'novoTenant.taxaResumo' | translate }} <strong>{{ taxa() }}%</strong></div>
               </div>
             </div>
           </div>
@@ -268,29 +269,29 @@ const SLUG_RE = /^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$/;
           <!-- Resumo de validação -->
           @if (submitted() && !valido()) {
             <div class="bg-red-50 border border-red-200 rounded-lg p-4">
-              <div class="font-semibold text-[13px] text-red-800 mb-2">Corrija os campos obrigatórios:</div>
+              <div class="font-semibold text-[13px] text-red-800 mb-2">{{ 'novoTenant.validationTitle' | translate }}</div>
               <ul class="text-[12px] text-red-700 space-y-1">
                 @for (e of todosErros(); track e) {
-                  <li class="flex items-start gap-1.5"><span class="flex-shrink-0">•</span>{{ e }}</li>
+                  <li class="flex items-start gap-1.5"><span class="flex-shrink-0">•</span>{{ e | translate }}</li>
                 }
               </ul>
             </div>
           } @else if (valido()) {
             <div class="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center gap-2 text-[12.5px] text-green-800">
-              <span class="text-lg">✓</span> Formulário válido — pronto para criar!
+              <span class="text-lg">✓</span> {{ 'novoTenant.validOk' | translate }}
             </div>
           }
 
           <!-- Recursos -->
           <div class="bg-white border border-slate-200 rounded-lg">
             <div class="px-4 py-3.5 border-b border-slate-200">
-              <h3 class="font-display font-semibold text-[14px]">Recursos provisionados</h3>
+              <h3 class="font-display font-semibold text-[14px]">{{ 'novoTenant.recursosTitle' | translate }}</h3>
             </div>
             <div class="p-4 flex flex-col gap-2">
-              @for (r of recursos; track r) {
+              @for (rk of recursoKeys; track rk) {
                 <div class="flex items-start gap-2 text-[12.5px]">
                   <span class="text-green-600 flex-shrink-0 mt-0.5">✓</span>
-                  <span>{{ r }}</span>
+                  <span>{{ rk | translate }}</span>
                 </div>
               }
             </div>
@@ -298,7 +299,7 @@ const SLUG_RE = /^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$/;
 
           <!-- LGPD -->
           <div class="p-3.5 bg-amber-50 border border-amber-100 rounded-lg text-[12px] text-amber-800 leading-relaxed">
-            <strong>LGPD:</strong> ao criar o tenant, o admin receberá o Termo de Tratamento de Dados para aceite no primeiro login.
+            <strong>{{ 'novoTenant.lgpdStrong' | translate }}</strong>{{ 'novoTenant.lgpdRest' | translate }}
           </div>
         </aside>
       </div>
@@ -308,6 +309,7 @@ const SLUG_RE = /^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$/;
 export class NovoTenantComponent {
   private readonly api    = inject(ApiService);
   private readonly router = inject(Router);
+  private readonly translate = inject(TranslateService);
 
   // ── Form fields como signals (computed() só rastreia signals, não props simples) ──
   nome            = signal('');
@@ -333,16 +335,16 @@ export class NovoTenantComponent {
 
   private erros = computed<Record<string, string>>(() => {
     const e: Record<string, string> = {};
-    if (!this.nome().trim())        e['nome']      = 'Nome do tenant é obrigatório';
-    if (!this.slug().trim())        e['slug']      = 'Slug é obrigatório';
-    else if (!this.slugValido())    e['slug']      = 'Slug: somente minúsculas, números e hífens (ex: meu-bolao)';
-    if (!this.adminNome().trim())   e['adminNome'] = 'Nome do administrador é obrigatório';
-    if (!this.adminEmail().trim())  e['adminEmail'] = 'Email é obrigatório';
-    else if (!this.adminEmail().includes('@')) e['adminEmail'] = 'Email inválido';
-    if (!this.adminSenha())         e['adminSenha'] = 'Senha é obrigatória';
-    else if (this.adminSenha().length < 8) e['adminSenha'] = 'Mínimo 8 caracteres';
-    if (!this.confirmarSenha())     e['confirmarSenha'] = 'Confirme a senha';
-    else if (this.adminSenha() !== this.confirmarSenha()) e['confirmarSenha'] = 'As senhas não conferem';
+    if (!this.nome().trim())        e['nome']      = 'novoTenant.errNome';
+    if (!this.slug().trim())        e['slug']      = 'novoTenant.errSlug';
+    else if (!this.slugValido())    e['slug']      = 'novoTenant.errSlugFmt';
+    if (!this.adminNome().trim())   e['adminNome'] = 'novoTenant.errAdminNome';
+    if (!this.adminEmail().trim())  e['adminEmail'] = 'novoTenant.errEmail';
+    else if (!this.adminEmail().includes('@')) e['adminEmail'] = 'novoTenant.errEmailFmt';
+    if (!this.adminSenha())         e['adminSenha'] = 'novoTenant.errSenha';
+    else if (this.adminSenha().length < 8) e['adminSenha'] = 'novoTenant.errSenhaMin';
+    if (!this.confirmarSenha())     e['confirmarSenha'] = 'novoTenant.errConfirm';
+    else if (this.adminSenha() !== this.confirmarSenha()) e['confirmarSenha'] = 'novoTenant.errSenhaMismatch';
     return e;
   });
 
@@ -354,13 +356,13 @@ export class NovoTenantComponent {
     return this.erros()[campo] ?? null;
   }
 
-  readonly recursos = [
-    'Schema isolado no Supabase via RLS',
-    'Subdomínio próprio (slug.nossobolao.com.br)',
-    'Magic Link via email para o admin',
-    'Sessão WhatsApp dedicada',
-    'PWA com cores e ícones do tenant',
-  ];
+  readonly recursoKeys = [
+    'novoTenant.recurso1',
+    'novoTenant.recurso2',
+    'novoTenant.recurso3',
+    'novoTenant.recurso4',
+    'novoTenant.recurso5',
+  ] as const;
 
   // ── Handlers ──────────────────────────────────────────────────────────────
   onNomeChange(value: string): void {
@@ -412,7 +414,7 @@ export class NovoTenantComponent {
       console.error('Erro ao criar tenant:', err);
       this.error.set(body
         ? `${body}${status}`
-        : `Erro ao criar tenant${status}. Verifique se a API está rodando e se você tem permissão de Master.`
+        : `${this.translate.instant('novoTenant.errSubmitGeneric')}${status}`
       );
     } finally {
       this.loading.set(false);

@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 import { AuditoriaItem, AuditoriaSeveridade } from '@nossobolao/shared-types';
 import { AuditoriaService, ListarAuditoriaQuery } from '../../../core/services/auditoria.service';
@@ -14,24 +15,24 @@ const SEVERIDADE_CHIP: Record<AuditoriaSeveridade, string> = {
 @Component({
   selector: 'nb-auditoria',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, BackButtonComponent],
+  imports: [FormsModule, BackButtonComponent, TranslatePipe],
   template: `
     <!-- Topbar -->
     <div class="bg-white border-b border-slate-200 px-4 lg:px-7 py-3 flex items-center gap-3 sticky top-14 lg:top-0 z-10">
       <nb-back-button />
       <div class="hidden sm:flex items-center gap-2 text-[12.5px]">
-        <span class="text-slate-400">Sistema</span>
+        <span class="text-slate-400">{{ 'nav.section.system' | translate }}</span>
         <span class="text-slate-300">›</span>
-        <span class="font-semibold">Auditoria</span>
+        <span class="font-semibold">{{ 'nav.audit' | translate }}</span>
       </div>
-      <span class="font-display font-semibold text-[14px] sm:hidden">Auditoria</span>
+      <span class="font-display font-semibold text-[14px] sm:hidden">{{ 'auditoria.topbarShort' | translate }}</span>
     </div>
 
     <!-- Page -->
     <div class="p-4 lg:p-7">
       <div class="mb-5">
-        <h1 class="font-display text-2xl lg:text-[26px] font-semibold tracking-tight mb-1">Trilha de auditoria</h1>
-        <p class="text-slate-500 text-[13.5px]">Eventos sensíveis registrados no tenant.</p>
+        <h1 class="font-display text-2xl lg:text-[26px] font-semibold tracking-tight mb-1">{{ 'auditoria.pageTitle' | translate }}</h1>
+        <p class="text-slate-500 text-[13.5px]">{{ 'auditoria.subtitle' | translate }}</p>
       </div>
 
       <div class="bg-white border border-slate-200 rounded-lg overflow-hidden">
@@ -40,13 +41,13 @@ const SEVERIDADE_CHIP: Record<AuditoriaSeveridade, string> = {
         <div class="px-5 py-3.5 border-b border-slate-200 flex items-center gap-3 flex-wrap">
           <input [ngModel]="fAcao()" (ngModelChange)="onFiltroChange('acao', $event)"
                  class="px-3 py-1.5 border border-slate-200 rounded-[10px] text-[12.5px] focus:outline-none focus:border-green-700 w-44"
-                 placeholder="Ação (ex.: PERFIL_CRIADO)" />
+                 [placeholder]="'auditoria.phAcao' | translate" />
           <input [ngModel]="fRecurso()" (ngModelChange)="onFiltroChange('recurso', $event)"
                  class="px-3 py-1.5 border border-slate-200 rounded-[10px] text-[12.5px] focus:outline-none focus:border-green-700 w-32"
-                 placeholder="Recurso" />
+                 [placeholder]="'auditoria.phRecurso' | translate" />
           <select [ngModel]="fSeveridade()" (ngModelChange)="onFiltroChange('severidade', $event)"
                   class="px-3 py-1.5 border border-slate-200 rounded-[10px] text-[12.5px] focus:outline-none focus:border-green-700">
-            <option value="">Severidade</option>
+            <option value="">{{ 'auditoria.severityAll' | translate }}</option>
             <option value="INFO">INFO</option>
             <option value="AVISO">AVISO</option>
             <option value="CRITICO">CRÍTICO</option>
@@ -59,7 +60,7 @@ const SEVERIDADE_CHIP: Record<AuditoriaSeveridade, string> = {
                  class="px-3 py-1.5 border border-slate-200 rounded-[10px] text-[12.5px] focus:outline-none focus:border-green-700" />
           <button (click)="limparFiltros()"
                   class="px-3 py-1.5 text-[12px] font-semibold text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">
-            Limpar
+            {{ 'auditoria.clear' | translate }}
           </button>
         </div>
 
@@ -72,12 +73,12 @@ const SEVERIDADE_CHIP: Record<AuditoriaSeveridade, string> = {
           <table class="w-full text-[13px]">
             <thead class="bg-slate-50">
               <tr>
-                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-5 py-2.5">Quando</th>
-                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">Quem</th>
-                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">Ação</th>
-                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">Recurso</th>
-                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">Severidade</th>
-                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">IP</th>
+                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-5 py-2.5">{{ 'auditoria.thWhen' | translate }}</th>
+                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">{{ 'auditoria.thWho' | translate }}</th>
+                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">{{ 'auditoria.thAction' | translate }}</th>
+                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">{{ 'auditoria.thResource' | translate }}</th>
+                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">{{ 'auditoria.thSeverity' | translate }}</th>
+                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">{{ 'auditoria.thIp' | translate }}</th>
                 <th class="px-4 py-2.5 w-12"></th>
               </tr>
             </thead>
@@ -90,7 +91,7 @@ const SEVERIDADE_CHIP: Record<AuditoriaSeveridade, string> = {
                 }
               } @else if (eventos().length === 0) {
                 <tr><td colspan="7" class="px-5 py-12 text-center text-slate-400 text-sm">
-                  Nenhum evento encontrado.
+                  {{ 'auditoria.emptyTable' | translate }}
                 </td></tr>
               } @else {
                 @for (e of eventos(); track e.id) {
@@ -119,7 +120,7 @@ const SEVERIDADE_CHIP: Record<AuditoriaSeveridade, string> = {
                       @if (objectKeys(e.detalhes).length > 0) {
                         <button (click)="abrirDetalhes(e)"
                                 class="text-[11px] font-semibold text-green-700 hover:text-green-800">
-                          Ver
+                          {{ 'auditoria.view' | translate }}
                         </button>
                       }
                     </td>
@@ -140,7 +141,7 @@ const SEVERIDADE_CHIP: Record<AuditoriaSeveridade, string> = {
               </div>
             }
           } @else if (eventos().length === 0) {
-            <div class="p-8 text-center text-slate-400 text-sm">Nenhum evento encontrado.</div>
+            <div class="p-8 text-center text-slate-400 text-sm">{{ 'auditoria.emptyMobile' | translate }}</div>
           } @else {
             @for (e of eventos(); track e.id) {
               <div class="p-4">
@@ -153,7 +154,7 @@ const SEVERIDADE_CHIP: Record<AuditoriaSeveridade, string> = {
                       </span>
                     </div>
                     <div class="text-[11px] text-slate-500 mt-1 truncate">
-                      {{ e.userEmail ?? 'sistema' }} · {{ e.recurso ?? '—' }}
+                      {{ e.userEmail ?? ('common.systemUser' | translate) }} · {{ e.recurso ?? '—' }}
                     </div>
                     <div class="font-mono text-[10.5px] text-slate-400 mt-0.5">
                       {{ formatData(e.criadoEm) }}
@@ -163,7 +164,7 @@ const SEVERIDADE_CHIP: Record<AuditoriaSeveridade, string> = {
                   @if (objectKeys(e.detalhes).length > 0) {
                     <button (click)="abrirDetalhes(e)"
                             class="text-[11px] font-semibold text-green-700 hover:text-green-800">
-                      Ver
+                      {{ 'auditoria.view' | translate }}
                     </button>
                   }
                 </div>
@@ -174,16 +175,16 @@ const SEVERIDADE_CHIP: Record<AuditoriaSeveridade, string> = {
 
         <!-- Paginação -->
         <div class="px-5 py-3 border-t border-slate-100 flex items-center justify-between">
-          <span class="text-slate-400 text-xs">Mostrando {{ eventos().length }} de {{ total() }}</span>
+          <span class="text-slate-400 text-xs">{{ 'common.showingOf' | translate:{ shown: eventos().length, total: total() } }}</span>
           <div class="flex gap-1.5">
             <button (click)="prevPage()" [disabled]="page() <= 1 || loading()"
                     class="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed text-sm font-semibold rounded-lg transition-colors">
-              Anterior
+              {{ 'common.prevPlain' | translate }}
             </button>
             <span class="px-3 py-1.5 text-sm text-slate-500">{{ page() }} / {{ totalPages() }}</span>
             <button (click)="nextPage()" [disabled]="page() >= totalPages() || loading()"
                     class="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed text-sm font-semibold rounded-lg transition-colors">
-              Próxima
+              {{ 'common.nextPlain' | translate }}
             </button>
           </div>
         </div>
@@ -201,7 +202,7 @@ const SEVERIDADE_CHIP: Record<AuditoriaSeveridade, string> = {
         <div class="flex-1 overflow-y-auto p-5">
           <div class="text-[12px] text-slate-500 mb-3">
             {{ formatData(detalhe()!.criadoEm) }}
-            · {{ detalhe()!.userEmail ?? 'sistema' }}
+            · {{ detalhe()!.userEmail ?? ('common.systemUser' | translate) }}
             @if (detalhe()!.ip) { · {{ detalhe()!.ip }} }
           </div>
           <pre class="bg-slate-50 border border-slate-200 rounded-[10px] p-3 text-[11.5px] font-mono whitespace-pre-wrap break-words">{{ jsonDetalhes() }}</pre>
@@ -212,6 +213,7 @@ const SEVERIDADE_CHIP: Record<AuditoriaSeveridade, string> = {
 })
 export class AuditoriaComponent implements OnInit {
   private readonly api = inject(AuditoriaService);
+  private readonly translate = inject(TranslateService);
 
   eventos    = signal<AuditoriaItem[]>([]);
   loading    = signal(false);
@@ -252,7 +254,7 @@ export class AuditoriaComponent implements OnInit {
       this.total.set(res.total);
       this.totalPages.set(res.totalPages);
     } catch {
-      this.error.set('Erro ao carregar eventos.');
+      this.error.set(this.translate.instant('errors.loadAudit'));
     } finally {
       this.loading.set(false);
     }
@@ -297,7 +299,8 @@ export class AuditoriaComponent implements OnInit {
   formatData(iso: string): string {
     const d = new Date(iso);
     if (isNaN(d.getTime())) return iso;
-    return d.toLocaleString('pt-BR', {
+    const loc = this.translate.currentLang?.startsWith('en') ? 'en-US' : 'pt-BR';
+    return d.toLocaleString(loc, {
       day: '2-digit', month: '2-digit', year: '2-digit',
       hour: '2-digit', minute: '2-digit', second: '2-digit',
     });

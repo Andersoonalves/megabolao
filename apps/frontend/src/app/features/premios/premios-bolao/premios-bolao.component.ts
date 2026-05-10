@@ -4,6 +4,7 @@ import {
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { ApiService } from '../../../core/services/api.service';
 import { BackButtonComponent } from '../../../shared/components/back-button/back-button.component';
 
@@ -68,20 +69,20 @@ interface CategoriaView {
 @Component({
   selector: 'nb-premios-bolao',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [BackButtonComponent, RouterLink, PBrlPipe],
+  imports: [BackButtonComponent, RouterLink, PBrlPipe, TranslatePipe],
   template: `
     <!-- Topbar -->
     <div class="bg-white border-b border-slate-200 px-4 lg:px-7 py-3 flex items-center gap-3 sticky top-14 lg:top-0 z-10">
       <nb-back-button />
       <div class="hidden sm:flex items-center gap-2 text-[12.5px]">
-        <span class="text-slate-400">Bolão</span>
+        <span class="text-slate-400">{{ 'premios.breadcrumbPool' | translate }}</span>
         <span class="text-slate-300">›</span>
-        <span class="font-semibold">Prêmios</span>
+        <span class="font-semibold">{{ 'premios.topbarShort' | translate }}</span>
       </div>
-      <span class="font-display font-semibold text-[14px] sm:hidden">Prêmios</span>
+      <span class="font-display font-semibold text-[14px] sm:hidden">{{ 'premios.topbarShort' | translate }}</span>
       <a routerLink="/relatorios"
          class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-sm font-semibold rounded-[10px] no-underline text-slate-700 transition-colors min-h-9 hidden sm:inline-flex">
-        ↓ Relatório de ganhadores
+        {{ 'premios.reportWinners' | translate }}
       </a>
     </div>
 
@@ -89,11 +90,15 @@ interface CategoriaView {
     <div class="p-4 lg:p-7">
       <div class="mb-6">
         <h1 class="font-display text-2xl lg:text-[26px] font-semibold tracking-tight mb-1">
-          Prêmios — {{ bolao()?.nome ?? 'Bolão' }}
+          @if (bolao()) {
+            {{ 'premios.pageTitle' | translate: { nome: bolao()!.nome } }}
+          } @else {
+            {{ 'premios.title' | translate }}
+          }
         </h1>
         @if (bolao()) {
           <p class="text-slate-500 text-[13.5px]">
-            Bolão {{ statusLabel(bolao()!.status) }} · arrecadação bruta {{ bolao()!.valorBrutoArrecadado | pBrl }}
+            {{ 'premios.subtitleLine' | translate: { status: poolStatusLabel(bolao()!.status), bruto: (bolao()!.valorBrutoArrecadado | pBrl) } }}
           </p>
         }
       </div>
@@ -106,27 +111,27 @@ interface CategoriaView {
       @if (bolao()) {
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <div class="bg-white border border-slate-200 rounded-lg p-[18px]">
-            <div class="text-[11.5px] font-semibold text-slate-500 uppercase tracking-widest">Bruto arrecadado</div>
+            <div class="text-[11.5px] font-semibold text-slate-500 uppercase tracking-widest">{{ 'premios.kpiGross' | translate }}</div>
             <div class="font-display text-[22px] font-semibold tracking-tight mt-1 tabular text-amber-600">{{ bolao()!.valorBrutoArrecadado | pBrl }}</div>
-            <div class="text-[11.5px] text-slate-400 mt-0.5">{{ bolao()!.totalCotasAtivas }} cotas × R$ {{ bolao()!.valorCota }}</div>
+            <div class="text-[11.5px] text-slate-400 mt-0.5">{{ 'premios.kpiGrossHint' | translate: { n: bolao()!.totalCotasAtivas, v: bolao()!.valorCota } }}</div>
           </div>
           <div class="bg-white border border-slate-200 rounded-lg p-[18px]">
-            <div class="text-[11.5px] font-semibold text-slate-500 uppercase tracking-widest">Distribuído</div>
+            <div class="text-[11.5px] font-semibold text-slate-500 uppercase tracking-widest">{{ 'premios.kpiDistributed' | translate }}</div>
             <div class="font-display text-[22px] font-semibold tracking-tight mt-1 tabular">{{ totalDistribuido() | pBrl }}</div>
-            <div class="text-[11.5px] text-slate-400 mt-0.5">{{ pctDistribuido() }}% do bruto</div>
+            <div class="text-[11.5px] text-slate-400 mt-0.5">{{ 'premios.kpiDistributedHint' | translate: { p: pctDistribuido() } }}</div>
           </div>
           <div class="bg-white border border-slate-200 rounded-lg p-[18px]">
-            <div class="text-[11.5px] font-semibold text-slate-500 uppercase tracking-widest">Ganhadores</div>
+            <div class="text-[11.5px] font-semibold text-slate-500 uppercase tracking-widest">{{ 'premios.kpiWinners' | translate }}</div>
             <div class="font-display text-[22px] font-semibold tracking-tight mt-1 tabular">{{ totalGanhadores() }}</div>
-            <div class="text-[11.5px] text-slate-400 mt-0.5">{{ categoriasComPremios() }} categorias</div>
+            <div class="text-[11.5px] text-slate-400 mt-0.5">{{ 'premios.kpiWinnersHint' | translate: { n: categoriasComPremios() } }}</div>
           </div>
           <div class="bg-white border border-slate-200 rounded-lg p-[18px]">
-            <div class="text-[11.5px] font-semibold text-slate-500 uppercase tracking-widest">A pagar</div>
+            <div class="text-[11.5px] font-semibold text-slate-500 uppercase tracking-widest">{{ 'premios.kpiToPay' | translate }}</div>
             <div class="font-display text-[22px] font-semibold tracking-tight mt-1 tabular"
                  [class]="totalAPagar() > 0 ? 'text-amber-600' : 'text-green-700'">
               {{ totalAPagar() | pBrl }}
             </div>
-            <div class="text-[11.5px] text-slate-400 mt-0.5">{{ qtdPendente() }} pendentes</div>
+            <div class="text-[11.5px] text-slate-400 mt-0.5">{{ 'premios.kpiToPayHint' | translate: { n: qtdPendente() } }}</div>
           </div>
         </div>
       }
@@ -151,20 +156,22 @@ interface CategoriaView {
       } @else if (bolao() && bolao()!.status !== 'FINALIZADO') {
         <div class="bg-white border border-slate-200 rounded-xl p-8 text-center">
           <div class="text-4xl mb-4">🏆</div>
-          <h3 class="font-display text-lg font-semibold mb-2">Prêmios não calculados ainda</h3>
-          <p class="text-slate-400 text-sm mb-1">O bolão precisa estar <strong>FINALIZADO</strong> para calcular prêmios.</p>
-          <p class="text-slate-400 text-sm">Status atual: <span class="font-semibold">{{ bolao()?.status }}</span></p>
+          <h3 class="font-display text-lg font-semibold mb-2">{{ 'premios.notCalculatedTitle' | translate }}</h3>
+          <p class="text-slate-400 text-sm mb-1">
+            {{ 'premios.notCalculatedPart1' | translate }}<strong>{{ 'premios.notCalculatedBold' | translate }}</strong>{{ 'premios.notCalculatedPart2' | translate }}
+          </p>
+          <p class="text-slate-400 text-sm">{{ 'premios.currentStatus' | translate }} <span class="font-semibold">{{ poolStatusLabel(bolao()!.status) }}</span></p>
         </div>
 
       <!-- Estado: prêmios ainda não calculados -->
       } @else if (bolao()?.status === 'FINALIZADO' && !loading() && premios().length === 0) {
         <div class="bg-white border border-slate-200 rounded-xl p-8 text-center">
           <div class="text-4xl mb-4">⚡</div>
-          <h3 class="font-display text-lg font-semibold mb-2">Prêmios não calculados</h3>
-          <p class="text-slate-400 text-sm mb-6">Todos os sorteios precisam estar processados. O cálculo é idempotente — pode rodar múltiplas vezes com segurança.</p>
+          <h3 class="font-display text-lg font-semibold mb-2">{{ 'premios.needCalcTitle' | translate }}</h3>
+          <p class="text-slate-400 text-sm mb-6">{{ 'premios.needCalcBody' | translate }}</p>
           <button (click)="calcular()" [disabled]="calculando()"
                   class="inline-flex items-center gap-2 px-6 py-3 bg-green-700 hover:bg-green-800 disabled:opacity-50 text-white font-semibold rounded-xl transition-colors shadow-sm">
-            {{ calculando() ? '⟳ Calculando...' : '⚡ Calcular prêmios agora' }}
+            {{ calculando() ? ('premios.calculating' | translate) : ('premios.calcNow' | translate) }}
           </button>
           @if (erroCalculo()) {
             <p class="mt-4 text-sm text-red-600">{{ erroCalculo() }}</p>
@@ -192,32 +199,32 @@ interface CategoriaView {
                     <h3 class="font-display font-semibold text-[16px]">{{ cv.cat.nome }}</h3>
                     @if (cv.cat.acumulaSemGanhador && cv.premios.length === 0) {
                       <span class="inline-flex items-center px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-100 text-[10.5px] font-semibold rounded-full uppercase tracking-wide">
-                        acumula no próximo
+                        {{ 'premios.chipRollNext' | translate }}
                       </span>
                     }
                   </div>
-                  <p class="text-slate-400 text-[12px] mt-0.5">{{ tipoDesc(cv.cat) }} · {{ cv.cat.percentual }}% do bruto</p>
+                  <p class="text-slate-400 text-[12px] mt-0.5">{{ tipoDesc(cv.cat) }} · {{ 'premios.pctOfGross' | translate: { p: cv.cat.percentual } }}</p>
                 </div>
 
                 <!-- Valores -->
                 <div class="flex gap-6 items-center flex-shrink-0">
                   <div class="text-right">
-                    <div class="text-[11px] text-slate-400">Valor da categoria</div>
+                    <div class="text-[11px] text-slate-400">{{ 'premios.catValue' | translate }}</div>
                     <div class="font-display font-semibold text-[18px] tabular">{{ cv.valorTotal | pBrl }}</div>
                   </div>
                   @if (cv.cat.tipo !== 'TAXA_ADMINISTRATIVA') {
                     <div class="text-right">
                       <div class="text-[11px] text-slate-400">
-                        {{ cv.premios.length === 0 ? 'Ganhadores' : 'Por ganhador' }}
+                        {{ cv.premios.length === 0 ? ('premios.winnersLabel' | translate) : ('premios.perWinner' | translate) }}
                       </div>
                       <div class="font-display font-semibold text-[18px] tabular">
-                        {{ cv.premios.length === 0 ? '—' : (cv.valorPorGanhador | pBrl) }}
+                        {{ cv.premios.length === 0 ? ('common.emDash' | translate) : (cv.valorPorGanhador | pBrl) }}
                       </div>
                     </div>
                   } @else {
                     <div class="text-right">
-                      <div class="text-[11px] text-slate-400">Destino</div>
-                      <div class="font-display font-semibold text-[18px]">Tenant</div>
+                      <div class="text-[11px] text-slate-400">{{ 'premios.destination' | translate }}</div>
+                      <div class="font-display font-semibold text-[18px]">{{ 'premios.destinationTenant' | translate }}</div>
                     </div>
                   }
                 </div>
@@ -229,11 +236,11 @@ interface CategoriaView {
                   <table class="w-full text-[13px]">
                     <thead class="bg-slate-50">
                       <tr>
-                        <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">Cota</th>
-                        <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">Participante</th>
-                        <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">Valor</th>
-                        <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">Status</th>
-                        <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5 hidden sm:table-cell">Pago em</th>
+                        <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">{{ 'premios.thQuota' | translate }}</th>
+                        <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">{{ 'premios.thParticipant' | translate }}</th>
+                        <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">{{ 'premios.thValue' | translate }}</th>
+                        <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">{{ 'premios.thStatus' | translate }}</th>
+                        <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5 hidden sm:table-cell">{{ 'premios.thPaidAt' | translate }}</th>
                         <th class="px-4 py-2.5 w-32"></th>
                       </tr>
                     </thead>
@@ -247,18 +254,22 @@ interface CategoriaView {
                             <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-semibold tracking-wide uppercase border"
                                   [class]="p.statusPagamento === 'PAGO' ? 'bg-green-50 text-green-800 border-green-200' : 'bg-amber-50 text-amber-700 border-amber-100'">
                               <span class="w-1.5 h-1.5 rounded-full bg-current"></span>
-                              {{ p.statusPagamento }}
+                              @switch (p.statusPagamento) {
+                                @case ('PAGO') { {{ 'premios.payPAGO' | translate }} }
+                                @case ('PENDENTE') { {{ 'premios.payPENDENTE' | translate }} }
+                                @default { {{ p.statusPagamento }} }
+                              }
                             </span>
                           </td>
                           <td class="px-4 py-3 text-slate-400 text-[12px] hidden sm:table-cell">
-                            {{ p.dataPagamento ? fmtDate(p.dataPagamento) : '—' }}
+                            {{ p.dataPagamento ? fmtDate(p.dataPagamento) : ('common.emDash' | translate) }}
                           </td>
                           <td class="px-4 py-3">
                             @if (p.statusPagamento === 'PENDENTE') {
                               <button (click)="pagarPremio(p.id)"
                                       [disabled]="pagandoId() === p.id"
                                       class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-green-700 hover:bg-green-800 disabled:opacity-50 text-white text-[12px] font-semibold rounded-lg transition-colors min-h-8">
-                                {{ pagandoId() === p.id ? '...' : '✓ Pagar' }}
+                                {{ pagandoId() === p.id ? ('common.ellipsis' | translate) : ('premios.pay' | translate) }}
                               </button>
                             } @else {
                               <button class="w-7 h-7 flex items-center justify-center text-slate-300 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors text-sm">⋯</button>
@@ -272,7 +283,7 @@ interface CategoriaView {
                 @if (cv.premios.length > 3 && !showAll()[cv.cat.id]) {
                   <button (click)="toggleShowAll(cv.cat.id)"
                           class="w-full py-3 text-center text-[12.5px] text-slate-500 hover:text-slate-700 border-t border-slate-100 transition-colors">
-                    + {{ cv.premios.length - 3 }} ganhadores — ver todos
+                    {{ 'premios.moreWinners' | translate: { n: cv.premios.length - 3 } }}
                   </button>
                 }
 
@@ -280,9 +291,9 @@ interface CategoriaView {
               } @else if (cv.cat.tipo !== 'TAXA_ADMINISTRATIVA') {
                 <div class="px-5 py-4 text-center text-[13px] text-slate-400 border-t border-slate-100">
                   @if (cv.cat.acumulaSemGanhador) {
-                    Sem ganhadores · valor de <strong class="text-slate-600">{{ cv.valorTotal | pBrl }}</strong> transferido para o próximo bolão
+                    {{ 'premios.noWinnersRollBefore' | translate }}<strong class="text-slate-600">{{ cv.valorTotal | pBrl }}</strong>{{ 'premios.noWinnersRollAfter' | translate }}
                   } @else {
-                    Sem ganhadores nesta categoria
+                    {{ 'premios.noWinners' | translate }}
                   }
                 </div>
               }
@@ -297,6 +308,7 @@ export class PremiosBolaoComponent implements OnInit {
   readonly id = input<string>('');
 
   private readonly api = inject(ApiService);
+  private readonly translate = inject(TranslateService);
 
   // ── State ──────────────────────────────────────────────────────────────────
   bolao      = signal<BolaoResponse | null>(null);
@@ -367,7 +379,7 @@ export class PremiosBolaoComponent implements OnInit {
       const res = await firstValueFrom(this.api.get<PremioResponse[]>(`/boloes/${this.bolaoId}/premios`));
       this.premios.set(res);
     } catch {
-      this.error.set('Erro ao carregar prêmios. Exibindo dados de demonstração.');
+      this.error.set(this.translate.instant('premios.errLoad'));
       this.premios.set(DEMO_PREMIOS);
     } finally {
       this.loading.set(false);
@@ -381,22 +393,22 @@ export class PremiosBolaoComponent implements OnInit {
       const res = await firstValueFrom(this.api.post<PremioResponse[]>(`/boloes/${this.bolaoId}/premios/calcular`, {}));
       this.premios.set(res);
     } catch (err: unknown) {
-      const msg = (err as { error?: { message?: string } })?.error?.message ?? 'Erro ao calcular prêmios';
+      const msg = (err as { error?: { message?: string } })?.error?.message ?? this.translate.instant('premios.errCalc');
       this.erroCalculo.set(msg);
     } finally {
       this.calculando.set(false);
     }
   }
 
-  async pagarPremio(id: string): Promise<void> {
-    this.pagandoId.set(id);
+  async pagarPremio(pid: string): Promise<void> {
+    this.pagandoId.set(pid);
     try {
-      await firstValueFrom(this.api.patch(`/boloes/${this.bolaoId}/premios/${id}/pagar`, {}));
+      await firstValueFrom(this.api.patch(`/boloes/${this.bolaoId}/premios/${pid}/pagar`, {}));
       this.premios.update(ps =>
-        ps.map(p => p.id === id ? { ...p, statusPagamento: 'PAGO' as const, dataPagamento: new Date().toISOString() } : p),
+        ps.map(p => p.id === pid ? { ...p, statusPagamento: 'PAGO' as const, dataPagamento: new Date().toISOString() } : p),
       );
     } catch {
-      this.error.set('Erro ao registrar pagamento. Tente novamente.');
+      this.error.set(this.translate.instant('premios.errPay'));
     } finally {
       this.pagandoId.set('');
     }
@@ -407,21 +419,26 @@ export class PremiosBolaoComponent implements OnInit {
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────────
-  statusLabel(s: string): string {
-    const map: Record<string, string> = {
-      FINALIZADO: 'finalizado', EM_ANDAMENTO: 'em andamento', A_SER_INICIADO: 'aguardando início',
-    };
-    return map[s] ?? s.toLowerCase();
+  poolStatusLabel(s: string): string {
+    const k = `premios.poolStatus.${s}`;
+    const t = this.translate.instant(k);
+    return t !== k ? t : s.toLowerCase();
   }
 
   tipoDesc(cat: BolaoCategoria): string {
     switch (cat.tipo) {
-      case 'TAXA_ADMINISTRATIVA':     return 'Taxa administrativa';
-      case 'ACERTOS_EXATOS':          return `Acertos exatos · ${cat.acertosAlvo} acertos`;
-      case 'MAIOR_PONTUACAO_SORTEIO': return `Maior pont. · ${cat.sorteioReferencia}º sorteio`;
-      case 'MAIOR_PONTUACAO_GERAL':   return 'Maior pontuação geral';
-      case 'MENOR_PONTUACAO_GERAL':   return 'Menor pontuação geral';
-      default: return cat.tipo;
+      case 'TAXA_ADMINISTRATIVA':
+        return this.translate.instant('premios.tipoTaxaAdmin');
+      case 'ACERTOS_EXATOS':
+        return this.translate.instant('premios.tipoAcertosExatos', { n: cat.acertosAlvo ?? 0 });
+      case 'MAIOR_PONTUACAO_SORTEIO':
+        return this.translate.instant('premios.tipoMaiorSorteio', { n: cat.sorteioReferencia ?? 0 });
+      case 'MAIOR_PONTUACAO_GERAL':
+        return this.translate.instant('premios.tipoMaiorGeral');
+      case 'MENOR_PONTUACAO_GERAL':
+        return this.translate.instant('premios.tipoMenorGeral');
+      default:
+        return cat.tipo;
     }
   }
 
@@ -439,7 +456,9 @@ export class PremiosBolaoComponent implements OnInit {
   }
 
   fmtDate(iso: string): string {
-    try { return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }); }
+    const cur = this.translate.currentLang ?? 'pt';
+    const locale = cur.startsWith('en') ? 'en-US' : 'pt-BR';
+    try { return new Date(iso).toLocaleDateString(locale, { day: '2-digit', month: 'short' }); }
     catch { return iso; }
   }
 }

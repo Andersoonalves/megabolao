@@ -1,30 +1,35 @@
-import { Component, signal, ChangeDetectionStrategy } from '@angular/core';
+import { Component, signal, ChangeDetectionStrategy, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { AuthService } from '../../../core/services/auth.service';
+import { LangToggleComponent } from '../../../shared/components/lang-toggle/lang-toggle.component';
 
 @Component({
   selector: 'nb-login',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, TranslatePipe, LangToggleComponent],
   template: `
     <div class="min-h-screen grid" style="grid-template-columns: 1fr 1.1fr">
 
       <!-- Left: form -->
-      <div class="flex flex-col justify-center px-14 py-12 overflow-auto">
+      <div class="flex flex-col justify-center px-14 py-12 overflow-auto relative">
+        <div class="fixed top-4 right-4 z-[100] lg:top-6 lg:right-6 drop-shadow-md">
+          <nb-lang-toggle [prominent]="true" />
+        </div>
         <div class="max-w-sm w-full mx-auto">
 
           <!-- Logo -->
           <div class="flex items-center gap-3 mb-10">
             <div class="w-10 h-10 rounded-[10px] bg-gradient-to-br from-green-700 to-green-900 text-white flex items-center justify-center font-display font-bold text-lg tracking-tight">NB</div>
             <div>
-              <div class="font-display font-semibold text-lg">NossoBolão</div>
-              <div class="text-[11.5px] text-slate-500">Plataforma multitenant</div>
+              <div class="font-display font-semibold text-lg">{{ 'app.name' | translate }}</div>
+              <div class="text-[11.5px] text-slate-500">{{ 'app.tagline' | translate }}</div>
             </div>
           </div>
 
-          <h1 class="font-display text-3xl font-semibold tracking-tight mb-2">Entrar no painel</h1>
-          <p class="text-slate-500 text-[13.5px] mb-6">Acesso de Master e Administrador.</p>
+          <h1 class="font-display text-3xl font-semibold tracking-tight mb-2">{{ 'auth.signInTitle' | translate }}</h1>
+          <p class="text-slate-500 text-[13.5px] mb-6">{{ 'auth.signInSubtitle' | translate }}</p>
 
           @if (error()) {
             <div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{{ error() }}</div>
@@ -32,15 +37,15 @@ import { AuthService } from '../../../core/services/auth.service';
 
           <form (ngSubmit)="submit()" class="flex flex-col gap-3.5">
             <div>
-              <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">E-mail</label>
+              <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">{{ 'auth.email' | translate }}</label>
               <input [(ngModel)]="email" name="email" type="email" autocomplete="email"
                      class="w-full px-3 py-2.5 border border-slate-200 rounded-[10px] text-sm focus:outline-none focus:border-green-700 focus:shadow-glow transition-all"
-                     placeholder="voce@empresa.com.br" required />
+                     [attr.placeholder]="'auth.emailPlaceholder' | translate" required />
             </div>
             <div>
               <div class="flex justify-between mb-1.5">
-                <label class="text-xs font-semibold text-slate-500 tracking-wide">Senha</label>
-                <a class="text-[11.5px] text-green-700 font-semibold no-underline cursor-pointer">Esqueci minha senha</a>
+                <label class="text-xs font-semibold text-slate-500 tracking-wide">{{ 'auth.password' | translate }}</label>
+                <a class="text-[11.5px] text-green-700 font-semibold no-underline cursor-pointer">{{ 'auth.forgotPassword' | translate }}</a>
               </div>
               <div class="relative">
                 <input [(ngModel)]="password" name="password"
@@ -51,7 +56,7 @@ import { AuthService } from '../../../core/services/auth.service';
                 <button type="button"
                         (click)="showPassword.update(v => !v)"
                         class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-0.5"
-                        [title]="showPassword() ? 'Ocultar senha' : 'Mostrar senha'">
+                        [title]="(showPassword() ? 'auth.hidePassword' : 'auth.showPassword') | translate">
                   @if (showPassword()) {
                     <!-- olho fechado -->
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -72,14 +77,14 @@ import { AuthService } from '../../../core/services/auth.service';
 
             <button type="submit" [disabled]="loading()"
                     class="w-full min-h-12 px-5 py-3 bg-green-700 hover:bg-green-800 disabled:opacity-50 text-white font-semibold rounded-[10px] transition-colors text-sm shadow-sm">
-              {{ loading() ? 'Entrando...' : 'Entrar' }}
+              {{ (loading() ? 'auth.signingIn' : 'auth.signIn') | translate }}
             </button>
 
-            <div class="text-center text-[11.5px] text-slate-400 my-1">OU</div>
+            <div class="text-center text-[11.5px] text-slate-400 my-1">{{ 'auth.or' | translate }}</div>
 
             <a routerLink="/portal"
                class="w-full min-h-12 px-5 py-3 bg-white border border-slate-200 hover:bg-slate-50 text-slate-900 font-semibold rounded-[10px] transition-colors text-sm text-center no-underline flex items-center justify-center gap-2">
-              💬 Acessar portal do participante
+              💬 {{ 'auth.portalLink' | translate }}
             </a>
           </form>
         </div>
@@ -95,12 +100,12 @@ import { AuthService } from '../../../core/services/auth.service';
               <div class="w-12 h-12 rounded-full bg-white/95 text-green-900 flex items-center justify-center font-mono font-semibold text-base shadow-lg">{{ n < 10 ? '0' + n : n }}</div>
             }
           </div>
-          <h2 class="font-display text-[28px] font-semibold tracking-tight mb-3">Gestão de bolões da Mega-Sena, sem planilha.</h2>
-          <p class="text-white/75 text-sm leading-relaxed">Premiações 100% configuráveis · Portal para participantes · Apuração automática · Integração WhatsApp.</p>
+          <h2 class="font-display text-[28px] font-semibold tracking-tight mb-3">{{ 'auth.heroTitle' | translate }}</h2>
+          <p class="text-white/75 text-sm leading-relaxed">{{ 'auth.heroSubtitle' | translate }}</p>
           <div class="flex justify-center gap-8 mt-10 text-xs text-white/60">
-            <div><strong class="text-white font-display text-xl block">9.244</strong>cotas no bolão</div>
-            <div><strong class="text-white font-display text-xl block">22</strong>premiados</div>
-            <div><strong class="text-white font-display text-xl block">R$ 184k</strong>arrecadados</div>
+            <div><strong class="text-white font-display text-xl block">9.244</strong>{{ 'auth.heroStatCotas' | translate }}</div>
+            <div><strong class="text-white font-display text-xl block">22</strong>{{ 'auth.heroStatPremiados' | translate }}</div>
+            <div><strong class="text-white font-display text-xl block">R$ 184k</strong>{{ 'auth.heroStatArrec' | translate }}</div>
           </div>
         </div>
       </div>
@@ -108,13 +113,14 @@ import { AuthService } from '../../../core/services/auth.service';
   `,
 })
 export class LoginComponent {
+  private readonly auth = inject(AuthService);
+  private readonly translate = inject(TranslateService);
+
   email        = '';
   password     = '';
   showPassword = signal(false);
   loading      = signal(false);
   error        = signal('');
-
-  constructor(private readonly auth: AuthService) {}
 
   async submit(): Promise<void> {
     if (!this.email || !this.password) return;
@@ -123,7 +129,9 @@ export class LoginComponent {
     try {
       await this.auth.signInWithEmail(this.email, this.password);
     } catch (err) {
-      this.error.set(err instanceof Error ? err.message : 'Erro ao fazer login');
+      this.error.set(
+        err instanceof Error ? err.message : this.translate.instant('auth.loginError'),
+      );
     } finally {
       this.loading.set(false);
     }

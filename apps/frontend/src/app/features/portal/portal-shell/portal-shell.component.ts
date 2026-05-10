@@ -1,21 +1,28 @@
 import { Component, ChangeDetectionStrategy, inject } from '@angular/core';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
+import { TranslatePipe } from '@ngx-translate/core';
 import { AuthService } from '../../../core/services/auth.service';
 import { PwaBannerPortalComponent } from '../../../shared/components/pwa-banner/pwa-banner-portal.component';
+import { LangToggleComponent } from '../../../shared/components/lang-toggle/lang-toggle.component';
 
 const NAV_ITEMS = [
-  { id: 'cotas',    label: 'Bolões',  icon: '🏠', route: '/portal/cotas'   },
-  { id: 'ranking',  label: 'Ranking', icon: '📊', route: '/portal/ranking' },
-  { id: 'palpites', label: 'Palpites',icon: '🎫', route: '/portal/cotas'   },
-  { id: 'premios',  label: 'Prêmios', icon: '🏆', route: '/portal/cotas'   },
+  { id: 'cotas',    labelKey: 'portal.nav.pools',   icon: '🏠', route: '/portal/cotas'   },
+  { id: 'ranking',  labelKey: 'portal.nav.ranking', icon: '📊', route: '/portal/ranking' },
+  { id: 'palpites', labelKey: 'portal.nav.picks',   icon: '🎫', route: '/portal/cotas'   },
+  { id: 'premios',  labelKey: 'portal.nav.prizes',  icon: '🏆', route: '/portal/cotas'   },
 ];
 
 @Component({
   selector: 'nb-portal-shell',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, PwaBannerPortalComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, TranslatePipe, PwaBannerPortalComponent, LangToggleComponent],
   template: `
-    <div class="min-h-screen bg-slate-50 flex flex-col">
+    <div class="min-h-screen bg-slate-50 flex flex-col relative">
+
+      <!-- Idioma fixo (sempre visível no portal) -->
+      <div class="fixed top-3 right-3 z-[90] max-w-[calc(100vw-1rem)]">
+        <nb-lang-toggle [prominent]="true" />
+      </div>
 
       <!-- Conteúdo das rotas filhas -->
       <div class="flex-1 overflow-y-auto pb-[60px] lg:pb-0">
@@ -35,7 +42,7 @@ const NAV_ITEMS = [
                class="flex-1 flex flex-col items-center justify-center gap-0.5 text-slate-400 no-underline transition-colors min-h-[60px]"
                [routerLinkActiveOptions]="{ exact: false }">
               <span class="text-xl leading-none">{{ item.icon }}</span>
-              <span class="text-[10.5px] font-medium">{{ item.label }}</span>
+              <span class="text-[10.5px] font-medium">{{ item.labelKey | translate }}</span>
             </a>
           }
         </div>
