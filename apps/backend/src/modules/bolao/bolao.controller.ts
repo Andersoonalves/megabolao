@@ -20,6 +20,7 @@ import { BolaoService } from './bolao.service';
 import { CreateBolaoDto } from './dto/create-bolao.dto';
 import { UpdateBolaoDto } from './dto/update-bolao.dto';
 import { UpdateCategoriasDto } from './dto/update-categorias.dto';
+import { ConfigGruposBolaoDto } from '../whatsapp/dto/config-grupo-bolao.dto';
 
 @ApiTags('boloes')
 @ApiBearerAuth()
@@ -40,6 +41,24 @@ export class BolaoController {
   @ApiOperation({ summary: 'Listar bolões do tenant' })
   findAll(@TenantId() tenantId: string | null, @Query() query: ListBolaoDto) {
     return this.bolaoService.findAll(tenantId, query);
+  }
+
+  @Get(':id/whatsapp')
+  @RequerPermissoes('whatsapp.ler')
+  @ApiOperation({ summary: 'Obter configuração de grupo WhatsApp do bolão' })
+  getWhatsappConfig(@TenantId() tenantId: string | null, @Param('id', ParseUUIDPipe) id: string) {
+    return this.bolaoService.getWhatsappConfig(tenantId, id);
+  }
+
+  @Patch(':id/whatsapp')
+  @RequerPermissoes('whatsapp.ler')
+  @ApiOperation({ summary: 'Configurar grupos WhatsApp do bolão (array)' })
+  setWhatsappConfig(
+    @TenantId() tenantId: string | null,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ConfigGruposBolaoDto,
+  ) {
+    return this.bolaoService.setWhatsappConfig(tenantId, id, dto);
   }
 
   @Get(':id/dashboard')

@@ -357,6 +357,34 @@ export class BolaoService {
     };
   }
 
+  async getWhatsappConfig(tenantId: string | null, bolaoId: string) {
+    this.assertTenantId(tenantId);
+    const bolao = await this.prisma.bolao.findFirst({
+      where: { id: bolaoId, tenantId },
+      select: { id: true, nome: true, whatsappGrupos: true },
+    });
+    if (!bolao) throw new NotFoundException({ statusCode: 404, error: 'BOLAO_NAO_ENCONTRADO', message: `Bolão ${bolaoId} não encontrado`, details: [] });
+    const grupos = (bolao.whatsappGrupos as { id: string; nome: string }[]) ?? [];
+    return { bolaoId: bolao.id, bolaoNome: bolao.nome, grupos, configurado: grupos.length > 0 };
+  }
+
+  async setWhatsappConfig(
+    tenantId: string | null,
+    bolaoId: string,
+    dto: { grupos: { id: string; nome: string }[] },
+  ) {
+    this.assertTenantId(tenantId);
+    const bolao = await this.prisma.bolao.findFirst({ where: { id: bolaoId, tenantId } });
+    if (!bolao) throw new NotFoundException({ statusCode: 404, error: 'BOLAO_NAO_ENCONTRADO', message: `Bolão ${bolaoId} não encontrado`, details: [] });
+
+    await this.prisma.bolao.update({
+      where: { id: bolaoId },
+      data: { whatsappGrupos: dto.grupos },
+    });
+
+    return this.getWhatsappConfig(tenantId, bolaoId);
+  }
+
   private validarCategorias(categorias: CreateCategoriaDto[]): void {
     const soma = arredondarMonetario(categorias.reduce((acc, c) => acc + c.percentual, 0));
     if (soma !== 100) {
