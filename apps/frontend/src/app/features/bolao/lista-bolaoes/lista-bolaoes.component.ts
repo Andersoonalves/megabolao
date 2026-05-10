@@ -167,6 +167,11 @@ interface Paginated<T> { data: T[]; total: number; page: number; totalPages: num
                     <span class="text-base">🏆</span>
                     <span class="text-[11px] font-semibold">Prêmios</span>
                   </a>
+                  <a [routerLink]="['/bolao', b.id, 'whatsapp']"
+                     class="flex flex-col items-center gap-1 py-2 rounded-lg hover:bg-slate-50 transition-colors no-underline text-slate-600 hover:text-green-700">
+                    <span class="text-base">💬</span>
+                    <span class="text-[11px] font-semibold">WhatsApp</span>
+                  </a>
                   <a [routerLink]="['/bolao', b.id, 'google-drive']"
                      class="flex flex-col items-center gap-1 py-2 rounded-lg hover:bg-slate-50 transition-colors no-underline text-slate-600 hover:text-green-700">
                     <span class="text-base">📊</span>

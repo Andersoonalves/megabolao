@@ -70,6 +70,10 @@ const TIPO_CHIP: Record<CategoriaTipo, string> = {
            class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-sm font-semibold rounded-[10px] no-underline text-slate-900 transition-colors min-h-9">
           {{ 'common.viewQuotas' | translate }}
         </a>
+        <a [routerLink]="['/bolao', id(), 'whatsapp']"
+           class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-sm font-semibold rounded-[10px] no-underline text-slate-900 transition-colors min-h-9">
+          💬 WhatsApp
+        </a>
         <a routerLink="/sorteios"
            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-800 text-white text-sm font-semibold rounded-[10px] no-underline transition-colors shadow-sm min-h-9">
           ✦ <span class="hidden sm:inline">{{ 'bolaoDetalhes.registerDraw' | translate }}</span><span class="sm:hidden">{{ 'bolaoDetalhes.registerDrawShort' | translate }}</span>
