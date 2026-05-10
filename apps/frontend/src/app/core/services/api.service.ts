@@ -3,18 +3,23 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { AuthService } from './auth.service';
+import { MasterTenantService } from './master-tenant.service';
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
-  private readonly http = inject(HttpClient);
-  private readonly auth = inject(AuthService);
+  private readonly http         = inject(HttpClient);
+  private readonly auth         = inject(AuthService);
+  private readonly masterTenant = inject(MasterTenantService);
 
   private url(path: string): string {
     return `${environment.apiUrl}${path}`;
   }
 
   private tenantHeaders(): Record<string, string> {
-    const tenantId = this.auth.tenantId();
+    // MASTER usa o tenant selecionado manualmente; ADMIN usa o próprio tenantId do JWT
+    const tenantId = this.auth.isMaster()
+      ? this.masterTenant.tenantId()
+      : this.auth.tenantId();
     return tenantId ? { 'X-Tenant-Id': tenantId } : {};
   }
 

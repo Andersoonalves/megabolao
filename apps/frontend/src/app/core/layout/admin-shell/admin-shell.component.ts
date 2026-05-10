@@ -5,9 +5,11 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { CodigoPermissao } from '@nossobolao/shared-types';
 import { AuthService } from '../../services/auth.service';
 import { ShellService } from '../../services/shell.service';
+import { MasterTenantService } from '../../services/master-tenant.service';
 import { PwaBannerAdminComponent } from '../../../shared/components/pwa-banner/pwa-banner-admin.component';
 import { ThemeToggleComponent } from '../../../shared/components/theme-toggle/theme-toggle.component';
 import { LangToggleComponent } from '../../../shared/components/lang-toggle/lang-toggle.component';
+import { TenantSelectorComponent } from '../../../shared/components/tenant-selector/tenant-selector.component';
 
 interface NavItem {
   /** Chave i18n da seção (ex.: `nav.section.lotteries`). */
@@ -37,6 +39,7 @@ const ADMIN_NAV: NavItem[] = [
   { id: 'auditoria',  labelKey: 'nav.audit',     icon: '📋', route: '/auditoria',  permissoes: ['auditoria.ler'] },
 ];
 
+// Nav do MASTER sem tenant selecionado — só telas de plataforma
 const MASTER_NAV: NavItem[] = [
   { sectionKey: 'nav.section.platform' },
   { id: 'master-dashboard', labelKey: 'nav.overview', icon: '◈', route: '/dashboard-master' },
@@ -46,12 +49,20 @@ const MASTER_NAV: NavItem[] = [
   { id: 'auditoria',        labelKey: 'nav.audit',     icon: '📋', route: '/auditoria' },
 ];
 
+// Nav do MASTER com tenant selecionado — plataforma + todas as telas admin
+const MASTER_COM_TENANT_NAV: NavItem[] = [
+  { sectionKey: 'nav.section.platform' },
+  { id: 'master-dashboard', labelKey: 'nav.overview', icon: '◈', route: '/dashboard-master' },
+  { id: 'tenants',          labelKey: 'nav.tenants',  icon: '🏢', route: '/tenants' },
+  ...ADMIN_NAV,
+];
+
 @Component({
   selector: 'nb-admin-shell',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     RouterOutlet, RouterLink, RouterLinkActive, NgTemplateOutlet, TranslatePipe,
-    PwaBannerAdminComponent, ThemeToggleComponent, LangToggleComponent,
+    PwaBannerAdminComponent, ThemeToggleComponent, LangToggleComponent, TenantSelectorComponent,
   ],
   template: `
     <!-- Desktop: sidebar 240px | Main. Mobile: sidebar oculta, drawer -->
@@ -141,6 +152,11 @@ const MASTER_NAV: NavItem[] = [
         </div>
       </div>
 
+      <!-- Seletor de tenant (só MASTER) -->
+      @if (auth.isMaster()) {
+        <nb-tenant-selector />
+      }
+
       <!-- Nav links -->
       <nav class="flex flex-col gap-0.5 px-2 flex-1 pt-2 lg:pt-0">
         @for (item of navItems(); track item.id ?? item.sectionKey) {
@@ -176,8 +192,9 @@ const MASTER_NAV: NavItem[] = [
   `,
 })
 export class AdminShellComponent {
-  readonly auth  = inject(AuthService);
-  readonly shell = inject(ShellService);
+  readonly auth         = inject(AuthService);
+  readonly shell        = inject(ShellService);
+  readonly masterTenant = inject(MasterTenantService);
 
   /**
    * Lista de itens visíveis. Aplica gating por permissão e remove
@@ -187,7 +204,9 @@ export class AdminShellComponent {
     // Reage a mudanças de usuário/permissões
     this.auth.user();
 
-    const base = this.auth.isMaster() ? MASTER_NAV : ADMIN_NAV;
+    const base = this.auth.isMaster()
+      ? (this.masterTenant.temTenant() ? MASTER_COM_TENANT_NAV : MASTER_NAV)
+      : ADMIN_NAV;
     const visiveis: NavItem[] = [];
     for (const item of base) {
       if (item.sectionKey) {
