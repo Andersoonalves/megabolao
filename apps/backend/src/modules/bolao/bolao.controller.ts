@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { RequerPermissoes } from '../auth/decorators/permissions.decorator';
 import { TenantId } from '../auth/decorators/tenant-id.decorator';
 import { ListBolaoDto } from './dto/list-bolao.dto';
 import { BolaoService } from './bolao.service';
@@ -28,30 +29,35 @@ export class BolaoController {
   constructor(private readonly bolaoService: BolaoService) {}
 
   @Post()
+  @RequerPermissoes('bolao.criar')
   @ApiOperation({ summary: 'Criar bolão com categorias (soma=100%)' })
   create(@TenantId() tenantId: string | null, @Body() dto: CreateBolaoDto) {
     return this.bolaoService.create(tenantId, dto);
   }
 
   @Get()
+  @RequerPermissoes('bolao.ler')
   @ApiOperation({ summary: 'Listar bolões do tenant' })
   findAll(@TenantId() tenantId: string | null, @Query() query: ListBolaoDto) {
     return this.bolaoService.findAll(tenantId, query);
   }
 
   @Get(':id/dashboard')
+  @RequerPermissoes('bolao.ler')
   @ApiOperation({ summary: 'Dados agregados do dashboard do bolão' })
   dashboard(@TenantId() tenantId: string | null, @Param('id', ParseUUIDPipe) id: string) {
     return this.bolaoService.dashboard(tenantId, id);
   }
 
   @Get(':id')
+  @RequerPermissoes('bolao.ler')
   @ApiOperation({ summary: 'Buscar bolão por ID (com categorias)' })
   findById(@TenantId() tenantId: string | null, @Param('id', ParseUUIDPipe) id: string) {
     return this.bolaoService.findById(tenantId, id);
   }
 
   @Patch(':id')
+  @RequerPermissoes('bolao.editar')
   @ApiOperation({ summary: 'Atualizar bolão (somente quando A_SER_INICIADO)' })
   update(
     @TenantId() tenantId: string | null,
@@ -62,6 +68,7 @@ export class BolaoController {
   }
 
   @Patch(':id/categorias')
+  @RequerPermissoes('bolao.editar')
   @ApiOperation({ summary: 'Substituir todas as categorias do bolão (soma=100%)' })
   updateCategorias(
     @TenantId() tenantId: string | null,
@@ -72,12 +79,14 @@ export class BolaoController {
   }
 
   @Patch(':id/iniciar')
+  @RequerPermissoes('bolao.iniciar')
   @ApiOperation({ summary: 'Iniciar bolão (A_SER_INICIADO → EM_ANDAMENTO)' })
   iniciar(@TenantId() tenantId: string | null, @Param('id', ParseUUIDPipe) id: string) {
     return this.bolaoService.iniciar(tenantId, id);
   }
 
   @Patch(':id/finalizar')
+  @RequerPermissoes('bolao.finalizar')
   @ApiOperation({ summary: 'Finalizar bolão (EM_ANDAMENTO → FINALIZADO)' })
   finalizar(@TenantId() tenantId: string | null, @Param('id', ParseUUIDPipe) id: string) {
     return this.bolaoService.finalizar(tenantId, id);
@@ -85,6 +94,7 @@ export class BolaoController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @RequerPermissoes('bolao.excluir')
   @ApiOperation({ summary: 'Excluir bolão (somente quando A_SER_INICIADO)' })
   delete(@TenantId() tenantId: string | null, @Param('id', ParseUUIDPipe) id: string) {
     return this.bolaoService.delete(tenantId, id);

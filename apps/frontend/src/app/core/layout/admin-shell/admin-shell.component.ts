@@ -1,6 +1,7 @@
-import { Component, ChangeDetectionStrategy, inject } from '@angular/core';
+import { Component, ChangeDetectionStrategy, computed, inject } from '@angular/core';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { NgTemplateOutlet } from '@angular/common';
+import { CodigoPermissao } from '@nossobolao/shared-types';
 import { AuthService } from '../../services/auth.service';
 import { ShellService } from '../../services/shell.service';
 import { PwaBannerAdminComponent } from '../../../shared/components/pwa-banner/pwa-banner-admin.component';
@@ -12,21 +13,24 @@ interface NavItem {
   label?: string;
   icon?: string;
   route?: string;
+  /** Se presente, exibe o item somente quando o usuário tiver QUALQUER uma das permissões. */
+  permissoes?: CodigoPermissao[];
 }
 
 const ADMIN_NAV: NavItem[] = [
   { section: 'Bolões' },
   { id: 'dashboard',  label: 'Dashboard',   icon: '◈', route: '/dashboard' },
-  { id: 'boloes',     label: 'Meus bolões', icon: '🎲', route: '/boloes' },
-  // { id: 'bolao-novo', label: 'Criar bolão', icon: '+', route: '/bolao/novo' },
-  // { id: 'cotas',         label: 'Cotas',          icon: '🎫', route: '/bolao/0/cotas' },
-  { id: 'participantes', label: 'Participantes',  icon: '👥', route: '/participantes' },
-  { id: 'sorteio',       label: 'Sorteios',       icon: '✦', route: '/sorteios' },
-  { id: 'premios',       label: 'Prêmios',        icon: '🏆', route: '/bolao/0/premios' },
+  { id: 'boloes',     label: 'Meus bolões', icon: '🎲', route: '/boloes', permissoes: ['bolao.ler'] },
+  { id: 'participantes', label: 'Participantes',  icon: '👥', route: '/participantes', permissoes: ['participante.ler'] },
+  { id: 'sorteio',       label: 'Sorteios',       icon: '✦', route: '/sorteios', permissoes: ['sorteio.ler'] },
+  { id: 'premios',       label: 'Prêmios',        icon: '🏆', route: '/bolao/0/premios', permissoes: ['premio.ler'] },
   { section: 'Comunicação' },
-  { id: 'whatsapp',   label: 'WhatsApp',     icon: '💬', route: '/whatsapp' },
+  { id: 'whatsapp',   label: 'WhatsApp',     icon: '💬', route: '/whatsapp', permissoes: ['whatsapp.ler'] },
   { section: 'Sistema' },
-  { id: 'relatorios', label: 'Relatórios',   icon: '📄', route: '/relatorios' },
+  { id: 'relatorios', label: 'Relatórios',   icon: '📄', route: '/relatorios', permissoes: ['relatorio.gerar'] },
+  { id: 'usuarios',   label: 'Usuários',     icon: '👤', route: '/usuarios',   permissoes: ['usuario.ler'] },
+  { id: 'perfis',     label: 'Perfis',       icon: '🛡', route: '/perfis',     permissoes: ['perfil.ler'] },
+  { id: 'auditoria',  label: 'Auditoria',    icon: '📋', route: '/auditoria',  permissoes: ['auditoria.ler'] },
 ];
 
 const MASTER_NAV: NavItem[] = [
@@ -35,6 +39,7 @@ const MASTER_NAV: NavItem[] = [
   { id: 'tenants',          label: 'Tenants',      icon: '🏢', route: '/tenants' },
   { section: 'Sistema' },
   { id: 'relatorios',       label: 'Relatórios',   icon: '📄', route: '/relatorios' },
+  { id: 'auditoria',        label: 'Auditoria',    icon: '📋', route: '/auditoria' },
 ];
 
 @Component({
@@ -152,9 +157,31 @@ export class AdminShellComponent {
   readonly auth  = inject(AuthService);
   readonly shell = inject(ShellService);
 
-  navItems() {
-    return this.auth.isMaster() ? MASTER_NAV : ADMIN_NAV;
-  }
+  /**
+   * Lista de itens visíveis. Aplica gating por permissão e remove
+   * cabeçalhos de seção que ficaram vazios após o filtro.
+   */
+  readonly navItems = computed<NavItem[]>(() => {
+    // Reage a mudanças de usuário/permissões
+    this.auth.user();
+
+    const base = this.auth.isMaster() ? MASTER_NAV : ADMIN_NAV;
+    const visiveis: NavItem[] = [];
+    for (const item of base) {
+      if (item.section) {
+        visiveis.push(item);
+        continue;
+      }
+      if (item.permissoes && !this.auth.temAlgumaPermissao(item.permissoes)) continue;
+      visiveis.push(item);
+    }
+    // Remove seções vazias (a próxima entrada também é uma seção ou fim da lista)
+    return visiveis.filter((item, idx) => {
+      if (!item.section) return true;
+      const next = visiveis[idx + 1];
+      return !!next && !next.section;
+    });
+  });
 
   initials() {
     return (this.auth.user()?.email ?? '').slice(0, 2).toUpperCase();

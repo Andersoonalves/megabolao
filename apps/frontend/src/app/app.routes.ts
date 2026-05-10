@@ -1,11 +1,13 @@
 import { Route } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
+import { permissaoGuard } from './core/guards/permissao.guard';
+import { adminDashboardGuard } from './core/guards/admin-dashboard.guard';
 
 export const appRoutes: Route[] = [
   {
     path: '',
-    redirectTo: 'dashboard',
     pathMatch: 'full',
+    loadComponent: () => import('./core/routing/home-redirect.component').then(m => m.HomeRedirectComponent),
   },
   {
     path: 'login',
@@ -22,6 +24,7 @@ export const appRoutes: Route[] = [
     children: [
       {
         path: 'dashboard',
+        canMatch: [adminDashboardGuard],
         loadComponent: () => import('./features/dashboard/dashboard-admin/dashboard-admin.component').then(m => m.DashboardAdminComponent),
       },
       {
@@ -75,6 +78,21 @@ export const appRoutes: Route[] = [
       {
         path: 'tenants/novo',
         loadComponent: () => import('./features/master/novo-tenant/novo-tenant.component').then(m => m.NovoTenantComponent),
+      },
+      {
+        path: 'perfis',
+        canActivate: [permissaoGuard('perfil.ler')],
+        loadComponent: () => import('./features/rbac/perfis/perfis.component').then(m => m.PerfisComponent),
+      },
+      {
+        path: 'usuarios',
+        canActivate: [permissaoGuard('usuario.ler')],
+        loadComponent: () => import('./features/rbac/usuarios/usuarios.component').then(m => m.UsuariosComponent),
+      },
+      {
+        path: 'auditoria',
+        canActivate: [permissaoGuard('auditoria.ler')],
+        loadComponent: () => import('./features/rbac/auditoria/auditoria.component').then(m => m.AuditoriaComponent),
       },
     ],
   },

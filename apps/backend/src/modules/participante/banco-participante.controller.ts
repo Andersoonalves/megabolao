@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { RequerPermissoes } from '../auth/decorators/permissions.decorator';
 import { TenantId } from '../auth/decorators/tenant-id.decorator';
 import { BancoParticipanteService } from './banco-participante.service';
 import { CreateParticipanteDto } from './dto/create-participante.dto';
@@ -27,18 +28,21 @@ export class BancoParticipanteController {
   constructor(private readonly service: BancoParticipanteService) {}
 
   @Post()
+  @RequerPermissoes('participante.criar')
   @ApiOperation({ summary: 'Criar participante no banco do tenant' })
   create(@TenantId() tenantId: string | null, @Body() dto: CreateParticipanteDto) {
     return this.service.create(tenantId, dto);
   }
 
   @Get()
+  @RequerPermissoes('participante.ler')
   @ApiOperation({ summary: 'Listar participantes do tenant' })
   findAll(@TenantId() tenantId: string | null, @Query() query: ListParticipantesDto) {
     return this.service.findAll(tenantId, query);
   }
 
   @Get('buscar-celular')
+  @RequerPermissoes('participante.ler')
   @ApiOperation({ summary: 'Buscar participante por celular (usado no cadastro de cota)' })
   @ApiQuery({ name: 'celular', required: true })
   findByCelular(@TenantId() tenantId: string | null, @Query('celular') celular: string) {
@@ -46,12 +50,14 @@ export class BancoParticipanteController {
   }
 
   @Get(':id')
+  @RequerPermissoes('participante.ler')
   @ApiOperation({ summary: 'Buscar participante por ID' })
   findById(@TenantId() tenantId: string | null, @Param('id', ParseUUIDPipe) id: string) {
     return this.service.findById(tenantId, id);
   }
 
   @Patch(':id')
+  @RequerPermissoes('participante.editar')
   @ApiOperation({ summary: 'Atualizar participante (nome, e-mail, observações)' })
   update(
     @TenantId() tenantId: string | null,
@@ -63,6 +69,7 @@ export class BancoParticipanteController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @RequerPermissoes('participante.excluir')
   @ApiOperation({ summary: 'Excluir participante (só sem cotas ativas)' })
   delete(@TenantId() tenantId: string | null, @Param('id', ParseUUIDPipe) id: string) {
     return this.service.delete(tenantId, id);

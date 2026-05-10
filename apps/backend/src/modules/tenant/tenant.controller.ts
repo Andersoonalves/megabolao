@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { RequerPermissoes } from '../auth/decorators/permissions.decorator';
 import { TenantId } from '../auth/decorators/tenant-id.decorator';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import { CreateTenantDto } from './dto/create-tenant.dto';
@@ -29,6 +30,7 @@ export class TenantController {
 
   @Post()
   @Roles('MASTER')
+  @RequerPermissoes('tenant.criar')
   @ApiOperation({ summary: 'Criar tenant (MASTER)' })
   create(@Body() dto: CreateTenantDto) {
     return this.tenantService.create(dto);
@@ -36,6 +38,7 @@ export class TenantController {
 
   @Get()
   @Roles('MASTER')
+  @RequerPermissoes('tenant.ler')
   @ApiOperation({ summary: 'Listar todos os tenants (MASTER)' })
   findAll(@Query() pagination: PaginationDto) {
     return this.tenantService.findAll(pagination);
@@ -58,6 +61,7 @@ export class TenantController {
 
   @Get(':id')
   @Roles('MASTER')
+  @RequerPermissoes('tenant.ler')
   @ApiOperation({ summary: 'Buscar tenant por ID (MASTER)' })
   findById(@Param('id', ParseUUIDPipe) id: string) {
     return this.tenantService.findById(id);
@@ -65,6 +69,7 @@ export class TenantController {
 
   @Patch(':id')
   @Roles('MASTER')
+  @RequerPermissoes('tenant.editar')
   @ApiOperation({ summary: 'Atualizar tenant (MASTER)' })
   update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateTenantDto) {
     return this.tenantService.update(id, dto);
@@ -72,6 +77,7 @@ export class TenantController {
 
   @Patch(':id/admin-senha')
   @Roles('MASTER')
+  @RequerPermissoes('tenant.editar')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Redefinir senha do admin do tenant (MASTER)' })
   resetAdminSenha(@Param('id', ParseUUIDPipe) id: string, @Body() dto: ResetAdminSenhaDto) {
@@ -80,6 +86,7 @@ export class TenantController {
 
   @Delete(':id')
   @Roles('MASTER')
+  @RequerPermissoes('tenant.suspender')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Desativar tenant (MASTER)' })
   deactivate(@Param('id', ParseUUIDPipe) id: string) {

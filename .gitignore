@@ -21,3 +21,10 @@ apps/frontend/design-prototypes/
 # IDE
 .idea/
 .vscode/
+
+# Secrets (chaves de service accounts, credenciais externas)
+# Ignora todo conteúdo de secrets/ exceto o .gitkeep e os arquivos *.example.*
+secrets/*
+!secrets/.gitkeep
+!secrets/*.example.json
+!secrets/*.example

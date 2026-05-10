@@ -215,8 +215,9 @@ INSERT INTO permissoes (codigo, modulo_codigo, nome, descricao, apenas_master) V
   ('sorteio.processar', 'SORTEIO', 'Processar acertos',  'Disparar cálculo',        FALSE),
 
   -- PREMIO
-  ('premio.ler',                 'PREMIO', 'Ler prêmios',         'Listar prêmios calculados',  FALSE),
-  ('premio.confirmar_pagamento', 'PREMIO', 'Confirmar pagamento', 'Marcar prêmio como pago',    FALSE),
+  ('premio.ler',      'PREMIO', 'Ler prêmios',     'Listar prêmios calculados',                  FALSE),
+  ('premio.calcular', 'PREMIO', 'Calcular prêmios','Disparar distribuição (bolão FINALIZADO)',   FALSE),
+  ('premio.pagar',    'PREMIO', 'Pagar prêmio',    'Marcar prêmio como PAGO',                    FALSE),
 
   -- WHATSAPP
   ('whatsapp.ler',      'WHATSAPP', 'Ler histórico',    'Ver mensagens enviadas',      FALSE),

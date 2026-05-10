@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { RequerPermissoes } from '../auth/decorators/permissions.decorator';
 import { TenantId } from '../auth/decorators/tenant-id.decorator';
 import { ListCotasDto } from './dto/list-cotas.dto';
 import { CreateCotaDto } from './dto/create-cota.dto';
@@ -27,6 +28,7 @@ export class ParticipanteController {
   constructor(private readonly participanteService: ParticipanteService) {}
 
   @Post()
+  @RequerPermissoes('cota.editar')
   @ApiOperation({ summary: 'Criar cota com palpites (10 números únicos, 1–60)' })
   create(
     @TenantId() tenantId: string | null,
@@ -37,6 +39,7 @@ export class ParticipanteController {
   }
 
   @Get()
+  @RequerPermissoes('cota.ler')
   @ApiOperation({ summary: 'Listar cotas do bolão (filtro por status e busca)' })
   findAll(
     @TenantId() tenantId: string | null,
@@ -47,6 +50,7 @@ export class ParticipanteController {
   }
 
   @Get(':id')
+  @RequerPermissoes('cota.ler')
   @ApiOperation({ summary: 'Buscar cota por ID' })
   findById(
     @TenantId() tenantId: string | null,
@@ -57,6 +61,7 @@ export class ParticipanteController {
   }
 
   @Patch(':id')
+  @RequerPermissoes('cota.editar')
   @ApiOperation({ summary: 'Atualizar cota (só PENDENTE)' })
   update(
     @TenantId() tenantId: string | null,
@@ -68,6 +73,7 @@ export class ParticipanteController {
   }
 
   @Patch(':id/pagar')
+  @RequerPermissoes('cota.confirmar_pagamento')
   @ApiOperation({ summary: 'Confirmar pagamento (PENDENTE → PAGO)' })
   confirmarPagamento(
     @TenantId() tenantId: string | null,
@@ -78,6 +84,7 @@ export class ParticipanteController {
   }
 
   @Patch(':id/inativar')
+  @RequerPermissoes('cota.editar')
   @ApiOperation({ summary: 'Inativar cota (PENDENTE ou PAGO → INATIVO)' })
   inativar(
     @TenantId() tenantId: string | null,
@@ -89,6 +96,7 @@ export class ParticipanteController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @RequerPermissoes('cota.editar')
   @ApiOperation({ summary: 'Excluir cota (só PENDENTE)' })
   delete(
     @TenantId() tenantId: string | null,

@@ -1,0 +1,431 @@
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { firstValueFrom } from 'rxjs';
+import { Perfil, UsuarioRBAC } from '@nossobolao/shared-types';
+import { AuthService } from '../../../core/services/auth.service';
+import { PerfilService } from '../../../core/services/perfil.service';
+import { UsuarioService } from '../../../core/services/usuario.service';
+import { BackButtonComponent } from '../../../shared/components/back-button/back-button.component';
+import { SePermissaoDirective } from '../../../shared/directives/se-permissao.directive';
+import { PhoneMaskDirective } from '../../../shared/phone';
+
+@Component({
+  selector: 'nb-usuarios',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [FormsModule, BackButtonComponent, SePermissaoDirective, PhoneMaskDirective],
+  template: `
+    <!-- Topbar -->
+    <div class="bg-white border-b border-slate-200 px-4 lg:px-7 py-3 flex items-center gap-3 sticky top-14 lg:top-0 z-10">
+      <nb-back-button />
+      <div class="hidden sm:flex items-center gap-2 text-[12.5px]">
+        <span class="text-slate-400">Sistema</span>
+        <span class="text-slate-300">›</span>
+        <span class="font-semibold">Usuários</span>
+      </div>
+      <span class="font-display font-semibold text-[14px] sm:hidden">Usuários</span>
+      <button *nbSe="'usuario.criar'" (click)="abrirModalConvidar()"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-800 text-white text-sm font-semibold rounded-[10px] transition-colors shadow-sm min-h-9">
+        + Convidar usuário
+      </button>
+    </div>
+
+    <!-- Page -->
+    <div class="p-4 lg:p-7">
+      <div class="mb-5">
+        <h1 class="font-display text-2xl lg:text-[26px] font-semibold tracking-tight mb-1">Usuários do tenant</h1>
+        <p class="text-slate-500 text-[13.5px]">{{ usuarios().length }} usuário(s) com acesso a este tenant.</p>
+      </div>
+
+      @if (error()) {
+        <div class="p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 mb-4">⚠ {{ error() }}</div>
+      }
+
+      <div class="bg-white border border-slate-200 rounded-lg overflow-hidden">
+        <div class="overflow-x-auto hidden sm:block">
+          <table class="w-full text-[13.5px]">
+            <thead class="bg-slate-50">
+              <tr>
+                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-5 py-2.5">Usuário</th>
+                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">Papel</th>
+                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">Perfis</th>
+                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">Permissões</th>
+                <th class="px-4 py-2.5 w-44"></th>
+              </tr>
+            </thead>
+            <tbody>
+              @if (loading()) {
+                @for (i of [1,2,3]; track i) {
+                  <tr class="border-b border-slate-100"><td colspan="5" class="px-5 py-3">
+                    <div class="h-4 bg-slate-100 rounded animate-pulse w-3/4"></div>
+                  </td></tr>
+                }
+              } @else if (usuarios().length === 0) {
+                <tr><td colspan="5" class="px-5 py-12 text-center text-slate-400 text-sm">
+                  Nenhum usuário cadastrado.
+                </td></tr>
+              } @else {
+                @for (u of usuarios(); track u.id) {
+                  <tr class="border-b border-slate-100 hover:bg-slate-50 last:border-0">
+                    <td class="px-5 py-3">
+                      <div class="flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-full bg-green-100 text-green-800 flex items-center justify-center font-semibold text-xs flex-shrink-0">
+                          {{ initials(u.email) }}
+                        </div>
+                        <div class="min-w-0">
+                          <div class="font-semibold truncate">{{ u.email }}</div>
+                          @if (u.celular) {
+                            <div class="text-[11px] text-slate-400 font-mono">{{ u.celular }}</div>
+                          }
+                        </div>
+                      </div>
+                    </td>
+                    <td class="px-4 py-3">
+                      <span class="px-1.5 py-0.5 bg-slate-100 text-slate-700 rounded text-[10.5px] font-semibold">{{ u.papel }}</span>
+                    </td>
+                    <td class="px-4 py-3">
+                      <div class="flex flex-wrap gap-1">
+                        @for (p of u.perfis.slice(0,3); track p.id) {
+                          <span class="px-1.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-100 rounded text-[10px] font-semibold">{{ p.nome }}</span>
+                        }
+                        @if (u.perfis.length > 3) {
+                          <span class="px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded text-[10px] font-semibold">+{{ u.perfis.length - 3 }}</span>
+                        }
+                        @if (u.perfis.length === 0) {
+                          <span class="text-slate-400 text-xs">—</span>
+                        }
+                      </div>
+                    </td>
+                    <td class="px-4 py-3 font-mono text-[12.5px]">{{ u.permissoes.length }}</td>
+                    <td class="px-4 py-3">
+                      <div class="flex items-center gap-1">
+                        <button *nbSe="'usuario.atribuir_perfil'" (click)="abrirModalPerfis(u)"
+                                class="px-2.5 py-1.5 text-[12px] font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200">
+                          Perfis
+                        </button>
+                        @if (u.id !== auth.user()?.id) {
+                          <button *nbSe="'usuario.excluir'" (click)="confirmarExcluir(u)"
+                                  class="px-2.5 py-1.5 text-[12px] font-semibold text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-red-100">
+                            Remover
+                          </button>
+                        }
+                      </div>
+                    </td>
+                  </tr>
+                }
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Cards mobile -->
+        <div class="sm:hidden divide-y divide-slate-100">
+          @if (loading()) {
+            @for (i of [1,2,3]; track i) {
+              <div class="p-4"><div class="h-4 bg-slate-100 rounded animate-pulse w-3/4 mb-2"></div><div class="h-3 bg-slate-100 rounded animate-pulse w-1/2"></div></div>
+            }
+          } @else if (usuarios().length === 0) {
+            <div class="p-8 text-center text-slate-400 text-sm">Nenhum usuário cadastrado.</div>
+          } @else {
+            @for (u of usuarios(); track u.id) {
+              <div class="p-4">
+                <div class="flex items-start justify-between gap-3">
+                  <div class="flex items-center gap-2.5 min-w-0">
+                    <div class="w-9 h-9 rounded-full bg-green-100 text-green-800 flex items-center justify-center font-semibold text-xs flex-shrink-0">
+                      {{ initials(u.email) }}
+                    </div>
+                    <div class="min-w-0">
+                      <div class="font-semibold text-[13.5px] truncate">{{ u.email }}</div>
+                      <div class="text-slate-400 text-[11px]">{{ u.papel }} · {{ u.perfis.length }} perfil(is)</div>
+                    </div>
+                  </div>
+                  <div class="flex gap-1 flex-shrink-0">
+                    <button *nbSe="'usuario.atribuir_perfil'" (click)="abrirModalPerfis(u)"
+                            class="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg text-sm transition-colors">⚙</button>
+                    @if (u.id !== auth.user()?.id) {
+                      <button *nbSe="'usuario.excluir'" (click)="confirmarExcluir(u)"
+                              class="w-8 h-8 flex items-center justify-center text-red-400 hover:text-red-700 hover:bg-red-50 rounded-lg text-sm transition-colors">🗑</button>
+                    }
+                  </div>
+                </div>
+              </div>
+            }
+          }
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Drawer: Convidar / Editar perfis ─────────────────────────────────────── -->
+    @if (showModal()) {
+      <div class="fixed inset-0 bg-black/40 z-40" (click)="fecharModal()"></div>
+      <div class="fixed right-0 top-0 h-full w-full sm:w-[480px] bg-white shadow-xl z-50 flex flex-col overflow-hidden">
+        <div class="px-6 py-5 border-b border-slate-200 flex items-center justify-between flex-shrink-0">
+          <h2 class="font-display font-semibold text-lg">
+            {{ editandoPerfis() ? 'Atribuir perfis' : 'Convidar usuário' }}
+          </h2>
+          <button (click)="fecharModal()" class="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">✕</button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-6 flex flex-col gap-5">
+          @if (!editandoPerfis()) {
+            <!-- Convidar: e-mail, nome, celular -->
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">E-mail *</label>
+              <input [ngModel]="fEmail()" (ngModelChange)="fEmail.set($event)"
+                     type="email" inputmode="email" autocomplete="off"
+                     class="w-full px-3 py-2.5 border border-slate-200 rounded-[10px] text-sm focus:outline-none focus:border-green-700"
+                     placeholder="usuario@empresa.com" />
+              <p class="text-[11px] text-slate-400 mt-1">Um e-mail de convite será enviado pelo Supabase.</p>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">Nome para exibição</label>
+              <input [ngModel]="fNome()" (ngModelChange)="fNome.set($event)"
+                     class="w-full px-3 py-2.5 border border-slate-200 rounded-[10px] text-sm focus:outline-none focus:border-green-700" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">Celular</label>
+              <input phoneMask [ngModel]="fCelular()" (ngModelChange)="fCelular.set($event)"
+                     type="tel" inputmode="numeric"
+                     class="w-full px-3 py-2.5 border border-slate-200 rounded-[10px] text-sm font-mono focus:outline-none focus:border-green-700"
+                     placeholder="(83) 99999-9999" />
+            </div>
+          } @else {
+            <!-- Editar perfis: mostra dados do usuário (read-only) -->
+            <div class="bg-slate-50 border border-slate-200 rounded-[10px] p-3 flex items-center gap-3">
+              <div class="w-10 h-10 rounded-full bg-green-100 text-green-800 flex items-center justify-center font-semibold text-sm flex-shrink-0">
+                {{ initials(editandoPerfis()!.email) }}
+              </div>
+              <div class="min-w-0">
+                <div class="font-semibold text-[13.5px] truncate">{{ editandoPerfis()!.email }}</div>
+                <div class="text-[11px] text-slate-400">{{ editandoPerfis()!.papel }}</div>
+              </div>
+            </div>
+          }
+
+          <!-- Perfis disponíveis -->
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <label class="block text-xs font-semibold text-slate-500 tracking-wide">
+                Perfis ({{ fPerfilIds().size }})
+              </label>
+            </div>
+            @if (perfisLoading()) {
+              <div class="h-4 bg-slate-100 rounded animate-pulse w-3/4"></div>
+            } @else if (perfisDisponiveis().length === 0) {
+              <div class="p-3 bg-slate-50 border border-slate-200 rounded-[10px] text-sm text-slate-500">
+                Nenhum perfil ativo no tenant. Crie um perfil antes de convidar.
+              </div>
+            } @else {
+              <div class="flex flex-col gap-1.5">
+                @for (p of perfisDisponiveis(); track p.id) {
+                  <label class="flex items-start gap-2 cursor-pointer hover:bg-slate-50 rounded p-2 border border-slate-200">
+                    <input type="checkbox"
+                           [checked]="fPerfilIds().has(p.id)"
+                           (change)="togglePerfil(p.id)"
+                           class="w-4 h-4 mt-0.5 accent-green-700" />
+                    <div class="flex-1 min-w-0">
+                      <div class="flex items-center gap-2 flex-wrap">
+                        <span class="text-[13px] font-semibold">{{ p.nome }}</span>
+                        @if (p.sistema) {
+                          <span class="px-1.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-100 rounded text-[10px] font-semibold">SISTEMA</span>
+                        }
+                        <span class="text-[10.5px] text-slate-400 font-mono">{{ p.permissoes.length }} permissão(ões)</span>
+                      </div>
+                      @if (p.descricao) {
+                        <div class="text-[11px] text-slate-400">{{ p.descricao }}</div>
+                      }
+                    </div>
+                  </label>
+                }
+              </div>
+            }
+          </div>
+
+          @if (modalError()) {
+            <div class="p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">{{ modalError() }}</div>
+          }
+        </div>
+
+        <div class="px-6 py-4 border-t border-slate-200 flex gap-2.5 flex-shrink-0">
+          <button (click)="fecharModal()"
+                  class="flex-1 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 font-semibold text-sm rounded-[10px] transition-colors">
+            Cancelar
+          </button>
+          <button (click)="salvar()" [disabled]="!podeSubmit() || modalLoading()"
+                  class="flex-1 py-2.5 bg-green-700 hover:bg-green-800 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold text-sm rounded-[10px] transition-colors shadow-sm">
+            {{ modalLoading() ? 'Salvando...' : editandoPerfis() ? 'Salvar' : 'Convidar' }}
+          </button>
+        </div>
+      </div>
+    }
+
+    @if (excluindo()) {
+      <div class="fixed inset-0 bg-black/40 z-40 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-xl max-w-sm w-full p-6">
+          <h3 class="font-display font-semibold text-lg mb-2">Remover usuário?</h3>
+          <p class="text-slate-500 text-sm mb-1">
+            <strong class="text-slate-700">{{ excluindo()!.email }}</strong> perderá acesso ao tenant.
+          </p>
+          <p class="text-slate-400 text-xs mb-5">A conta será excluída do Supabase Auth e todos os perfis desatribuídos.</p>
+          <div class="flex gap-2.5">
+            <button (click)="excluindo.set(null)"
+                    class="flex-1 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 font-semibold text-sm rounded-[10px] transition-colors">
+              Cancelar
+            </button>
+            <button (click)="excluir()" [disabled]="modalLoading()"
+                    class="flex-1 py-2.5 bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white font-semibold text-sm rounded-[10px] transition-colors">
+              {{ modalLoading() ? 'Removendo...' : 'Remover' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+  `,
+})
+export class UsuariosComponent implements OnInit {
+  readonly auth = inject(AuthService);
+  private readonly usuariosApi = inject(UsuarioService);
+  private readonly perfisApi = inject(PerfilService);
+
+  usuarios       = signal<UsuarioRBAC[]>([]);
+  loading        = signal(false);
+  error          = signal('');
+
+  perfis         = signal<Perfil[]>([]);
+  perfisLoading  = signal(false);
+
+  showModal      = signal(false);
+  editandoPerfis = signal<UsuarioRBAC | null>(null);
+  excluindo      = signal<UsuarioRBAC | null>(null);
+  modalLoading   = signal(false);
+  modalError     = signal('');
+
+  fEmail    = signal('');
+  fNome     = signal('');
+  fCelular  = signal('');
+  fPerfilIds = signal<Set<string>>(new Set());
+
+  perfisDisponiveis = computed(() => this.perfis().filter((p) => p.ativo));
+
+  podeSubmit = computed(() => {
+    const ids = this.fPerfilIds();
+    if (this.editandoPerfis()) return ids.size >= 0;
+    const emailOk = /^[^@]+@[^@]+\.[^@]+$/.test(this.fEmail().trim());
+    return emailOk && ids.size > 0;
+  });
+
+  ngOnInit(): void {
+    this.load();
+    this.carregarPerfis();
+  }
+
+  async load(): Promise<void> {
+    this.loading.set(true);
+    this.error.set('');
+    try {
+      const data = await firstValueFrom(this.usuariosApi.findAll());
+      this.usuarios.set(data);
+    } catch {
+      this.error.set('Erro ao carregar usuários.');
+    } finally {
+      this.loading.set(false);
+    }
+  }
+
+  async carregarPerfis(): Promise<void> {
+    this.perfisLoading.set(true);
+    try {
+      const data = await firstValueFrom(this.perfisApi.findAll());
+      this.perfis.set(data);
+    } catch {
+      // ignora
+    } finally {
+      this.perfisLoading.set(false);
+    }
+  }
+
+  abrirModalConvidar(): void {
+    this.editandoPerfis.set(null);
+    this.fEmail.set('');
+    this.fNome.set('');
+    this.fCelular.set('');
+    this.fPerfilIds.set(new Set());
+    this.modalError.set('');
+    this.showModal.set(true);
+  }
+
+  abrirModalPerfis(u: UsuarioRBAC): void {
+    this.editandoPerfis.set(u);
+    this.fPerfilIds.set(new Set(u.perfis.map((p) => p.id)));
+    this.modalError.set('');
+    this.showModal.set(true);
+  }
+
+  fecharModal(): void {
+    this.showModal.set(false);
+    this.editandoPerfis.set(null);
+    this.modalError.set('');
+  }
+
+  togglePerfil(id: string): void {
+    const set = new Set(this.fPerfilIds());
+    if (set.has(id)) set.delete(id);
+    else set.add(id);
+    this.fPerfilIds.set(set);
+  }
+
+  async salvar(): Promise<void> {
+    if (!this.podeSubmit() || this.modalLoading()) return;
+    this.modalLoading.set(true);
+    this.modalError.set('');
+    try {
+      const u = this.editandoPerfis();
+      if (u) {
+        await firstValueFrom(
+          this.usuariosApi.atribuirPerfis(u.id, { perfilIds: Array.from(this.fPerfilIds()) }),
+        );
+      } else {
+        await firstValueFrom(
+          this.usuariosApi.create({
+            email: this.fEmail().trim(),
+            nome: this.fNome().trim() || undefined,
+            celular: this.fCelular().replace(/\D/g, '') || undefined,
+            perfilIds: Array.from(this.fPerfilIds()),
+          }),
+        );
+      }
+      this.fecharModal();
+      await this.load();
+    } catch (err: unknown) {
+      const msg = (err as { error?: { message?: string } })?.error?.message ?? 'Erro ao salvar.';
+      this.modalError.set(msg);
+    } finally {
+      this.modalLoading.set(false);
+    }
+  }
+
+  confirmarExcluir(u: UsuarioRBAC): void {
+    this.excluindo.set(u);
+    this.modalError.set('');
+  }
+
+  async excluir(): Promise<void> {
+    const u = this.excluindo();
+    if (!u) return;
+    this.modalLoading.set(true);
+    try {
+      await firstValueFrom(this.usuariosApi.delete(u.id));
+      this.excluindo.set(null);
+      await this.load();
+    } catch (err: unknown) {
+      const msg = (err as { error?: { message?: string } })?.error?.message ?? 'Erro ao remover.';
+      this.error.set(msg);
+      this.excluindo.set(null);
+    } finally {
+      this.modalLoading.set(false);
+    }
+  }
+
+  initials(email: string): string {
+    return (email ?? '').slice(0, 2).toUpperCase();
+  }
+}

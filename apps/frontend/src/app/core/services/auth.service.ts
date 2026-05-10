@@ -1,6 +1,7 @@
 import { Injectable, signal, computed } from '@angular/core';
 import { Router } from '@angular/router';
 import { createClient, Session, SupabaseClient, User } from '@supabase/supabase-js';
+import { CodigoPermissao, WILDCARD_PERMISSAO } from '@nossobolao/shared-types';
 import { environment } from '../../../environments/environment';
 
 export type UserRole = 'MASTER' | 'ADMIN' | 'PARTICIPANTE';
@@ -11,6 +12,7 @@ export interface AuthUser {
   role: UserRole;
   tenantId: string | null;
   celular: string | null;
+  permissoes: CodigoPermissao[];
 }
 
 @Injectable({ providedIn: 'root' })
@@ -28,6 +30,8 @@ export class AuthService {
   readonly isMaster        = computed(() => this._user()?.role === 'MASTER');
   readonly isAdmin         = computed(() => this._user()?.role === 'ADMIN');
   readonly tenantId        = computed(() => this._user()?.tenantId ?? null);
+  /** Permissões granulares efetivas. MASTER recebe `['*']`. */
+  readonly permissoes      = computed<CodigoPermissao[]>(() => this._user()?.permissoes ?? []);
 
   constructor(private readonly router: Router) {
     this.supabase = createClient(environment.supabaseUrl, environment.supabaseAnonKey);
@@ -60,9 +64,12 @@ export class AuthService {
 
   // ── Autenticação email/senha (Admin / Master) ─────────────────────────────
   async signInWithEmail(email: string, password: string): Promise<void> {
-    const { error } = await this.supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await this.supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
-    await this.router.navigate(['/dashboard']);
+    // MASTER não tem tenant — não pode cair no dashboard admin (/boloes exige X-Tenant-Id).
+    const meta = data.user?.user_metadata as { papel?: string } | undefined;
+    const dest = meta?.papel === 'MASTER' ? '/dashboard-master' : '/dashboard';
+    await this.router.navigate([dest]);
   }
 
   // ── OTP (Portal participante) ─────────────────────────────────────────────
@@ -89,10 +96,19 @@ export class AuthService {
   }
 
   private mapUser(user: User): AuthUser {
-    const meta = user.user_metadata as { papel?: string; tenant_id?: string; celular?: string };
+    const meta = user.user_metadata as {
+      papel?: string;
+      tenant_id?: string;
+      celular?: string;
+      permissoes?: CodigoPermissao[];
+    };
     const role: UserRole = meta.papel === 'MASTER' ? 'MASTER'
       : meta.papel === 'ADMIN'  ? 'ADMIN'
       : 'PARTICIPANTE';
+
+    const permissoes: CodigoPermissao[] = role === 'MASTER'
+      ? [WILDCARD_PERMISSAO]
+      : Array.isArray(meta.permissoes) ? meta.permissoes : [];
 
     return {
       id:       user.id,
@@ -100,6 +116,39 @@ export class AuthService {
       role,
       tenantId: role === 'MASTER' ? null : (meta.tenant_id ?? null),
       celular:  meta.celular ?? null,
+      permissoes,
     };
+  }
+
+  // ── RBAC: helpers reativos ────────────────────────────────────────────────
+  /** Verifica se o usuário possui a permissão (ou se é MASTER com curinga). */
+  temPermissao(codigo: CodigoPermissao): boolean {
+    const permissoes = this._user()?.permissoes ?? [];
+    return permissoes.includes(WILDCARD_PERMISSAO) || permissoes.includes(codigo);
+  }
+
+  /** Verifica se possui pelo menos uma das permissões informadas. */
+  temAlgumaPermissao(codigos: readonly CodigoPermissao[]): boolean {
+    if (codigos.length === 0) return true;
+    const permissoes = this._user()?.permissoes ?? [];
+    if (permissoes.includes(WILDCARD_PERMISSAO)) return true;
+    return codigos.some((c) => permissoes.includes(c));
+  }
+
+  /** Verifica se possui TODAS as permissões informadas. */
+  temTodasPermissoes(codigos: readonly CodigoPermissao[]): boolean {
+    if (codigos.length === 0) return true;
+    const permissoes = this._user()?.permissoes ?? [];
+    if (permissoes.includes(WILDCARD_PERMISSAO)) return true;
+    return codigos.every((c) => permissoes.includes(c));
+  }
+
+  /**
+   * Força atualização do JWT — usado quando o backend ressincroniza permissões
+   * (`user_metadata.permissoes`). Dispara `onAuthStateChange` automaticamente.
+   */
+  async refreshSession(): Promise<void> {
+    const { error } = await this.supabase.auth.refreshSession();
+    if (error) throw error;
   }
 }

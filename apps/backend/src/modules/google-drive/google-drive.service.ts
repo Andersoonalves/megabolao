@@ -1,5 +1,7 @@
 import { ForbiddenException, Inject, Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import { google } from 'googleapis';
 import { JWT } from 'google-auth-library';
 import { Queue } from 'bullmq';
@@ -399,7 +401,45 @@ export class GoogleDriveService {
     return { abas: [abaResumo, abaCotas, abaSorteios, abaRanking, abaCategorias], linhasExportadas: cotas.length };
   }
 
+  /**
+   * Resolve credenciais da Service Account em duas estratégias (nessa ordem):
+   *   1) GOOGLE_SA_KEY_PATH → caminho de arquivo JSON exportado do GCP.
+   *   2) GOOGLE_SA_EMAIL + GOOGLE_SA_PRIVATE_KEY (legado) → mantido para
+   *      ambientes sem filesystem persistente (Fly.io secrets, etc.).
+   *
+   * Preferimos (1) porque parsers de `.env` (Supabase CLI, Doppler, etc.) tendem
+   * a engasgar com vírgulas/aspas dentro da chave PEM.
+   */
   private getAuth(): JWT {
+    const keyPath = this.config.get<string>('GOOGLE_SA_KEY_PATH');
+    if (keyPath) return this.authFromFile(keyPath);
+    return this.authFromEnv();
+  }
+
+  private authFromFile(keyPath: string): JWT {
+    const abs = path.isAbsolute(keyPath) ? keyPath : path.resolve(process.cwd(), keyPath);
+    if (!fs.existsSync(abs)) {
+      throw new Error(`GOOGLE_SA_KEY_PATH aponta para arquivo inexistente: ${abs}`);
+    }
+    let json: { client_email?: string; private_key?: string };
+    try {
+      json = JSON.parse(fs.readFileSync(abs, 'utf8'));
+    } catch (err) {
+      throw new Error(`GOOGLE_SA_KEY_PATH não é JSON válido (${abs}): ${(err as Error).message}`);
+    }
+    const email = json.client_email;
+    const key = json.private_key;
+    if (!email || !key || !key.includes('BEGIN')) {
+      throw new Error(`GOOGLE_SA_KEY_PATH inválido — esperado client_email + private_key (${abs})`);
+    }
+    return new JWT({
+      email,
+      key,
+      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+    });
+  }
+
+  private authFromEnv(): JWT {
     const email = this.config.getOrThrow<string>('GOOGLE_SA_EMAIL');
     const rawKey = this.config.getOrThrow<string>('GOOGLE_SA_PRIVATE_KEY');
 

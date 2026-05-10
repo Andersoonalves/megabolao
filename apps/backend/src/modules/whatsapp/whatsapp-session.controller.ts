@@ -1,6 +1,7 @@
 import { Controller, Delete, Get, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { RequerPermissoes } from '../auth/decorators/permissions.decorator';
 import { TenantId } from '../auth/decorators/tenant-id.decorator';
 import { WhatsAppClientManager } from './whatsapp-client-manager.service';
 import { BusinessException } from '../../common/exceptions/business.exception';
@@ -13,6 +14,7 @@ export class WhatsAppSessionController {
   constructor(private readonly clientManager: WhatsAppClientManager) {}
 
   @Post('iniciar')
+  @RequerPermissoes('whatsapp.conectar')
   @ApiOperation({ summary: 'Iniciar/retomar sessão WhatsApp do tenant (retorna status ou QR code)' })
   async iniciar(@TenantId() tenantId: string | null) {
     if (!tenantId) throw new BusinessException('TENANT_ID_OBRIGATORIO', 'tenantId obrigatório');
@@ -20,6 +22,7 @@ export class WhatsAppSessionController {
   }
 
   @Get('status')
+  @RequerPermissoes('whatsapp.ler')
   @ApiOperation({ summary: 'Status da sessão WhatsApp (polling para acompanhar QR → CONECTADO)' })
   getStatus(@TenantId() tenantId: string | null) {
     if (!tenantId) throw new BusinessException('TENANT_ID_OBRIGATORIO', 'tenantId obrigatório');
@@ -28,6 +31,7 @@ export class WhatsAppSessionController {
 
   @Delete()
   @HttpCode(HttpStatus.NO_CONTENT)
+  @RequerPermissoes('whatsapp.conectar')
   @ApiOperation({ summary: 'Encerrar sessão WhatsApp do tenant' })
   async encerrar(@TenantId() tenantId: string | null) {
     if (!tenantId) throw new BusinessException('TENANT_ID_OBRIGATORIO', 'tenantId obrigatório');
@@ -35,6 +39,7 @@ export class WhatsAppSessionController {
   }
 
   @Get('grupos')
+  @RequerPermissoes('whatsapp.ler')
   @ApiOperation({ summary: 'Listar grupos WhatsApp (requer status CONECTADO)' })
   getGrupos(@TenantId() tenantId: string | null) {
     if (!tenantId) throw new BusinessException('TENANT_ID_OBRIGATORIO', 'tenantId obrigatório');
