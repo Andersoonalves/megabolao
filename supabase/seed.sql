@@ -68,3 +68,104 @@ VALUES (
   10,
   'PREMIADO'
 );
+
+-- Templates WhatsApp automáticos (dev) — variáveis {{nomeBolao}}, {{numeroConcurso}}, {{dataSorteio}}, {{bolas}}, {{totalCotas}}, {{arrecadacao}}, {{nomeGanhador}}, {{premio}}
+INSERT INTO whatsapp_templates (id, tenant_id, nome, conteudo, tipo, ativo)
+VALUES
+  (
+    '11111111-1111-4111-8111-111111110001',
+    '00000000-0000-0000-0000-000000000001',
+    'Resultado Mega-Sena',
+    $msg1$🎯 *{{nomeBolao}}*
+
+*Sorteio da Mega-Sena* — concurso *{{numeroConcurso}}*
+📅 {{dataSorteio}}
+
+*Números sorteados:*
+{{bolas}}
+
+👥 Cotas pagas: *{{totalCotas}}*
+💰 Arrecadação bruta: *{{arrecadacao}}*
+
+Boa sorte na próxima rodada!
+— *{{nomeBolao}}*$msg1$,
+    'RESULTADO_SORTEIO',
+    true
+  ),
+  (
+    '11111111-1111-4111-8111-111111110002',
+    '00000000-0000-0000-0000-000000000001',
+    'Ranking parcial',
+    $msg2$📊 *Ranking parcial — {{nomeBolao}}*
+
+Concurso *{{numeroConcurso}}* · {{dataSorteio}}
+Bolas: {{bolas}}
+
+Segue a *atualização do top acertos* após este sorteio (lista no sistema / planilha anexa, se houver).
+
+🎫 Cotas no bolão: *{{totalCotas}}*
+💰 Arrecadação: *{{arrecadacao}}*
+
+Qualquer dúvida, fale com o administrador.$msg2$,
+    'RANKING_PARCIAL',
+    true
+  ),
+  (
+    '11111111-1111-4111-8111-111111110003',
+    '00000000-0000-0000-0000-000000000001',
+    'Premiados · bolão encerrado',
+    $msg3$🏆 *{{nomeBolao}}*
+*BOLÃO ENCERRADO — premiados*
+
+Parabéns aos contemplados!
+
+🥇 *Destaque principal:* {{nomeGanhador}}
+💵 *Prêmio (referência):* {{premio}}
+
+💰 Arrecadação total: *{{arrecadacao}}*
+🎫 Total de cotas: *{{totalCotas}}*
+
+Obrigado a todos que participaram!$msg3$,
+    'PREMIADOS',
+    true
+  ),
+  (
+    '11111111-1111-4111-8111-111111110004',
+    '00000000-0000-0000-0000-000000000001',
+    'Ganhadores · 1º sorteio',
+    $msg4$🏅 *{{nomeBolao}}*
+
+*Ganhadores · 1º sorteio*
+Concurso *{{numeroConcurso}}* · {{dataSorteio}}
+
+Bolas: {{bolas}}
+
+🥇 *Destaque (categoria 1º sorteio):* {{nomeGanhador}}
+💵 *Prêmio:* {{premio}}
+
+🎫 Cotas no bolão: {{totalCotas}}
+
+Confira o ranking completo e as demais categorias no painel do bolão.$msg4$,
+    'RANKING_PARCIAL',
+    true
+  ),
+  (
+    '11111111-1111-4111-8111-111111110005',
+    '00000000-0000-0000-0000-000000000001',
+    'Comunicado · após apuração',
+    $msg5$📣 *{{nomeBolao}}*
+
+*Apuração registrada* — concurso {{numeroConcurso}} ({{dataSorteio}}).
+
+Resultado das bolas:
+{{bolas}}
+
+Em breve divulgamos ranking e premiações. *{{totalCotas}}* cotas seguem no bolão.
+
+💰 Arrecadação acumulada: *{{arrecadacao}}*
+
+— Administração *{{nomeBolao}}*$msg5$,
+    'AVISO_ADMIN',
+    true
+  )
+ON CONFLICT (id) DO NOTHING;

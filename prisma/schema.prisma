@@ -108,6 +108,7 @@ model Tenant {
   perfis              Perfil[]
   modulosTenant       ModuloTenant[]
   auditorias          Auditoria[]
+  whatsappTemplates   WhatsappTemplate[]
 
   @@map("tenants")
 }
@@ -133,6 +134,7 @@ model Bolao {
   valorCota    Decimal     @db.Decimal(10, 2) @map("valor_cota")
   dataInicio   DateTime?   @db.Date @map("data_inicio")
   dataTermino  DateTime?   @db.Date @map("data_termino")
+  whatsappGrupos    Json      @default("[]") @map("whatsapp_grupos")
   sheetsSpreadsheetId String?   @map("sheets_spreadsheet_id")
   sheetsAtivo         Boolean   @default(false) @map("sheets_ativo")
   sheetsUltimaSyncAt  DateTime? @db.Timestamptz() @map("sheets_ultima_sync_at")
@@ -273,6 +275,21 @@ model Premio {
   categoriaPremiacao CategoriaPremiacao @relation(fields: [categoriaPremiacaoId], references: [id])
 
   @@map("premios")
+}
+
+model WhatsappTemplate {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId     String   @db.Uuid @map("tenant_id")
+  nome         String
+  conteudo     String
+  tipo         String   @default("MANUAL")
+  ativo        Boolean  @default(true)
+  criadoEm     DateTime @default(now()) @db.Timestamptz() @map("criado_em")
+  atualizadoEm DateTime @default(now()) @db.Timestamptz() @map("atualizado_em")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@map("whatsapp_templates")
 }
 
 model MensagemWhatsapp {
