@@ -32,6 +32,16 @@ export type MensagemTipo =
 
 export type MensagemStatus = 'PENDENTE' | 'ENVIADO' | 'FALHA';
 
+export type AuditoriaSeveridade = 'INFO' | 'AVISO' | 'CRITICO';
+
+/**
+ * Wildcard de permissões. MASTER recebe `*` (acesso global).
+ * Permissões granulares seguem o formato `<modulo>.<acao>`, ex.: `bolao.criar`.
+ */
+export const WILDCARD_PERMISSAO = '*';
+
+export type CodigoPermissao = string; // ex: 'bolao.criar' ou '*'
+
 // ── Interfaces de domínio ────────────────────────────────────────────────────
 
 export interface TenantBranding {
@@ -121,6 +131,70 @@ export interface Premio {
   dataPagamento?: string;
   criadoEm: string;
   atualizadoEm: string;
+}
+
+// ── RBAC ─────────────────────────────────────────────────────────────────────
+
+export interface Modulo {
+  codigo: string;
+  nome: string;
+  descricao?: string;
+  ordem: number;
+  apenasMaster: boolean;
+  ativo: boolean;
+}
+
+export interface Permissao {
+  codigo: CodigoPermissao;
+  moduloCodigo: string;
+  nome: string;
+  descricao?: string;
+  apenasMaster: boolean;
+}
+
+export interface ModuloComPermissoes extends Modulo {
+  permissoes: Permissao[];
+}
+
+export interface Perfil {
+  id: string;
+  tenantId: string;
+  nome: string;
+  descricao?: string;
+  prioridade: number;
+  ativo: boolean;
+  sistema: boolean;
+  permissoes: CodigoPermissao[];
+  totalUsuarios?: number;
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
+export interface UsuarioRBAC {
+  id: string;
+  email: string;
+  papel: PapelUsuario;
+  tenantId: string | null;
+  celular: string | null;
+  perfis: Array<Pick<Perfil, 'id' | 'nome' | 'sistema'>>;
+  permissoes: CodigoPermissao[];
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
+export interface AuditoriaItem {
+  id: string;
+  tenantId: string | null;
+  userId: string | null;
+  userEmail: string | null;
+  acao: string;
+  recurso: string | null;
+  recursoId: string | null;
+  severidade: AuditoriaSeveridade;
+  detalhes: Record<string, unknown>;
+  ip: string | null;
+  userAgent: string | null;
+  criadoEm: string;
 }
 
 // ── Resposta de erro padrão ──────────────────────────────────────────────────

@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthService } from './auth.service';
 import { SupabaseService } from '../supabase/supabase.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { AuthenticatedUser } from './interfaces/authenticated-user.interface';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -11,6 +12,8 @@ const makeSupabaseUser = (overrides: Record<string, unknown> = {}) => ({
   user_metadata: {
     papel: 'ADMIN',
     tenant_id: 'tenant-uuid-456',
+    permissoes: ['bolao.ler', 'bolao.criar'],
+    permissoes_rev: '2026-05-09T00:00:00Z',
     ...overrides,
   },
 });
@@ -19,7 +22,17 @@ const mockSupabaseService = {
   admin: {
     auth: {
       getUser: jest.fn(),
+      admin: {
+        getUserById: jest.fn(),
+        updateUserById: jest.fn(),
+      },
     },
+  },
+};
+
+const mockPrismaService = {
+  usuarioPerfil: {
+    findMany: jest.fn().mockResolvedValue([]),
   },
 };
 
@@ -35,6 +48,7 @@ describe('AuthService', () => {
       providers: [
         AuthService,
         { provide: SupabaseService, useValue: mockSupabaseService },
+        { provide: PrismaService, useValue: mockPrismaService },
       ],
     }).compile();
 
@@ -62,7 +76,23 @@ describe('AuthService', () => {
         papel: 'ADMIN',
         tenantId: 'tenant-uuid-456',
         celular: null,
+        permissoes: ['bolao.ler', 'bolao.criar'],
       });
+    });
+
+    it('atribui curinga * para MASTER independentemente do user_metadata', async () => {
+      // Arrange
+      const supabaseUser = makeSupabaseUser({ papel: 'MASTER', tenant_id: undefined, permissoes: undefined });
+      mockSupabaseService.admin.auth.getUser.mockResolvedValue({
+        data: { user: supabaseUser },
+        error: null,
+      });
+
+      // Act
+      const result = await service.validateToken('master-token');
+
+      // Assert
+      expect(result?.permissoes).toEqual(['*']);
     });
 
     it('retorna AuthenticatedUser para token válido de Master (tenantId null)', async () => {
@@ -146,6 +176,7 @@ describe('AuthService', () => {
       papel: 'ADMIN',
       tenantId: 'tenant-abc',
       celular: null,
+      permissoes: [],
     };
 
     const masterUser: AuthenticatedUser = {
@@ -154,6 +185,7 @@ describe('AuthService', () => {
       papel: 'MASTER',
       tenantId: null,
       celular: null,
+      permissoes: ['*'],
     };
 
     it('retorna tenant_id do JWT para Admin, ignorando header', () => {

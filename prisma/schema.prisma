@@ -76,6 +76,14 @@ enum MensagemStatus {
   @@map("mensagem_status")
 }
 
+enum AuditoriaSeveridade {
+  INFO
+  AVISO
+  CRITICO
+
+  @@map("auditoria_severidade")
+}
+
 // ── MODELS ─────────────────────────────────────────────────────
 
 model Tenant {
@@ -97,6 +105,9 @@ model Tenant {
   premios             Premio[]
   mensagens           MensagemWhatsapp[]
   participantes       Participante[]
+  perfis              Perfil[]
+  modulosTenant       ModuloTenant[]
+  auditorias          Auditoria[]
 
   @@map("tenants")
 }
@@ -281,4 +292,120 @@ model MensagemWhatsapp {
   bolao  Bolao? @relation(fields: [bolaoId], references: [id])
 
   @@map("mensagens_whatsapp")
+}
+
+// ── RBAC ─────────────────────────────────────────────────────
+
+model Modulo {
+  codigo        String        @id @db.VarChar(40)
+  nome          String        @db.VarChar(80)
+  descricao     String?
+  ordem         Int           @default(0)
+  apenasMaster  Boolean       @default(false) @map("apenas_master")
+  ativo         Boolean       @default(true)
+  criadoEm      DateTime      @default(now()) @db.Timestamptz() @map("criado_em")
+
+  permissoes    Permissao[]
+  modulosTenant ModuloTenant[]
+
+  @@map("modulos")
+}
+
+model Permissao {
+  codigo         String    @id @db.VarChar(80)
+  moduloCodigo   String    @db.VarChar(40) @map("modulo_codigo")
+  nome           String    @db.VarChar(120)
+  descricao      String?
+  apenasMaster   Boolean   @default(false) @map("apenas_master")
+  criadoEm       DateTime  @default(now()) @db.Timestamptz() @map("criado_em")
+
+  modulo            Modulo            @relation(fields: [moduloCodigo], references: [codigo])
+  perfilPermissoes  PerfilPermissao[]
+
+  @@index([moduloCodigo])
+  @@map("permissoes")
+}
+
+model ModuloTenant {
+  tenantId      String   @db.Uuid @map("tenant_id")
+  moduloCodigo  String   @db.VarChar(40) @map("modulo_codigo")
+  ativo         Boolean  @default(true)
+  habilitadoEm  DateTime @default(now()) @db.Timestamptz() @map("habilitado_em")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  modulo Modulo @relation(fields: [moduloCodigo], references: [codigo])
+
+  @@id([tenantId, moduloCodigo])
+  @@index([tenantId])
+  @@map("modulos_tenant")
+}
+
+model Perfil {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId      String    @db.Uuid @map("tenant_id")
+  nome          String    @db.VarChar(80)
+  descricao     String?
+  prioridade    Int       @default(0)
+  ativo         Boolean   @default(true)
+  sistema       Boolean   @default(false)
+  criadoEm      DateTime  @default(now()) @db.Timestamptz() @map("criado_em")
+  atualizadoEm  DateTime  @default(now()) @db.Timestamptz() @map("atualizado_em")
+
+  tenant         Tenant            @relation(fields: [tenantId], references: [id])
+  permissoes     PerfilPermissao[]
+  usuarios       UsuarioPerfil[]
+
+  @@unique([tenantId, nome], map: "perfis_nome_unico_por_tenant")
+  @@index([tenantId])
+  @@map("perfis")
+}
+
+model PerfilPermissao {
+  perfilId        String @db.Uuid @map("perfil_id")
+  permissaoCodigo String @db.VarChar(80) @map("permissao_codigo")
+
+  perfil    Perfil    @relation(fields: [perfilId], references: [id], onDelete: Cascade)
+  permissao Permissao @relation(fields: [permissaoCodigo], references: [codigo], onDelete: Cascade)
+
+  @@id([perfilId, permissaoCodigo])
+  @@index([perfilId])
+  @@index([permissaoCodigo])
+  @@map("perfil_permissoes")
+}
+
+model UsuarioPerfil {
+  userId        String   @db.Uuid @map("user_id")
+  perfilId      String   @db.Uuid @map("perfil_id")
+  atribuidoEm   DateTime @default(now()) @db.Timestamptz() @map("atribuido_em")
+  atribuidoPor  String?  @db.Uuid @map("atribuido_por")
+
+  perfil Perfil @relation(fields: [perfilId], references: [id], onDelete: Cascade)
+
+  @@id([userId, perfilId])
+  @@index([userId])
+  @@index([perfilId])
+  @@map("usuario_perfis")
+}
+
+model Auditoria {
+  id          String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId    String?             @db.Uuid @map("tenant_id")
+  userId      String?             @db.Uuid @map("user_id")
+  userEmail   String?             @db.VarChar(255) @map("user_email")
+  acao        String              @db.VarChar(80)
+  recurso     String?             @db.VarChar(40)
+  recursoId   String?             @db.Uuid @map("recurso_id")
+  severidade  AuditoriaSeveridade @default(INFO)
+  detalhes    Json                @default("{}")
+  ip          String?             @db.Inet
+  userAgent   String?             @map("user_agent")
+  criadoEm    DateTime            @default(now()) @db.Timestamptz() @map("criado_em")
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, criadoEm(sort: Desc)], map: "idx_auditoria_tenant_data")
+  @@index([userId])
+  @@index([acao])
+  @@index([recurso, recursoId])
+  @@map("auditoria")
 }
