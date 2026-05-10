@@ -1,8 +1,8 @@
 import {
   Component, signal, OnInit, OnDestroy, ChangeDetectionStrategy, inject,
 } from '@angular/core';
-import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
+import { RouterLink } from '@angular/router';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { ApiService } from '../../../core/services/api.service';
 import { BackButtonComponent } from '../../../shared/components/back-button/back-button.component';
@@ -31,21 +31,27 @@ interface MsgTemplateRow {
 @Component({
   selector: 'nb-whatsapp',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [BackButtonComponent, FormsModule, QrCodeComponent, TranslatePipe],
+  imports: [BackButtonComponent, QrCodeComponent, TranslatePipe, RouterLink],
   template: `
     <!-- Topbar -->
     <div class="bg-white border-b border-slate-200 px-4 lg:px-7 py-3 flex items-center gap-3 sticky top-14 lg:top-0 z-10">
       <nb-back-button />
-      <div class="hidden sm:flex items-center gap-2 text-[12.5px]">
+      <div class="hidden sm:flex items-center gap-2 text-[12.5px] flex-1 min-w-0">
         <span class="text-slate-400">{{ 'whatsapp.brand' | translate }}</span>
         <span class="text-slate-300">›</span>
         <span class="font-semibold">{{ 'whatsapp.title' | translate }}</span>
       </div>
-      <span class="font-display font-semibold text-[14px] sm:hidden">{{ 'whatsapp.title' | translate }}</span>
-      <button (click)="abrirModalMensagem()"
-              class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-800 text-white text-sm font-semibold rounded-[10px] transition-colors shadow-sm min-h-9">
-        {{ 'whatsapp.newMessage' | translate }}
-      </button>
+      <span class="font-display font-semibold text-[14px] sm:hidden flex-1 min-w-0 truncate">{{ 'whatsapp.title' | translate }}</span>
+      <div class="flex items-center gap-2 flex-shrink-0 ml-auto">
+        <a routerLink="/whatsapp/templates"
+           class="inline-flex items-center gap-1 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-semibold rounded-[10px] no-underline transition-colors min-h-9">
+          {{ 'whatsapp.templatesCta' | translate }}
+        </a>
+        <a routerLink="/whatsapp/nova-mensagem"
+           class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-800 text-white text-sm font-semibold rounded-[10px] transition-colors shadow-sm min-h-9 no-underline">
+          {{ 'whatsapp.newMessage' | translate }}
+        </a>
+      </div>
     </div>
 
     <!-- Page -->
@@ -143,55 +149,32 @@ interface MsgTemplateRow {
               <h3 class="font-display font-semibold text-[14px]">{{ 'whatsapp.groupsTitle' | translate }}</h3>
               <button (click)="loadGrupos()" class="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors text-sm" [attr.title]="'whatsapp.refreshTitle' | translate">↺</button>
             </div>
-            <div>
+            <div class="max-h-[min(50dvh,22rem)] overflow-y-auto overscroll-contain">
               @if (grupos().length === 0 && session()?.status !== 'CONECTADO') {
                 <div class="px-4 py-6 text-center text-slate-400 text-[12.5px]">
                   {{ 'whatsapp.connectToSee' | translate }}
                 </div>
               } @else if (grupos().length === 0) {
-                <div class="px-4 py-6 text-center text-slate-400 text-[12.5px]">
-                  {{ 'whatsapp.noGroups' | translate }}
+                <div class="px-4 py-6 text-center text-slate-400 text-[12.5px] leading-relaxed">
+                  {{ 'whatsapp.noLinkedGroups' | translate }}
                 </div>
               } @else {
                 @for (g of grupos(); track g.id; let last = $last) {
                   <div class="flex items-center gap-3 px-4 py-3" [class]="last ? '' : 'border-b border-slate-100'">
-                    <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm flex-shrink-0"
-                         [class]="grupoPadraoId() === g.id ? 'bg-green-700 text-white' : 'bg-green-100 text-green-800'">
+                    <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm flex-shrink-0 bg-green-100 text-green-800">
                       👥
                     </div>
                     <div class="flex-1 min-w-0">
                       <div class="text-[13px] font-semibold truncate">{{ g.nome }}</div>
-                      @if (grupoPadraoId() === g.id) {
-                        <div class="text-[11px] text-green-700 font-semibold flex items-center gap-1">
-                          <span>📌</span> {{ 'whatsapp.defaultGroup' | translate }}
-                        </div>
-                      } @else {
-                        <div class="text-[11px] text-slate-400 font-mono truncate">{{ g.id.slice(0, 20) }}…</div>
-                      }
+                      <div class="text-[11px] text-slate-400 font-mono truncate">{{ g.id.length > 24 ? (g.id.slice(0, 24) + '…') : g.id }}</div>
                     </div>
-                    @if (grupoPadraoId() === g.id) {
-                      <button (click)="removerPadrao()"
-                              class="text-[11px] font-semibold text-slate-400 hover:text-red-500 transition-colors px-2 py-1 rounded-lg hover:bg-red-50">
-                        {{ 'whatsapp.remove' | translate }}
-                      </button>
-                    } @else {
-                      <button (click)="definirPadrao(g.id)"
-                              class="text-[11px] font-semibold text-slate-500 hover:text-green-700 transition-colors px-2 py-1 rounded-lg hover:bg-green-50 border border-slate-200 hover:border-green-300 whitespace-nowrap">
-                        {{ 'whatsapp.setDefault' | translate }}
-                      </button>
-                    }
                   </div>
                 }
               }
-              @if (grupoPadraoId() && grupos().length > 0) {
-                <div class="px-4 py-2.5 bg-green-50 border-t border-green-100 text-[11.5px] text-green-700">
-                  {{ 'whatsapp.notifHintBefore' | translate }}<strong>{{ nomeGrupoPadrao() }}</strong>
-                </div>
-              }
-              @if (loadingGrupos()) {
-                <div class="px-4 py-4 text-center text-[12px] text-slate-400">{{ 'whatsapp.loadingGroups' | translate }}</div>
-              }
             </div>
+            @if (loadingGrupos()) {
+              <div class="px-4 py-4 text-center text-[12px] text-slate-400">{{ 'whatsapp.loadingGroups' | translate }}</div>
+            }
           </div>
         </aside>
 
@@ -219,8 +202,15 @@ interface MsgTemplateRow {
 
           <!-- Templates -->
           <div class="bg-white border border-slate-200 rounded-lg">
-            <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
-              <h3 class="font-display font-semibold text-[15px]">{{ 'whatsapp.templatesTitle' | translate }}</h3>
+            <div class="px-5 py-4 border-b border-slate-200 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h3 class="font-display font-semibold text-[15px]">{{ 'whatsapp.templatesTitle' | translate }}</h3>
+                <p class="text-[12px] text-slate-500 mt-1 max-w-xl">{{ 'whatsapp.templatesHint' | translate }}</p>
+              </div>
+              <a routerLink="/whatsapp/templates"
+                 class="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-green-700 hover:bg-green-800 text-white text-sm font-semibold rounded-[10px] no-underline transition-colors shadow-sm min-h-12 whitespace-nowrap self-start sm:self-center">
+                {{ 'whatsapp.templatesCta' | translate }}
+              </a>
             </div>
             <div class="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
               @for (t of templates; track t.tipo) {
@@ -305,58 +295,6 @@ interface MsgTemplateRow {
         </div>
       </div>
     </div>
-
-    <!-- ── Modal: Nova Mensagem ────────────────────────────────────────────── -->
-    @if (showModal()) {
-      <div class="fixed inset-0 bg-black/40 z-40" (click)="showModal.set(false)"></div>
-      <div class="fixed right-0 top-0 h-full w-full sm:w-[420px] bg-white z-50 flex flex-col shadow-xl">
-        <div class="px-6 py-5 border-b border-slate-200 flex items-center justify-between flex-shrink-0">
-          <h2 class="font-display font-semibold text-lg">{{ 'whatsapp.modalTitle' | translate }}</h2>
-          <button (click)="showModal.set(false)" class="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg text-lg">✕</button>
-        </div>
-        <div class="flex-1 overflow-y-auto p-6 flex flex-col gap-4">
-          <div>
-            <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">{{ 'whatsapp.labelDestGroup' | translate }}</label>
-            <select [(ngModel)]="msgGrupoId" name="grupoId"
-                    class="w-full px-3 py-2.5 border border-slate-200 rounded-[10px] text-sm bg-white focus:outline-none focus:border-green-700">
-              <option value="">{{ 'whatsapp.selectGroupPh' | translate }}</option>
-              @for (g of grupos(); track g.id) {
-                <option [value]="g.id">{{ g.nome }}</option>
-              }
-            </select>
-          </div>
-          <div>
-            <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">{{ 'whatsapp.labelMsgType' | translate }}</label>
-            <select [(ngModel)]="msgTipo" name="tipo"
-                    class="w-full px-3 py-2.5 border border-slate-200 rounded-[10px] text-sm bg-white focus:outline-none focus:border-green-700">
-              <option value="MANUAL">{{ 'whatsapp.optManual' | translate }}</option>
-              <option value="RESULTADO_SORTEIO">{{ 'whatsapp.optResultadoSorteio' | translate }}</option>
-              <option value="RANKING_PARCIAL">{{ 'whatsapp.optRankingParcial' | translate }}</option>
-              <option value="PREMIADOS">{{ 'whatsapp.optPremiados' | translate }}</option>
-              <option value="AVISO_ADMIN">{{ 'whatsapp.optAvisoAdmin' | translate }}</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">{{ 'whatsapp.labelMessage' | translate }}</label>
-            <textarea [(ngModel)]="msgConteudo" name="conteudo" rows="5"
-                      class="w-full px-3 py-2.5 border border-slate-200 rounded-[10px] text-sm font-mono resize-none focus:outline-none focus:border-green-700"
-                      [attr.placeholder]="'whatsapp.msgPlaceholder' | translate"></textarea>
-            <div class="text-right text-[11px] text-slate-400 mt-1">{{ msgConteudo.length }}/4096</div>
-          </div>
-          @if (modalError()) {
-            <div class="p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">{{ modalError() }}</div>
-          }
-        </div>
-        <div class="px-6 py-4 border-t border-slate-200 flex gap-2.5 flex-shrink-0">
-          <button (click)="showModal.set(false)" class="flex-1 py-2.5 bg-white border border-slate-200 font-semibold text-sm rounded-[10px]">{{ 'whatsapp.cancel' | translate }}</button>
-          <button (click)="enviarMensagem()"
-                  [disabled]="!msgGrupoId || !msgConteudo || modalLoading()"
-                  class="flex-1 py-2.5 bg-green-700 hover:bg-green-800 disabled:opacity-40 text-white font-semibold text-sm rounded-[10px] shadow-sm">
-            {{ modalLoading() ? ('whatsapp.sending' | translate) : ('whatsapp.enqueue' | translate) }}
-          </button>
-        </div>
-      </div>
-    }
   `,
 })
 export class WhatsAppComponent implements OnInit, OnDestroy {
@@ -370,15 +308,10 @@ export class WhatsAppComponent implements OnInit, OnDestroy {
   acao          = signal(false);
   loadingGrupos = signal(false);
   loadingMsgs   = signal(false);
-  showModal     = signal(false);
-  modalLoading  = signal(false);
-  modalError    = signal('');
-  msgGrupoId    = '';
-  msgTipo       = 'MANUAL';
-  msgConteudo   = '';
-  grupoPadraoId = signal<string | null>(null);
 
   private pollInterval: ReturnType<typeof setInterval> | null = null;
+  /** Evita chamar `loadGrupos` em loop quando a lista filtrada fica vazia (ex.: nenhum vínculo em bolões). */
+  private gruposFetchDone = false;
 
   // ── Computed KPIs ──────────────────────────────────────────────────────────
   totalEnviadas = () => this.mensagens().filter(m => m.status === 'ENVIADO').length + DEMO_MSGS.filter(m => m.status === 'ENVIADO').length;
@@ -396,10 +329,8 @@ export class WhatsAppComponent implements OnInit, OnDestroy {
     { tipo: 'MANUAL',            nomeKey: 'whatsapp.tplManualNome',          previewKey: 'whatsapp.tplManualPreview',          auto: false },
   ];
 
-  private readonly STORAGE_KEY = 'whatsapp_grupo_padrao';
-
   ngOnInit(): void {
-    this.grupoPadraoId.set(localStorage.getItem(this.STORAGE_KEY));
+    try { localStorage.removeItem('whatsapp_grupo_padrao'); } catch { /* ignore */ }
     this.loadSession();
     this.loadMensagens();
     // Polling a cada 3s quando CARREGANDO ou AGUARDANDO_QR
@@ -417,18 +348,62 @@ export class WhatsAppComponent implements OnInit, OnDestroy {
   async loadSession(): Promise<void> {
     try {
       this.session.set(await firstValueFrom(this.api.get<SessionInfo>('/whatsapp/sessao/status')));
-      if (this.session()?.status === 'CONECTADO' && this.grupos().length === 0) this.loadGrupos();
+      const s = this.session()?.status;
+      if (s !== 'CONECTADO') {
+        this.gruposFetchDone = false;
+        return;
+      }
+      if (!this.gruposFetchDone) {
+        this.gruposFetchDone = true;
+        void this.loadGrupos();
+      }
     } catch {
       this.session.set({ status: 'DESCONECTADO' });
+      this.gruposFetchDone = false;
+    }
+  }
+
+  /** IDs de grupos que aparecem em `whatsappGrupos` de algum bolão do tenant. */
+  private async loadIdsGruposVinculadosBoloes(): Promise<Set<string>> {
+    try {
+      const res = await firstValueFrom(
+        this.api.get<{ data: { id: string }[] }>('/boloes?perPage=100&page=1'),
+      );
+      const boloes = res.data ?? [];
+      const listas = await Promise.all(
+        boloes.map(async b => {
+          try {
+            const wa = await firstValueFrom(
+              this.api.get<{ grupos: { id: string }[] }>(`/boloes/${b.id}/whatsapp`),
+            );
+            return wa.grupos ?? [];
+          } catch {
+            return [];
+          }
+        }),
+      );
+      const ids = new Set<string>();
+      for (const arr of listas) {
+        for (const g of arr) ids.add(g.id);
+      }
+      return ids;
+    } catch {
+      return new Set();
     }
   }
 
   async loadGrupos(): Promise<void> {
     this.loadingGrupos.set(true);
     try {
-      this.grupos.set(await firstValueFrom(this.api.get<Grupo[]>('/whatsapp/sessao/grupos')));
+      const [sessaoTodos, vinculados] = await Promise.all([
+        firstValueFrom(this.api.get<Grupo[]>('/whatsapp/sessao/grupos')),
+        this.loadIdsGruposVinculadosBoloes(),
+      ]);
+      const filtrados = sessaoTodos.filter(g => vinculados.has(g.id));
+      filtrados.sort((a, b) => a.nome.localeCompare(b.nome, 'pt', { sensitivity: 'base' }));
+      this.grupos.set(filtrados);
     } catch {
-      this.grupos.set(DEMO_GRUPOS);
+      this.grupos.set([]);
     } finally {
       this.loadingGrupos.set(false);
     }
@@ -460,24 +435,8 @@ export class WhatsAppComponent implements OnInit, OnDestroy {
       await firstValueFrom(this.api.delete('/whatsapp/sessao'));
       this.session.set({ status: 'DESCONECTADO' });
       this.grupos.set([]);
+      this.gruposFetchDone = false;
     } catch {} finally { this.acao.set(false); }
-  }
-
-  async enviarMensagem(): Promise<void> {
-    if (!this.msgGrupoId || !this.msgConteudo || this.modalLoading()) return;
-    this.modalLoading.set(true);
-    this.modalError.set('');
-    try {
-      await firstValueFrom(this.api.post('/whatsapp/mensagens', {
-        grupoId: this.msgGrupoId, tipo: this.msgTipo, conteudo: this.msgConteudo,
-      }));
-      this.showModal.set(false);
-      this.msgConteudo = '';
-      this.msgGrupoId  = '';
-      await this.loadMensagens();
-    } catch (err: unknown) {
-      this.modalError.set((err as { error?: { message?: string } })?.error?.message ?? this.translate.instant('whatsapp.queueError'));
-    } finally { this.modalLoading.set(false); }
   }
 
   async retry(id: string): Promise<void> {
@@ -485,28 +444,6 @@ export class WhatsAppComponent implements OnInit, OnDestroy {
       await firstValueFrom(this.api.post(`/whatsapp/mensagens/${id}/retry`, {}));
       this.mensagens.update(ms => ms.map(m => m.id === id ? { ...m, status: 'PENDENTE' as const } : m));
     } catch {}
-  }
-
-  // ── Helpers ────────────────────────────────────────────────────────────────
-  abrirModalMensagem(): void {
-    if (this.grupoPadraoId()) this.msgGrupoId = this.grupoPadraoId()!;
-    this.showModal.set(true);
-  }
-
-  definirPadrao(grupoId: string): void {
-    localStorage.setItem(this.STORAGE_KEY, grupoId);
-    this.grupoPadraoId.set(grupoId);
-    // Pré-seleciona no modal de nova mensagem
-    this.msgGrupoId = grupoId;
-  }
-
-  removerPadrao(): void {
-    localStorage.removeItem(this.STORAGE_KEY);
-    this.grupoPadraoId.set(null);
-  }
-
-  nomeGrupoPadrao(): string {
-    return this.grupos().find(g => g.id === this.grupoPadraoId())?.nome ?? this.translate.instant('whatsapp.defaultGroupName');
   }
 
   statusColor(): string {
@@ -527,12 +464,6 @@ export class WhatsAppComponent implements OnInit, OnDestroy {
 }
 
 // ── Demo data ─────────────────────────────────────────────────────────────────
-
-const DEMO_GRUPOS: Grupo[] = [
-  { id: '120363000001@g.us', nome: 'Família CG · Bolão'  },
-  { id: '120363000002@g.us', nome: 'Trabalho Sorte'       },
-  { id: '120363000003@g.us', nome: 'Vizinhos Quadra 12'   },
-];
 
 const DEMO_MSGS: MensagemWa[] = [
   { id: 'm1', tipo: 'RESULTADO_SORTEIO', grupo: 'Família CG', conteudo: '🎯 Sorteio #2994 — 04, 07, 12, 23, 28, 31…', status: 'ENVIADO', criadoEm: new Date(Date.now() - 3600000 * 2).toISOString() },
