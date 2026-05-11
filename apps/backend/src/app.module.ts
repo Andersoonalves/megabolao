@@ -21,6 +21,7 @@ import { PermissaoModule } from './modules/permissao/permissao.module';
 import { PerfilModule } from './modules/perfil/perfil.module';
 import { UsuarioModule } from './modules/usuario/usuario.module';
 import { AuditoriaModule } from './modules/auditoria/auditoria.module';
+import { PortalModule } from './modules/portal/portal.module';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { AuditoriaModule } from './modules/auditoria/auditoria.module';
     PerfilModule,
     UsuarioModule,
     AuditoriaModule,
+    PortalModule,
   ],
   providers: [
     // Ordem: autenticação → role legado → permissões granulares

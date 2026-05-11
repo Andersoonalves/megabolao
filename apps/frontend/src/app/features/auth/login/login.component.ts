@@ -86,7 +86,7 @@ import { LangToggleComponent } from '../../../shared/components/lang-toggle/lang
 
             <div class="text-center text-[11.5px] text-slate-400 my-1">{{ 'auth.or' | translate }}</div>
 
-            <a routerLink="/portal"
+            <a routerLink="/portal/login"
                class="w-full min-h-12 px-5 py-3 bg-white border border-slate-200 hover:bg-slate-50 text-slate-900 font-semibold rounded-[10px] transition-colors text-sm text-center no-underline flex items-center justify-center gap-2">
               💬 {{ 'auth.portalLink' | translate }}
             </a>

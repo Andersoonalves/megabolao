@@ -115,7 +115,7 @@ export class AuthService {
       email:    user.email ?? '',
       role,
       tenantId: role === 'MASTER' ? null : (meta.tenant_id ?? null),
-      celular:  meta.celular ?? null,
+      celular:  meta.celular ?? user.phone ?? null,
       permissoes,
     };
   }

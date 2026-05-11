@@ -85,8 +85,6 @@
   "portal": {
     "nav": {
       "pools": "Bolões",
-      "ranking": "Ranking",
-      "picks": "Palpites",
       "prizes": "Prêmios"
     }
   },
@@ -94,10 +92,10 @@
     "heroTitle": "Bolão CG",
     "heroSubtitle": "Consulte seus palpites e prêmios",
     "phoneTitle": "Acesse com seu celular",
-    "phoneHint": "Enviaremos um código de verificação",
+    "phoneHint": "Informe o celular cadastrado na sua cota",
     "phoneLabel": "Número de celular",
     "sending": "Enviando...",
-    "receiveCode": "Receber código →",
+    "receiveCode": "Entrar no portal →",
     "passwordlessBold": "Acesso sem senha.",
     "passwordlessRest": "Código enviado por SMS ou WhatsApp vinculado ao seu número.",
     "otpTitle": "Código enviado!",
@@ -149,11 +147,33 @@
     "subtitle": "{{n}} cotas participando",
     "empty": "Nenhum resultado disponível ainda.",
     "quotaNum": "cota #{{n}}",
-    "pageOf": "{{current}} / {{total}}"
+    "pageOf": "{{current}} / {{total}}",
+    "errorLoad": "Não foi possível carregar o ranking."
+  },
+  "portalBolaoDetalhe": {
+    "back": "Voltar aos bolões",
+    "open": "Detalhes →",
+    "sectionQuotas": "Minhas cotas neste bolão",
+    "sectionRanking": "Ranking do bolão",
+    "sectionDraws": "Números sorteados",
+    "emptyQuotas": "Você não tem cotas neste bolão.",
+    "emptyDraws": "Ainda não há sorteios registrados para este bolão.",
+    "notFound": "Bolão não encontrado ou você não participa dele.",
+    "errorLoad": "Erro ao carregar o bolão. Tente novamente.",
+    "shareTitle": "Indicar o bolão no WhatsApp",
+    "shareHint": "Copie o link e envie para amigos. Ao abrir, o WhatsApp inicia uma conversa com o organizador deste bolão.",
+    "copyLink": "Copiar link",
+    "shareCopied": "Link copiado!",
+    "openWhatsapp": "Abrir WhatsApp",
+    "shareUnavailable": "O organizador ainda não cadastrou um celular de contato. Peça ao administrador para informar o número no perfil do sistema."
   },
   "portalDetalhe": {
     "title": "Minhas cotas",
-    "wip": "Em implementação..."
+    "subtitle": "{{n}} prêmio(s) encontrado(s)",
+    "emptyTitle": "Nenhum prêmio registrado ainda",
+    "emptyHint": "Quando houver premiação, ela aparecerá aqui com o status de pagamento.",
+    "quotaNum": "Cota #{{n}}",
+    "errorLoad": "Erro ao carregar prêmios e pagamentos."
   },
   "dashboardAdmin": {
     "title": "Dashboard",

@@ -85,8 +85,6 @@
   "portal": {
     "nav": {
       "pools": "Pools",
-      "ranking": "Ranking",
-      "picks": "Picks",
       "prizes": "Prizes"
     }
   },
@@ -94,10 +92,10 @@
     "heroTitle": "Bolão CG",
     "heroSubtitle": "Check your picks and prizes",
     "phoneTitle": "Sign in with your phone",
-    "phoneHint": "We will send a verification code",
+    "phoneHint": "Enter the phone registered to your quota",
     "phoneLabel": "Mobile number",
     "sending": "Sending...",
-    "receiveCode": "Get code →",
+    "receiveCode": "Enter portal →",
     "passwordlessBold": "Passwordless access.",
     "passwordlessRest": "Code sent by SMS or WhatsApp linked to your number.",
     "otpTitle": "Code sent!",
@@ -149,11 +147,33 @@
     "subtitle": "{{n}} quotas participating",
     "empty": "No results yet.",
     "quotaNum": "quota #{{n}}",
-    "pageOf": "{{current}} / {{total}}"
+    "pageOf": "{{current}} / {{total}}",
+    "errorLoad": "Could not load ranking."
+  },
+  "portalBolaoDetalhe": {
+    "back": "Back to pools",
+    "open": "Details →",
+    "sectionQuotas": "My quotas in this pool",
+    "sectionRanking": "Pool ranking",
+    "sectionDraws": "Drawn numbers",
+    "emptyQuotas": "You have no quotas in this pool.",
+    "emptyDraws": "No draws recorded for this pool yet.",
+    "notFound": "Pool not found or you are not a participant.",
+    "errorLoad": "Could not load this pool. Try again.",
+    "shareTitle": "Share this pool on WhatsApp",
+    "shareHint": "Copy the link and send it to friends. Opening it starts a WhatsApp chat with this pool’s organizer.",
+    "copyLink": "Copy link",
+    "shareCopied": "Link copied!",
+    "openWhatsapp": "Open WhatsApp",
+    "shareUnavailable": "The organizer has not registered a contact number yet. Ask the administrator to add a mobile number in the system profile."
   },
   "portalDetalhe": {
     "title": "My quotas",
-    "wip": "Coming soon..."
+    "subtitle": "{{n}} prize(s) found",
+    "emptyTitle": "No prizes recorded yet",
+    "emptyHint": "When a prize is available, it will appear here with payment status.",
+    "quotaNum": "Quota #{{n}}",
+    "errorLoad": "Could not load prizes and payments."
   },
   "dashboardAdmin": {
     "title": "Dashboard",

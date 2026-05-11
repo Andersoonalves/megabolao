@@ -42,7 +42,7 @@ export class AuthService {
           email: user.email ?? '',
           papel: 'ADMIN',
           tenantId: meta.tenant_id ?? null,
-          celular: meta.celular ?? null,
+          celular: meta.celular ?? user.phone ?? null,
           permissoes: [],
         };
       }
