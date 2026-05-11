@@ -24,6 +24,9 @@ export class WhatsAppClientManager implements OnModuleDestroy {
   private readonly logger = new Logger(WhatsAppClientManager.name);
   private readonly sessions = new Map<string, SessionEntry>();
 
+  // Serializa inicializações: dois Chrome simultâneos causam "detached Frame"
+  private initChain: Promise<void> = Promise.resolve();
+
   async iniciar(tenantId: string): Promise<WaSessionInfo> {
     const existing = this.sessions.get(tenantId);
     if (existing?.status === 'CONECTADO') {
@@ -37,6 +40,13 @@ export class WhatsAppClientManager implements OnModuleDestroy {
     }
 
     this.limparLockOrfao(tenantId);
+
+    // Encadeia na fila: próximo initialize() só começa após o anterior atingir QR/erro
+    let sinalizarPronto!: () => void;
+    const esteInit = new Promise<void>((resolve) => { sinalizarPronto = resolve; });
+    this.initChain = this.initChain
+      .then(() => new Promise<void>((r) => setTimeout(r, 2000))) // gap entre inits
+      .then(() => esteInit);
 
     const client = new Client({
       authStrategy: new LocalAuth({
@@ -56,14 +66,24 @@ export class WhatsAppClientManager implements OnModuleDestroy {
     const entry: SessionEntry = { client, status: 'CARREGANDO' };
     this.sessions.set(tenantId, entry);
 
+    let intentionalDestroy = false;
+
+    const destruir = (): void => {
+      intentionalDestroy = true;
+      sinalizarPronto(); // libera fila mesmo em caso de erro
+      client.removeAllListeners();
+      this.sessions.delete(tenantId);
+      void client.destroy().catch(() => undefined);
+    };
+
+    // Timeout somente para a fase CARREGANDO — QR gerado limpa o timeout
     const timeoutHandle = setTimeout(() => {
       if (entry.status === 'CARREGANDO') {
         this.logger.error(`Timeout na inicialização WhatsApp para tenant ${tenantId}`);
-        void entry.client.destroy().catch(() => undefined);
         entry.status = 'DESCONECTADO';
-        this.sessions.delete(tenantId);
+        destruir();
       }
-    }, 60_000);
+    }, 90_000);
 
     client.on('loading_screen', (percent: number, message: string) => {
       this.logger.debug(`[${tenantId}] WAWeb carregando: ${percent}% — ${message}`);
@@ -71,6 +91,7 @@ export class WhatsAppClientManager implements OnModuleDestroy {
 
     client.on('qr', (qr: string) => {
       clearTimeout(timeoutHandle);
+      sinalizarPronto(); // libera próximo da fila — Chrome já carregou WAWeb
       entry.status = 'AGUARDANDO_QR';
       entry.qrCode = qr;
       this.logger.debug(`QR gerado para tenant ${tenantId}`);
@@ -78,6 +99,7 @@ export class WhatsAppClientManager implements OnModuleDestroy {
 
     client.on('ready', () => {
       clearTimeout(timeoutHandle);
+      sinalizarPronto(); // sessão restaurada de auth salvo (sem QR)
       entry.status = 'CONECTADO';
       delete entry.qrCode;
       const info = (client as Client & { info?: { wid?: { user?: string } } }).info;
@@ -88,22 +110,23 @@ export class WhatsAppClientManager implements OnModuleDestroy {
     client.on('auth_failure', () => {
       clearTimeout(timeoutHandle);
       entry.status = 'DESCONECTADO';
-      this.sessions.delete(tenantId);
+      destruir();
       this.logger.warn(`Falha de autenticação WhatsApp para tenant ${tenantId}`);
     });
 
     client.on('disconnected', () => {
       clearTimeout(timeoutHandle);
       entry.status = 'DESCONECTADO';
-      this.sessions.delete(tenantId);
+      destruir();
       this.logger.warn(`WhatsApp desconectado para tenant ${tenantId}`);
     });
 
     client.initialize().catch((err: unknown) => {
+      if (intentionalDestroy) return;
       clearTimeout(timeoutHandle);
       this.logger.error(`Falha ao inicializar WhatsApp para tenant ${tenantId}`, err);
       entry.status = 'DESCONECTADO';
-      this.sessions.delete(tenantId);
+      destruir();
     });
 
     return { status: 'CARREGANDO' };
@@ -118,10 +141,11 @@ export class WhatsAppClientManager implements OnModuleDestroy {
   async encerrar(tenantId: string): Promise<void> {
     const entry = this.sessions.get(tenantId);
     if (!entry) return;
+    entry.client.removeAllListeners();
     try {
       await entry.client.destroy();
     } catch {
-      // Ignora erros ao destruir — sessão pode já estar inválida
+      // Sessão pode já estar inválida
     }
     this.sessions.delete(tenantId);
     this.logger.log(`Sessão WhatsApp encerrada para tenant ${tenantId}`);

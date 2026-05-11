@@ -6,6 +6,18 @@ import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
+// Erros internos do whatsapp-web.js/Puppeteer (frame detached, target closed)
+// são lançados de event handlers sem .catch() → matariam o processo sem isso
+process.on('unhandledRejection', (reason: unknown) => {
+  const msg = reason instanceof Error ? reason.message : String(reason);
+  const isPuppeteerInternalError =
+    msg.includes('detached Frame') ||
+    msg.includes('Target closed') ||
+    msg.includes('Execution context was destroyed') ||
+    msg.includes('Session closed');
+  if (!isPuppeteerInternalError) throw reason as Error;
+});
+
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, {
     logger: ['error', 'warn', 'log', 'debug'],
