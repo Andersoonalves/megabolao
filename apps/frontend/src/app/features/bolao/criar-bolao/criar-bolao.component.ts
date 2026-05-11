@@ -48,14 +48,16 @@ let _nextId = 10;
     <!-- Topbar -->
     <div class="bg-white border-b border-slate-200 px-4 lg:px-7 py-3 flex items-center gap-3 sticky top-14 lg:top-0 z-10">
       <nb-back-button />
-      <div class="flex items-center gap-2 text-[12.5px]">
-        <span class="text-slate-400">{{ 'criarBolao.brand' | translate }}</span>
-        <span class="text-slate-300">›</span>
-        <span class="text-slate-400">{{ 'criarBolao.breadcrumbPools' | translate }}</span>
-        <span class="text-slate-300">›</span>
-        <span class="font-semibold">{{ 'criarBolao.breadcrumbCreate' | translate }}</span>
+      <div class="min-w-0 flex-1 flex items-center gap-2 overflow-hidden">
+        <div class="flex items-center gap-2 text-[12.5px] min-w-0 truncate">
+          <span class="text-slate-400 shrink-0">{{ 'criarBolao.brand' | translate }}</span>
+          <span class="text-slate-300 shrink-0">›</span>
+          <span class="text-slate-400 shrink-0">{{ 'criarBolao.breadcrumbPools' | translate }}</span>
+          <span class="text-slate-300 shrink-0">›</span>
+          <span class="font-semibold truncate">{{ 'criarBolao.breadcrumbCreate' | translate }}</span>
+        </div>
       </div>
-      <div class="flex gap-2">
+      <div class="flex items-center gap-2 shrink-0">
         <a routerLink="/dashboard"
            class="inline-flex items-center px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-sm font-semibold rounded-[10px] no-underline text-slate-700 transition-colors">
           {{ 'criarBolao.cancel' | translate }}

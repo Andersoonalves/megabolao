@@ -28,6 +28,36 @@ export class TenantService {
     private readonly supabase: SupabaseService,
   ) {}
 
+  /**
+   * Impede cadastros de bolão, cotas e participantes quando o tenant não está ATIVO
+   * (ex.: suspenso pelo MASTER ou inativo).
+   */
+  async assertTenantPermiteCadastros(tenantId: string): Promise<void> {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { status: true },
+    });
+    if (!tenant) {
+      throw new NotFoundException({
+        statusCode: 404,
+        error: 'TENANT_NAO_ENCONTRADO',
+        message: `Tenant ${tenantId} não encontrado`,
+        details: [],
+      });
+    }
+    if (tenant.status !== 'ATIVO') {
+      const detalhe =
+        tenant.status === 'SUSPENSO'
+          ? 'Tenant suspenso — não é permitido cadastrar bolões, cotas ou participantes.'
+          : 'Tenant inativo — não é permitido cadastrar bolões, cotas ou participantes.';
+      throw new BusinessException(
+        'TENANT_CADASTROS_BLOQUEADOS',
+        detalhe,
+        [{ field: 'tenant', code: 'TENANT_STATUS', message: `Status: ${tenant.status}` }],
+      );
+    }
+  }
+
   async create(dto: CreateTenantDto): Promise<TenantResponse> {
     const slugExiste = await this.prisma.tenant.findUnique({ where: { slug: dto.slug } });
     if (slugExiste) {

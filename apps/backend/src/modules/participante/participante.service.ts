@@ -4,6 +4,7 @@ import { Queue } from 'bullmq';
 import { PaginatedResponse } from '@nossobolao/shared-types';
 import { validarPalpites } from '@nossobolao/shared-utils';
 import { PrismaService } from '../prisma/prisma.service';
+import { TenantService } from '../tenant/tenant.service';
 import { BusinessException } from '../../common/exceptions/business.exception';
 import { BancoParticipanteService } from './banco-participante.service';
 import { SHEETS_SYNC_QUEUE } from '../google-drive/jobs/sheets-sync.types';
@@ -32,11 +33,13 @@ export class ParticipanteService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly bancoParticipante: BancoParticipanteService,
+    private readonly tenantService: TenantService,
     @Optional() @Inject(SHEETS_SYNC_QUEUE) private readonly syncQueue?: Queue,
   ) {}
 
   async create(tenantId: string | null, bolaoId: string, dto: CreateCotaDto): Promise<CotaResponse> {
     this.assertTenantId(tenantId);
+    await this.tenantService.assertTenantPermiteCadastros(tenantId);
     const bolao = await this.findBolaoOrFail(tenantId, bolaoId);
 
     if (bolao.status === 'FINALIZADO') {

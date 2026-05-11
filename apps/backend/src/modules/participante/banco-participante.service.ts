@@ -2,6 +2,7 @@ import { ConflictException, ForbiddenException, Injectable, NotFoundException } 
 import { Participante } from '@prisma/client';
 import { PaginatedResponse } from '@nossobolao/shared-types';
 import { PrismaService } from '../prisma/prisma.service';
+import { TenantService } from '../tenant/tenant.service';
 import { BusinessException } from '../../common/exceptions/business.exception';
 import { CreateParticipanteDto } from './dto/create-participante.dto';
 import { UpdateParticipanteDto } from './dto/update-participante.dto';
@@ -22,10 +23,14 @@ export interface ParticipanteResponse {
 
 @Injectable()
 export class BancoParticipanteService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly tenantService: TenantService,
+  ) {}
 
   async create(tenantId: string | null, dto: CreateParticipanteDto): Promise<ParticipanteResponse> {
     this.assertTenantId(tenantId);
+    await this.tenantService.assertTenantPermiteCadastros(tenantId);
 
     const existente = await this.prisma.participante.findUnique({
       where: { tenantId_numeroCelular: { tenantId, numeroCelular: dto.numeroCelular } },
@@ -146,6 +151,8 @@ export class BancoParticipanteService {
     nome: string,
     numeroCelular: string,
   ): Promise<string> {
+    await this.tenantService.assertTenantPermiteCadastros(tenantId);
+
     const existente = await this.prisma.participante.findUnique({
       where: { tenantId_numeroCelular: { tenantId, numeroCelular } },
     });

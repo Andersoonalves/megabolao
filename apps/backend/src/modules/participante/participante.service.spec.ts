@@ -2,6 +2,8 @@ import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { BusinessException } from '../../common/exceptions/business.exception';
 import { PrismaService } from '../prisma/prisma.service';
+import { TenantService } from '../tenant/tenant.service';
+import { BancoParticipanteService } from './banco-participante.service';
 import { ParticipanteService } from './participante.service';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -50,6 +52,14 @@ const mockPrisma = {
   $transaction: jest.fn(),
 };
 
+const mockTenantService = {
+  assertTenantPermiteCadastros: jest.fn().mockResolvedValue(undefined),
+};
+
+const mockBancoParticipante = {
+  upsertParaCota: jest.fn(),
+};
+
 // ── Suite ─────────────────────────────────────────────────────────────────────
 
 describe('ParticipanteService', () => {
@@ -62,6 +72,8 @@ describe('ParticipanteService', () => {
       providers: [
         ParticipanteService,
         { provide: PrismaService, useValue: mockPrisma },
+        { provide: TenantService, useValue: mockTenantService },
+        { provide: BancoParticipanteService, useValue: mockBancoParticipante },
       ],
     }).compile();
 
@@ -87,6 +99,23 @@ describe('ParticipanteService', () => {
       // Assert
       expect(result.numeroSequencial).toBe(6);
       expect(result.palpites).toEqual(PALPITES_VALIDOS);
+      expect(mockTenantService.assertTenantPermiteCadastros).toHaveBeenCalledWith(TENANT_ID);
+    });
+
+    it('lança BusinessException quando tenant não permite cadastros', async () => {
+      // Arrange
+      mockTenantService.assertTenantPermiteCadastros.mockRejectedValueOnce(
+        new BusinessException('TENANT_CADASTROS_BLOQUEADOS', 'Tenant suspenso'),
+      );
+
+      // Act / Assert
+      await expect(
+        service.create(TENANT_ID, BOLAO_ID, {
+          nomeIdentificacao: 'JOÃO',
+          palpites: PALPITES_VALIDOS,
+        }),
+      ).rejects.toBeInstanceOf(BusinessException);
+      expect(mockPrisma.$transaction).not.toHaveBeenCalled();
     });
 
     it('primeiro numero_sequencial é 1 quando bolão não tem cotas', async () => {

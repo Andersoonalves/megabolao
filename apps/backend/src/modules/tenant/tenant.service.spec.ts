@@ -2,7 +2,10 @@ import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { BusinessException } from '../../common/exceptions/business.exception';
 import { PrismaService } from '../prisma/prisma.service';
+import { SupabaseService } from '../supabase/supabase.service';
 import { TenantService } from './tenant.service';
+
+const ADMIN_CREATE = { adminEmail: 'admin@test.com', adminSenha: 'Senha@1234' } as const;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -28,6 +31,19 @@ const mockPrisma = {
     count: jest.fn(),
   },
   $transaction: jest.fn(),
+  userProfile: {
+    create: jest.fn().mockResolvedValue({}),
+  },
+};
+
+const mockSupabase = {
+  admin: {
+    auth: {
+      admin: {
+        createUser: jest.fn().mockResolvedValue({ data: { user: { id: 'admin-user-1' } }, error: null }),
+      },
+    },
+  },
 };
 
 // ── Suite ─────────────────────────────────────────────────────────────────────
@@ -42,6 +58,7 @@ describe('TenantService', () => {
       providers: [
         TenantService,
         { provide: PrismaService, useValue: mockPrisma },
+        { provide: SupabaseService, useValue: mockSupabase },
       ],
     }).compile();
 
@@ -57,7 +74,7 @@ describe('TenantService', () => {
       mockPrisma.tenant.create.mockResolvedValue(makePrismaTenant());
 
       // Act
-      const result = await service.create({ nome: 'Bolão Teste', slug: 'bolao-teste' });
+      const result = await service.create({ nome: 'Bolão Teste', slug: 'bolao-teste', ...ADMIN_CREATE });
 
       // Assert
       expect(mockPrisma.tenant.create).toHaveBeenCalledWith(
@@ -72,7 +89,7 @@ describe('TenantService', () => {
       mockPrisma.tenant.findUnique.mockResolvedValue(makePrismaTenant());
 
       // Act / Assert
-      await expect(service.create({ nome: 'Outro', slug: 'bolao-teste' })).rejects.toBeInstanceOf(
+      await expect(service.create({ nome: 'Outro', slug: 'bolao-teste', ...ADMIN_CREATE })).rejects.toBeInstanceOf(
         BusinessException,
       );
       expect(mockPrisma.tenant.create).not.toHaveBeenCalled();
@@ -84,13 +101,47 @@ describe('TenantService', () => {
       mockPrisma.tenant.create.mockResolvedValue(makePrismaTenant());
 
       // Act
-      await service.create({ nome: 'Bolão', slug: 'bolao' });
+      await service.create({ nome: 'Bolão', slug: 'bolao', ...ADMIN_CREATE });
 
       // Assert
       expect(mockPrisma.tenant.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({ taxaAdministrativaPct: 15 }),
         }),
+      );
+    });
+  });
+
+  // ── assertTenantPermiteCadastros ───────────────────────────────────────────
+
+  describe('assertTenantPermiteCadastros', () => {
+    it('não lança quando tenant está ATIVO', async () => {
+      mockPrisma.tenant.findUnique.mockResolvedValue(makePrismaTenant({ status: 'ATIVO' }));
+
+      await expect(service.assertTenantPermiteCadastros('tenant-uuid-1')).resolves.toBeUndefined();
+    });
+
+    it('lança BusinessException quando tenant está SUSPENSO', async () => {
+      mockPrisma.tenant.findUnique.mockResolvedValue(makePrismaTenant({ status: 'SUSPENSO' }));
+
+      await expect(service.assertTenantPermiteCadastros('tenant-uuid-1')).rejects.toBeInstanceOf(
+        BusinessException,
+      );
+    });
+
+    it('lança BusinessException quando tenant está INATIVO', async () => {
+      mockPrisma.tenant.findUnique.mockResolvedValue(makePrismaTenant({ status: 'INATIVO' }));
+
+      await expect(service.assertTenantPermiteCadastros('tenant-uuid-1')).rejects.toBeInstanceOf(
+        BusinessException,
+      );
+    });
+
+    it('lança NotFoundException quando tenant não existe', async () => {
+      mockPrisma.tenant.findUnique.mockResolvedValue(null);
+
+      await expect(service.assertTenantPermiteCadastros('id-inexistente')).rejects.toBeInstanceOf(
+        NotFoundException,
       );
     });
   });

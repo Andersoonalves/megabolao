@@ -3,12 +3,14 @@ import { Bolao, CategoriaPremiacao, PagamentoStatus, Prisma } from '@prisma/clie
 import { CategoriaTipo, PaginatedResponse } from '@nossobolao/shared-types';
 import { arredondarMonetario } from '@nossobolao/shared-utils';
 import { PrismaService } from '../prisma/prisma.service';
+import { TenantService } from '../tenant/tenant.service';
 import { BusinessException } from '../../common/exceptions/business.exception';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import { CreateBolaoDto } from './dto/create-bolao.dto';
 import { UpdateBolaoDto } from './dto/update-bolao.dto';
 import { UpdateCategoriasDto } from './dto/update-categorias.dto';
 import { CreateCategoriaDto } from './dto/create-categoria.dto';
+import { WhatsAppClientManager } from '../whatsapp/whatsapp-client-manager.service';
 
 type BolaoComTudo = Bolao & {
   categoriasPremiacao: CategoriaPremiacao[];
@@ -44,10 +46,15 @@ export interface BolaoResponse {
 
 @Injectable()
 export class BolaoService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly waClient: WhatsAppClientManager,
+    private readonly tenantService: TenantService,
+  ) {}
 
   async create(tenantId: string | null, dto: CreateBolaoDto): Promise<BolaoResponse> {
     this.assertTenantId(tenantId);
+    await this.tenantService.assertTenantPermiteCadastros(tenantId);
     this.validarCategorias(dto.categorias);
 
     const bolao = await this.prisma.$transaction(async (tx) => {
@@ -364,7 +371,18 @@ export class BolaoService {
       select: { id: true, nome: true, whatsappGrupos: true },
     });
     if (!bolao) throw new NotFoundException({ statusCode: 404, error: 'BOLAO_NAO_ENCONTRADO', message: `Bolão ${bolaoId} não encontrado`, details: [] });
-    const grupos = (bolao.whatsappGrupos as { id: string; nome: string }[]) ?? [];
+    const gruposStored = (bolao.whatsappGrupos as { id: string; nome: string }[]) ?? [];
+    let grupos = gruposStored.map((g) => ({ ...g }));
+    try {
+      const live = await this.waClient.getGrupos(tenantId);
+      const byId = new Map(live.map((item) => [item.id, item.qtdParticipantes]));
+      grupos = grupos.map((g) => {
+        const q = byId.get(g.id);
+        return q !== undefined ? { ...g, qtdParticipantes: q } : { ...g };
+      });
+    } catch {
+      /* sessão WhatsApp desconectada ou indisponível — devolve só id/nome persistidos */
+    }
     return { bolaoId: bolao.id, bolaoNome: bolao.nome, grupos, configurado: grupos.length > 0 };
   }
 
@@ -377,9 +395,11 @@ export class BolaoService {
     const bolao = await this.prisma.bolao.findFirst({ where: { id: bolaoId, tenantId } });
     if (!bolao) throw new NotFoundException({ statusCode: 404, error: 'BOLAO_NAO_ENCONTRADO', message: `Bolão ${bolaoId} não encontrado`, details: [] });
 
+    const gruposPersistidos = dto.grupos.map(({ id, nome }) => ({ id, nome }));
+
     await this.prisma.bolao.update({
       where: { id: bolaoId },
-      data: { whatsappGrupos: dto.grupos },
+      data: { whatsappGrupos: gruposPersistidos },
     });
 
     return this.getWhatsappConfig(tenantId, bolaoId);

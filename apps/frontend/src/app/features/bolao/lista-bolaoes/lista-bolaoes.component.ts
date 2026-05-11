@@ -30,28 +30,32 @@ interface Paginated<T> { data: T[]; total: number; page: number; totalPages: num
     <!-- Topbar -->
     <div class="bg-white border-b border-slate-200 px-4 lg:px-7 py-3 flex items-center gap-3 sticky top-14 lg:top-0 z-10">
       <nb-back-button />
-      <div class="hidden sm:flex items-center gap-2 text-[12.5px]">
-        <span class="text-slate-400">{{ 'listaBoloes.breadcrumb' | translate }}</span>
-        <span class="text-slate-300">›</span>
-        <span class="font-semibold">{{ 'listaBoloes.allPools' | translate }}</span>
+      <div class="min-w-0 flex-1 flex items-center gap-2">
+        <div class="hidden sm:flex items-center gap-2 text-[12.5px] min-w-0">
+          <span class="text-slate-400">{{ 'listaBoloes.breadcrumb' | translate }}</span>
+          <span class="text-slate-300">›</span>
+          <span class="font-semibold">{{ 'listaBoloes.allPools' | translate }}</span>
+        </div>
+        <span class="font-display font-semibold text-[14px] sm:hidden truncate">{{ 'listaBoloes.breadcrumb' | translate }}</span>
       </div>
-      <span class="font-display font-semibold text-[14px] sm:hidden">{{ 'listaBoloes.breadcrumb' | translate }}</span>
-      <a routerLink="/bolao/novo"
-         class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-800 text-white text-sm font-semibold rounded-[10px] no-underline transition-colors shadow-sm min-h-9">
-        {{ 'listaBoloes.new' | translate }}
-      </a>
+      <div class="flex items-center gap-2 shrink-0">
+        <a routerLink="/bolao/novo"
+           class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-800 text-white text-sm font-semibold rounded-[10px] no-underline transition-colors shadow-sm min-h-9">
+          {{ 'listaBoloes.new' | translate }}
+        </a>
+      </div>
     </div>
 
-    <!-- Filtros -->
-    <div class="bg-white border-b border-slate-200 px-4 lg:px-7 py-2.5 flex flex-wrap gap-2">
-      <div class="relative flex-1 min-w-[180px] max-w-xs">
+    <!-- Filtros: busca + status na mesma linha, alinhados (sem empurrar o select para a direita) -->
+    <div class="bg-white border-b border-slate-200 px-4 lg:px-7 py-2.5 flex flex-wrap items-center gap-2">
+      <div class="relative flex-1 min-w-[min(100%,180px)] sm:min-w-[200px] sm:max-w-md">
         <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[13px]">🔍</span>
         <input [ngModel]="busca()" (ngModelChange)="onBuscaChange($event)"
-               class="w-full pl-8 pr-3 py-2 border border-slate-200 rounded-[10px] text-sm focus:outline-none focus:border-green-700"
+               class="w-full pl-8 pr-3 py-2 border border-slate-200 rounded-[10px] text-sm focus:outline-none focus:border-green-700 min-h-[38px]"
                placeholder="Buscar por nome..." />
       </div>
       <select [ngModel]="statusFiltro()" (ngModelChange)="onStatusChange($event)"
-              class="px-3 py-2 border border-slate-200 rounded-[10px] text-sm bg-white focus:outline-none focus:border-green-700">
+              class="px-3 py-2 border border-slate-200 rounded-[10px] text-sm bg-white focus:outline-none focus:border-green-700 min-h-[38px] w-full sm:w-auto sm:min-w-[9.5rem] shrink-0">
         <option value="">Todos os status</option>
         <option value="A_SER_INICIADO">A iniciar</option>
         <option value="EM_ANDAMENTO">Em andamento</option>
@@ -60,7 +64,7 @@ interface Paginated<T> { data: T[]; total: number; page: number; totalPages: num
       </select>
       @if (busca() || statusFiltro()) {
         <button (click)="limparFiltros()"
-                class="px-3 py-2 text-sm text-slate-500 hover:text-slate-700 border border-slate-200 rounded-[10px] hover:bg-slate-50 transition-colors">
+                class="px-3 py-2 text-sm text-slate-500 hover:text-slate-700 border border-slate-200 rounded-[10px] hover:bg-slate-50 transition-colors min-h-[38px] w-full sm:w-auto shrink-0">
           ✕ Limpar
         </button>
       }

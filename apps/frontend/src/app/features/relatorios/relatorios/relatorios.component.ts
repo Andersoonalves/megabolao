@@ -27,13 +27,15 @@ const DEMO_BOLAO_ID = '00000000-0000-0000-0000-000000000002';
     <!-- Topbar -->
     <div class="bg-white border-b border-slate-200 px-4 lg:px-7 py-3 flex items-center gap-3 sticky top-14 lg:top-0 z-10">
       <nb-back-button />
-      <div class="hidden sm:flex items-center gap-2 text-[12.5px]">
-        <span class="text-slate-400">{{ 'relatorios.brand' | translate }}</span>
-        <span class="text-slate-300">›</span>
-        <span class="font-semibold">{{ 'relatorios.title' | translate }}</span>
+      <div class="min-w-0 flex-1 flex items-center gap-2">
+        <div class="hidden sm:flex items-center gap-2 text-[12.5px] min-w-0">
+          <span class="text-slate-400">{{ 'relatorios.brand' | translate }}</span>
+          <span class="text-slate-300">›</span>
+          <span class="font-semibold">{{ 'relatorios.title' | translate }}</span>
+        </div>
+        <span class="font-display font-semibold text-[14px] sm:hidden truncate">{{ 'relatorios.title' | translate }}</span>
       </div>
-      <span class="font-display font-semibold text-[14px] sm:hidden">{{ 'relatorios.title' | translate }}</span>
-      <div class="flex gap-2">
+      <div class="flex items-center gap-2 shrink-0 flex-wrap justify-end">
         <button (click)="gerarXlsx()" [disabled]="gerandoXlsx()"
                 class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-50 text-sm font-semibold rounded-[10px] text-slate-700 transition-colors min-h-9">
           {{ gerandoXlsx() ? ('relatorios.genXlsx' | translate) : ('relatorios.downloadXlsx' | translate) }}

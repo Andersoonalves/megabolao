@@ -11,7 +11,7 @@ import { BackButtonComponent } from '../../../shared/components/back-button/back
 type WaStatus = 'DESCONECTADO' | 'CARREGANDO' | 'AGUARDANDO_QR' | 'CONECTADO';
 
 interface SessionInfo { status: WaStatus; numero?: string; }
-interface Grupo { id: string; nome: string; }
+interface Grupo { id: string; nome: string; qtdParticipantes?: number; }
 
 interface WaConfig {
   bolaoId: string;
@@ -62,14 +62,17 @@ function isMsgTipo(s: string): s is MsgTipo {
     <!-- Topbar (protótipo: breadcrumb + ações) -->
     <div class="bg-white border-b border-slate-200 px-4 lg:px-7 py-3 flex flex-wrap items-center gap-3 sticky top-14 lg:top-0 z-10">
       <nb-back-button />
-      <div class="hidden sm:flex items-center gap-2 text-[12.5px] flex-1 min-w-0">
-        <a routerLink="/whatsapp" class="text-slate-400 hover:text-slate-600 no-underline">{{ 'whatsapp.brand' | translate }}</a>
-        <span class="text-slate-300">›</span>
-        <a routerLink="/whatsapp" class="text-slate-400 hover:text-slate-600 no-underline">{{ 'whatsapp.title' | translate }}</a>
-        <span class="text-slate-300">›</span>
-        <span class="font-semibold">{{ 'whatsappEnvio.breadcrumbNew' | translate }}</span>
+      <div class="min-w-0 flex-1 flex items-center gap-2">
+        <div class="hidden sm:flex items-center gap-2 text-[12.5px] min-w-0">
+          <a routerLink="/whatsapp" class="text-slate-400 hover:text-slate-600 no-underline shrink-0">{{ 'whatsapp.brand' | translate }}</a>
+          <span class="text-slate-300 shrink-0">›</span>
+          <a routerLink="/whatsapp" class="text-slate-400 hover:text-slate-600 no-underline shrink-0">{{ 'whatsapp.title' | translate }}</a>
+          <span class="text-slate-300 shrink-0">›</span>
+          <span class="font-semibold truncate">{{ 'whatsappEnvio.breadcrumbNew' | translate }}</span>
+        </div>
+        <span class="font-display font-semibold text-[14px] sm:hidden truncate">{{ 'whatsappEnvio.breadcrumbNew' | translate }}</span>
       </div>
-      <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto sm:ml-auto justify-end">
+      <div class="flex flex-wrap items-center gap-2 shrink-0 ml-auto justify-end">
         <a routerLink="/whatsapp"
            class="inline-flex items-center gap-1 px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-[10px] border border-slate-200 no-underline min-h-10">
           {{ 'whatsappEnvio.cancel' | translate }}
@@ -297,6 +300,9 @@ function isMsgTipo(s: string): s is MsgTipo {
                       <div class="w-8 h-8 rounded-full bg-green-100 text-green-800 flex items-center justify-center text-xs shrink-0">👥</div>
                       <div class="min-w-0 flex-1">
                         <div class="text-[12.5px] font-semibold truncate">{{ g.nome }}</div>
+                        @if (g.qtdParticipantes != null) {
+                          <div class="text-[10.5px] text-slate-500 truncate">{{ 'whatsapp.groupMembers' | translate: { n: g.qtdParticipantes } }}</div>
+                        }
                         <div class="text-[10.5px] text-slate-400">{{ 'whatsappEnvio.groupHint' | translate }}</div>
                       </div>
                     </label>

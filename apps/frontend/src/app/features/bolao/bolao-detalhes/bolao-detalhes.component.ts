@@ -55,17 +55,19 @@ const TIPO_CHIP: Record<CategoriaTipo, string> = {
     <!-- Topbar -->
     <div class="bg-white border-b border-slate-200 px-4 lg:px-7 py-3 flex items-center gap-3 sticky top-14 lg:top-0 z-10">
       <nb-back-button />
-      <div class="hidden sm:flex items-center gap-2 text-[12.5px]">
-        <a routerLink="/boloes" class="text-slate-400 hover:text-slate-600 transition-colors">{{ 'bolaoDetalhes.breadcrumbPools' | translate }}</a>
-        @if (data()?.bolao) {
-          <span class="text-slate-300">›</span>
-          <span class="font-semibold truncate max-w-[200px]">{{ data()!.bolao.nome }}</span>
-        }
-        <span class="text-slate-300">›</span>
-        <span class="text-slate-400">{{ 'bolaoDetalhes.breadcrumbDetails' | translate }}</span>
+      <div class="min-w-0 flex-1 flex items-center gap-2">
+        <div class="hidden sm:flex items-center gap-2 text-[12.5px] min-w-0">
+          <a routerLink="/boloes" class="text-slate-400 hover:text-slate-600 transition-colors shrink-0">{{ 'bolaoDetalhes.breadcrumbPools' | translate }}</a>
+          @if (data()?.bolao) {
+            <span class="text-slate-300 shrink-0">›</span>
+            <span class="font-semibold truncate max-w-[200px]">{{ data()!.bolao.nome }}</span>
+          }
+          <span class="text-slate-300 shrink-0">›</span>
+          <span class="text-slate-400 shrink-0">{{ 'bolaoDetalhes.breadcrumbDetails' | translate }}</span>
+        </div>
+        <span class="font-display font-semibold text-[14px] sm:hidden truncate">{{ 'bolaoDetalhes.breadcrumbDetails' | translate }}</span>
       </div>
-      <span class="font-display font-semibold text-[14px] sm:hidden">{{ 'bolaoDetalhes.breadcrumbDetails' | translate }}</span>
-      <div class="flex gap-2">
+      <div class="flex items-center gap-2 shrink-0">
         <a [routerLink]="['/bolao', id(), 'cotas']"
            class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-sm font-semibold rounded-[10px] no-underline text-slate-900 transition-colors min-h-9">
           {{ 'common.viewQuotas' | translate }}

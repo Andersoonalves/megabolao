@@ -29,16 +29,20 @@ interface RegistroResult {
     <!-- Topbar -->
     <div class="bg-white border-b border-slate-200 px-4 lg:px-7 py-3 flex items-center gap-3 sticky top-14 lg:top-0 z-10">
       <nb-back-button />
-      <div class="flex items-center gap-2 text-[12.5px]">
-        <span class="text-slate-400">{{ 'registrarSorteio.breadcrumb' | translate }}</span>
-        <span class="text-slate-300">›</span>
-        <span class="font-semibold">{{ 'registrarSorteio.breadcrumbAction' | translate }}</span>
+      <div class="min-w-0 flex-1 flex items-center gap-2">
+        <div class="flex items-center gap-2 text-[12.5px] min-w-0 truncate">
+          <span class="text-slate-400 shrink-0">{{ 'registrarSorteio.breadcrumb' | translate }}</span>
+          <span class="text-slate-300 shrink-0">›</span>
+          <span class="font-semibold truncate">{{ 'registrarSorteio.breadcrumbAction' | translate }}</span>
+        </div>
       </div>
-      <button (click)="submit()"
-              [disabled]="!valido() || loading()"
-              class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-800 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-[10px] transition-colors shadow-sm">
-        {{ loading() ? ('registrarSorteio.submitting' | translate) : ('registrarSorteio.submit' | translate) }}
-      </button>
+      <div class="flex items-center gap-2 shrink-0">
+        <button (click)="submit()"
+                [disabled]="!valido() || loading()"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-800 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-[10px] transition-colors shadow-sm">
+          {{ loading() ? ('registrarSorteio.submitting' | translate) : ('registrarSorteio.submit' | translate) }}
+        </button>
+      </div>
     </div>
 
     <!-- Page -->

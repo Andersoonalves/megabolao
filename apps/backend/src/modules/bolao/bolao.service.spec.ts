@@ -2,6 +2,8 @@ import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { BusinessException } from '../../common/exceptions/business.exception';
 import { PrismaService } from '../prisma/prisma.service';
+import { TenantService } from '../tenant/tenant.service';
+import { WhatsAppClientManager } from '../whatsapp/whatsapp-client-manager.service';
 import { BolaoService } from './bolao.service';
 import { CreateCategoriaDto } from './dto/create-categoria.dto';
 
@@ -61,6 +63,14 @@ const makePrismaBolao = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
+const mockWaClient = {
+  getGrupos: jest.fn().mockRejectedValue(new Error('WA off')),
+};
+
+const mockTenantService = {
+  assertTenantPermiteCadastros: jest.fn().mockResolvedValue(undefined),
+};
+
 const mockPrisma = {
   bolao: {
     create: jest.fn(),
@@ -90,6 +100,8 @@ describe('BolaoService', () => {
       providers: [
         BolaoService,
         { provide: PrismaService, useValue: mockPrisma },
+        { provide: WhatsAppClientManager, useValue: mockWaClient },
+        { provide: TenantService, useValue: mockTenantService },
       ],
     }).compile();
 
@@ -119,6 +131,20 @@ describe('BolaoService', () => {
       expect(result.categorias).toHaveLength(2);
       expect(result.valorCota).toBe(30);
       expect(result.status).toBe('A_SER_INICIADO');
+      expect(mockTenantService.assertTenantPermiteCadastros).toHaveBeenCalledWith(TENANT_ID);
+    });
+
+    it('lança BusinessException quando tenant não permite cadastros (suspenso/inativo)', async () => {
+      // Arrange
+      mockTenantService.assertTenantPermiteCadastros.mockRejectedValueOnce(
+        new BusinessException('TENANT_CADASTROS_BLOQUEADOS', 'Tenant suspenso'),
+      );
+
+      // Act / Assert
+      await expect(
+        service.create(TENANT_ID, { nome: 'X', valorCota: 10, categorias: makeCategoriasValidas() }),
+      ).rejects.toBeInstanceOf(BusinessException);
+      expect(mockPrisma.$transaction).not.toHaveBeenCalled();
     });
 
     it('lança BusinessException quando soma dos percentuais ≠ 100%', async () => {

@@ -75,6 +75,13 @@ export const appRoutes: Route[] = [
           ),
       },
       {
+        path: 'whatsapp/envio-etapas',
+        loadComponent: () =>
+          import('./features/whatsapp/whatsapp-envio-etapas/whatsapp-envio-etapas.component').then(
+            m => m.WhatsappEnvioEtapasComponent,
+          ),
+      },
+      {
         path: 'whatsapp',
         loadComponent: () => import('./features/whatsapp/whatsapp/whatsapp.component').then(m => m.WhatsAppComponent),
       },

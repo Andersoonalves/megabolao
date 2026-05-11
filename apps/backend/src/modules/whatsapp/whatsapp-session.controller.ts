@@ -21,6 +21,14 @@ export class WhatsAppSessionController {
     return this.clientManager.iniciar(tenantId);
   }
 
+  @Post('qr/renovar')
+  @RequerPermissoes('whatsapp.conectar')
+  @ApiOperation({ summary: 'Encerrar sessão atual e gerar novo QR code (útil se o QR demorou ou expirou)' })
+  async renovarQr(@TenantId() tenantId: string | null) {
+    if (!tenantId) throw new BusinessException('TENANT_ID_OBRIGATORIO', 'tenantId obrigatório');
+    return this.clientManager.renovarQr(tenantId);
+  }
+
   @Get('status')
   @RequerPermissoes('whatsapp.ler')
   @ApiOperation({ summary: 'Status da sessão WhatsApp (polling para acompanhar QR → CONECTADO)' })

@@ -96,17 +96,19 @@ function escapeRe(s: string): string {
   template: `
     <div class="bg-white border-b border-slate-200 px-4 lg:px-7 py-3 flex flex-wrap items-center gap-3 sticky top-14 lg:top-0 z-10">
       <nb-back-button />
-      <div class="hidden sm:flex items-center gap-2 text-[12.5px] flex-1 min-w-0">
-        <a routerLink="/whatsapp" class="text-slate-400 hover:text-slate-600 no-underline">{{ 'whatsapp.brand' | translate }}</a>
-        <span class="text-slate-300">›</span>
-        <a routerLink="/whatsapp" class="text-slate-400 hover:text-slate-600 no-underline">{{ 'whatsapp.title' | translate }}</a>
-        <span class="text-slate-300">›</span>
-        <a routerLink="/whatsapp/templates" class="text-slate-400 hover:text-slate-600 no-underline">{{ 'waTpl.breadcrumbTemplates' | translate }}</a>
-        <span class="text-slate-300">›</span>
-        <span class="font-semibold truncate">{{ breadcrumbLast() }}</span>
+      <div class="min-w-0 flex-1 flex items-center gap-2">
+        <div class="hidden sm:flex items-center gap-2 text-[12.5px] min-w-0">
+          <a routerLink="/whatsapp" class="text-slate-400 hover:text-slate-600 no-underline shrink-0">{{ 'whatsapp.brand' | translate }}</a>
+          <span class="text-slate-300 shrink-0">›</span>
+          <a routerLink="/whatsapp" class="text-slate-400 hover:text-slate-600 no-underline shrink-0">{{ 'whatsapp.title' | translate }}</a>
+          <span class="text-slate-300 shrink-0">›</span>
+          <a routerLink="/whatsapp/templates" class="text-slate-400 hover:text-slate-600 no-underline shrink-0">{{ 'waTpl.breadcrumbTemplates' | translate }}</a>
+          <span class="text-slate-300 shrink-0">›</span>
+          <span class="font-semibold truncate">{{ breadcrumbLast() }}</span>
+        </div>
+        <span class="font-display font-semibold text-[14px] sm:hidden truncate">{{ 'waTpl.breadcrumbTemplates' | translate }}</span>
       </div>
-      <span class="font-display font-semibold text-[14px] sm:hidden truncate">{{ 'waTpl.breadcrumbTemplates' | translate }}</span>
-      <div class="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-end">
+      <div class="flex items-center gap-2 shrink-0 ml-auto justify-end flex-wrap min-w-0">
         <button type="button" (click)="discard()"
                 class="inline-flex items-center gap-1 px-3 py-1.5 text-slate-600 hover:bg-slate-100 text-sm font-semibold rounded-[10px] border-0 bg-transparent min-h-9">
           {{ 'waTpl.discard' | translate }}

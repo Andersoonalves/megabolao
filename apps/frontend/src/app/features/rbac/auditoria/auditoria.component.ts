@@ -20,12 +20,14 @@ const SEVERIDADE_CHIP: Record<AuditoriaSeveridade, string> = {
     <!-- Topbar -->
     <div class="bg-white border-b border-slate-200 px-4 lg:px-7 py-3 flex items-center gap-3 sticky top-14 lg:top-0 z-10">
       <nb-back-button />
-      <div class="hidden sm:flex items-center gap-2 text-[12.5px]">
-        <span class="text-slate-400">{{ 'nav.section.system' | translate }}</span>
-        <span class="text-slate-300">›</span>
-        <span class="font-semibold">{{ 'nav.audit' | translate }}</span>
+      <div class="min-w-0 flex-1 flex items-center gap-2">
+        <div class="hidden sm:flex items-center gap-2 text-[12.5px] min-w-0">
+          <span class="text-slate-400">{{ 'nav.section.system' | translate }}</span>
+          <span class="text-slate-300">›</span>
+          <span class="font-semibold">{{ 'nav.audit' | translate }}</span>
+        </div>
+        <span class="font-display font-semibold text-[14px] sm:hidden truncate">{{ 'auditoria.topbarShort' | translate }}</span>
       </div>
-      <span class="font-display font-semibold text-[14px] sm:hidden">{{ 'auditoria.topbarShort' | translate }}</span>
     </div>
 
     <!-- Page -->

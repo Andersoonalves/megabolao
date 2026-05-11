@@ -13,7 +13,7 @@ import { QrCodeComponent } from '../../../shared/components/qr-code/qr-code.comp
 type WaStatus = 'DESCONECTADO' | 'CARREGANDO' | 'AGUARDANDO_QR' | 'CONECTADO';
 
 interface SessionInfo { status: WaStatus; qrCode?: string; numero?: string; }
-interface Grupo        { id: string; nome: string; }
+interface Grupo        { id: string; nome: string; qtdParticipantes?: number; }
 interface MensagemWa {
   id: string; tipo: string; grupo: string; conteudo: string;
   status: 'PENDENTE' | 'ENVIADO' | 'FALHA'; criadoEm: string;
@@ -36,13 +36,15 @@ interface MsgTemplateRow {
     <!-- Topbar -->
     <div class="bg-white border-b border-slate-200 px-4 lg:px-7 py-3 flex items-center gap-3 sticky top-14 lg:top-0 z-10">
       <nb-back-button />
-      <div class="hidden sm:flex items-center gap-2 text-[12.5px] flex-1 min-w-0">
-        <span class="text-slate-400">{{ 'whatsapp.brand' | translate }}</span>
-        <span class="text-slate-300">›</span>
-        <span class="font-semibold">{{ 'whatsapp.title' | translate }}</span>
+      <div class="min-w-0 flex-1 flex items-center gap-2">
+        <div class="hidden sm:flex items-center gap-2 text-[12.5px] min-w-0">
+          <span class="text-slate-400">{{ 'whatsapp.brand' | translate }}</span>
+          <span class="text-slate-300">›</span>
+          <span class="font-semibold">{{ 'whatsapp.title' | translate }}</span>
+        </div>
+        <span class="font-display font-semibold text-[14px] sm:hidden truncate">{{ 'whatsapp.title' | translate }}</span>
       </div>
-      <span class="font-display font-semibold text-[14px] sm:hidden flex-1 min-w-0 truncate">{{ 'whatsapp.title' | translate }}</span>
-      <div class="flex items-center gap-2 flex-shrink-0 ml-auto">
+      <div class="flex items-center gap-2 shrink-0">
         <a routerLink="/whatsapp/templates"
            class="inline-flex items-center gap-1 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-semibold rounded-[10px] no-underline transition-colors min-h-9">
           {{ 'whatsapp.templatesCta' | translate }}
@@ -119,6 +121,11 @@ interface MsgTemplateRow {
                       <div class="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></div>
                       {{ 'whatsapp.awaitingQr' | translate }}
                     </div>
+                    <button type="button" (click)="renovarQr()" [disabled]="acao()"
+                            class="mt-4 w-full max-w-[220px] inline-flex items-center justify-center gap-1.5 px-3 py-2.5 text-sm font-semibold rounded-[10px] border border-slate-200 bg-white text-slate-800 hover:bg-slate-50 disabled:opacity-50 transition-colors min-h-10">
+                      {{ acao() ? ('whatsapp.refreshQrWorking' | translate) : ('whatsapp.refreshQr' | translate) }}
+                    </button>
+                    <p class="mt-2 text-center text-[10.5px] text-slate-500 max-w-[240px] leading-snug">{{ 'whatsapp.refreshQrHint' | translate }}</p>
                   </div>
                 </div>
               }
@@ -166,6 +173,9 @@ interface MsgTemplateRow {
                     </div>
                     <div class="flex-1 min-w-0">
                       <div class="text-[13px] font-semibold truncate">{{ g.nome }}</div>
+                      @if (g.qtdParticipantes != null) {
+                        <div class="text-[11px] text-slate-500 truncate">{{ 'whatsapp.groupMembers' | translate: { n: g.qtdParticipantes } }}</div>
+                      }
                       <div class="text-[11px] text-slate-400 font-mono truncate">{{ g.id.length > 24 ? (g.id.slice(0, 24) + '…') : g.id }}</div>
                     </div>
                   </div>
@@ -427,6 +437,19 @@ export class WhatsAppComponent implements OnInit, OnDestroy {
       this.session.set(await firstValueFrom(this.api.post<SessionInfo>('/whatsapp/sessao/iniciar', {})));
     } catch { this.session.set({ status: 'CARREGANDO' }); }
     finally { this.acao.set(false); }
+  }
+
+  /** Encerra a sessão em espera de QR e sobe outra para emitir QR novo (evita QR expirado). */
+  async renovarQr(): Promise<void> {
+    if (this.session()?.status !== 'AGUARDANDO_QR' || this.acao()) return;
+    this.acao.set(true);
+    try {
+      this.session.set(await firstValueFrom(this.api.post<SessionInfo>('/whatsapp/sessao/qr/renovar', {})));
+    } catch {
+      await this.loadSession();
+    } finally {
+      this.acao.set(false);
+    }
   }
 
   async desconectar(): Promise<void> {

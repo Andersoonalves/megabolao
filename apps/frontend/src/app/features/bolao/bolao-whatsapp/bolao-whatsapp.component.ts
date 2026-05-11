@@ -19,6 +19,7 @@ interface Template {
 interface Grupo {
   id: string;
   nome: string;
+  qtdParticipantes?: number;
 }
 
 interface WaConfig {
@@ -47,21 +48,23 @@ type GrupoTab = 'all' | 'bound' | 'free';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterLink, FormsModule, BackButtonComponent, TranslatePipe],
   template: `
-    <div class="bg-white border-b border-slate-200 px-4 lg:px-7 py-3 flex flex-wrap items-center gap-3 sticky top-14 lg:top-0 z-10">
+    <div class="bg-white border-b border-slate-200 px-4 lg:px-7 py-3 flex items-center gap-3 sticky top-14 lg:top-0 z-10">
       <nb-back-button />
-      <div class="hidden sm:flex items-center gap-2 text-[12.5px] flex-1 min-w-0">
-        <a routerLink="/boloes" class="text-slate-400 hover:text-slate-600 no-underline">{{ 'bolaoWhatsapp.breadcrumbPools' | translate }}</a>
-        <span class="text-slate-300">›</span>
-        @if (config()) {
-          <a [routerLink]="['/bolao', id(), 'detalhes']" class="text-slate-400 hover:text-slate-600 no-underline truncate max-w-[180px]">
-            {{ config()!.bolaoNome }}
-          </a>
-          <span class="text-slate-300">›</span>
-        }
-        <span class="font-semibold truncate">{{ 'bolaoWhatsapp.breadcrumbWa' | translate }}</span>
+      <div class="min-w-0 flex-1 flex items-center gap-2">
+        <div class="hidden sm:flex items-center gap-2 text-[12.5px] min-w-0">
+          <a routerLink="/boloes" class="text-slate-400 hover:text-slate-600 no-underline shrink-0">{{ 'bolaoWhatsapp.breadcrumbPools' | translate }}</a>
+          <span class="text-slate-300 shrink-0">›</span>
+          @if (config()) {
+            <a [routerLink]="['/bolao', id(), 'detalhes']" class="text-slate-400 hover:text-slate-600 no-underline truncate max-w-[180px]">
+              {{ config()!.bolaoNome }}
+            </a>
+            <span class="text-slate-300 shrink-0">›</span>
+          }
+          <span class="font-semibold truncate">{{ 'bolaoWhatsapp.breadcrumbWa' | translate }}</span>
+        </div>
+        <span class="font-display font-semibold text-[14px] sm:hidden truncate">{{ 'bolaoWhatsapp.breadcrumbWa' | translate }}</span>
       </div>
-      <span class="font-display font-semibold text-[14px] sm:hidden truncate">{{ 'bolaoWhatsapp.breadcrumbWa' | translate }}</span>
-      <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+      <div class="flex items-center gap-2 shrink-0 flex-wrap justify-end">
         <a [routerLink]="['/whatsapp/nova-mensagem']" [queryParams]="{ bolaoId: id() }"
            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-800 text-sm font-semibold rounded-[10px] no-underline min-h-9">
           {{ 'bolaoWhatsapp.ctaSendMessage' | translate }}
@@ -203,7 +206,12 @@ type GrupoTab = 'all' | 'bound' | 'free';
                       <div class="flex items-center gap-2.5 min-w-0">
                         <span class="w-8 h-8 rounded-lg flex items-center justify-center text-sm shrink-0"
                               [class]="estaSelecionado(g.id) ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-500'">👥</span>
-                        <span class="font-semibold text-slate-900 truncate">{{ g.nome }}</span>
+                        <div class="min-w-0 flex-1">
+                          <span class="font-semibold text-slate-900 truncate block">{{ g.nome }}</span>
+                          @if (g.qtdParticipantes != null) {
+                            <span class="text-[11px] text-slate-500 truncate block">{{ 'whatsapp.groupMembers' | translate: { n: g.qtdParticipantes } }}</span>
+                          }
+                        </div>
                       </div>
                     </td>
                     <td class="px-4 py-3 align-middle font-mono text-[11px] text-slate-400 truncate max-w-[9rem]">{{ g.id }}</td>
@@ -241,6 +249,9 @@ type GrupoTab = 'all' | 'bound' | 'free';
                          [checked]="estaSelecionado(g.id)" (change)="toggleGrupo(g)" />
                   <div class="flex-1 min-w-0">
                     <div class="font-semibold text-slate-900">{{ g.nome }}</div>
+                    @if (g.qtdParticipantes != null) {
+                      <div class="text-[11px] text-slate-500 mt-0.5">{{ 'whatsapp.groupMembers' | translate: { n: g.qtdParticipantes } }}</div>
+                    }
                     <div class="font-mono text-[10px] text-slate-400 break-all mt-1">{{ g.id }}</div>
                     <div class="text-[11px] mt-2" [class]="estaSelecionado(g.id) ? 'text-green-800 font-semibold' : 'text-slate-400'">
                       {{ estaSelecionado(g.id) ? ('bolaoWhatsapp.statusLinked' | translate) : ('bolaoWhatsapp.statusFree' | translate) }}
@@ -326,11 +337,16 @@ type GrupoTab = 'all' | 'bound' | 'free';
                 <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">{{ 'bolaoWhatsapp.sendTo' | translate }}</label>
                 <div class="flex flex-col gap-1.5">
                   @for (g of config()!.grupos; track g.id) {
-                    <label class="flex items-center gap-2.5 cursor-pointer py-1 min-h-10">
+                    <label class="flex items-start gap-2.5 cursor-pointer py-1 min-h-10">
                       <input type="checkbox" [checked]="gruposEnvio().includes(g.id)"
                              (change)="toggleGrupoEnvio(g.id)"
-                             class="w-4 h-4 accent-green-700" />
-                      <span class="text-[13.5px] font-semibold">{{ g.nome }}</span>
+                             class="w-4 h-4 accent-green-700 mt-1 shrink-0" />
+                      <div class="min-w-0 flex-1 flex flex-col gap-0.5">
+                        <span class="text-[13.5px] font-semibold">{{ g.nome }}</span>
+                        @if (g.qtdParticipantes != null) {
+                          <span class="text-[11.5px] text-slate-500">{{ 'whatsapp.groupMembers' | translate: { n: g.qtdParticipantes } }}</span>
+                        }
+                      </div>
                     </label>
                   }
                 </div>
@@ -547,7 +563,7 @@ export class BolaoWhatsappComponent {
     try {
       const c = await firstValueFrom(
         this.api.patch<WaConfig>(`/boloes/${bid}/whatsapp`, {
-          grupos: this.selecionados(),
+          grupos: this.selecionados().map(({ id, nome }) => ({ id, nome })),
         }),
       );
       this.config.set(c);

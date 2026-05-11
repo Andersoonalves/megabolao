@@ -7,6 +7,7 @@ import { JWT } from 'google-auth-library';
 import { Queue } from 'bullmq';
 import { validarPalpites } from '@nossobolao/shared-utils';
 import { PrismaService } from '../prisma/prisma.service';
+import { TenantService } from '../tenant/tenant.service';
 import { BusinessException } from '../../common/exceptions/business.exception';
 import { ImportCotasDto } from './dto/import-cotas.dto';
 import { ExportarResultadosDto } from './dto/exportar-resultados.dto';
@@ -42,6 +43,7 @@ export class GoogleDriveService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
+    private readonly tenantService: TenantService,
     @Optional() @Inject(SHEETS_SYNC_QUEUE) private readonly syncQueue?: Queue,
   ) {}
 
@@ -51,6 +53,7 @@ export class GoogleDriveService {
     dto: ImportCotasDto,
   ): Promise<ImportResult> {
     this.assertTenantId(tenantId);
+    await this.tenantService.assertTenantPermiteCadastros(tenantId!);
 
     const bolao = await this.prisma.bolao.findFirst({ where: { id: bolaoId, tenantId } });
     if (!bolao) {

@@ -5,8 +5,10 @@ import { GoogleDriveController } from './google-drive.controller';
 import { GoogleDriveService } from './google-drive.service';
 import { SheetsSyncProcessor } from './jobs/sheets-sync.processor';
 import { SHEETS_SYNC_QUEUE, SHEETS_SYNC_QUEUE_NAME } from './jobs/sheets-sync.types';
+import { TenantModule } from '../tenant/tenant.module';
 
 @Module({
+  imports: [TenantModule],
   controllers: [GoogleDriveController],
   providers: [
     {

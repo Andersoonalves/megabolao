@@ -1,5 +1,5 @@
-import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
-import { existsSync, readlinkSync, rmSync } from 'fs';
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { existsSync, readdirSync, readlinkSync, rmSync } from 'fs';
 import { join } from 'path';
 import { Client, LocalAuth } from 'whatsapp-web.js';
 import { BusinessException } from '../../common/exceptions/business.exception';
@@ -19,13 +19,56 @@ interface SessionEntry {
   numero?: string;
 }
 
+export interface WaGrupoListItem {
+  id: string;
+  nome: string;
+  qtdParticipantes?: number;
+}
+
+function countGroupParticipantsFromChat(chat: {
+  isGroup: boolean;
+  groupMetadata?: { participants?: unknown };
+  participants?: unknown;
+}): number | undefined {
+  if (!chat.isGroup) return undefined;
+  try {
+    const raw = chat.participants ?? chat.groupMetadata?.participants;
+    if (raw == null) return undefined;
+    if (Array.isArray(raw)) return raw.length;
+    if (typeof raw === 'object') {
+      const o = raw as { length?: unknown; size?: unknown; models?: unknown };
+      if (typeof o.length === 'number') return o.length;
+      if (typeof o.size === 'number') return o.size;
+      if (Array.isArray(o.models)) return o.models.length;
+    }
+    return undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 @Injectable()
-export class WhatsAppClientManager implements OnModuleDestroy {
+export class WhatsAppClientManager implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(WhatsAppClientManager.name);
   private readonly sessions = new Map<string, SessionEntry>();
 
-  // Serializa inicializações: dois Chrome simultâneos causam "detached Frame"
+  // Fila garante que só um Chrome inicializa por vez — inits simultâneos causam "detached Frame"
   private initChain: Promise<void> = Promise.resolve();
+
+  async onModuleInit(): Promise<void> {
+    const sessionsBase = join(process.cwd(), '.wa-sessions');
+    if (!existsSync(sessionsBase)) return;
+
+    const entries = readdirSync(sessionsBase, { withFileTypes: true });
+    const tenantIds = entries
+      .filter((e) => e.isDirectory() && e.name.startsWith('session-'))
+      .map((e) => e.name.replace('session-', ''));
+
+    for (const tenantId of tenantIds) {
+      this.logger.log(`Auto-reconectando WhatsApp para tenant ${tenantId}`);
+      void this.iniciar(tenantId);
+    }
+  }
 
   async iniciar(tenantId: string): Promise<WaSessionInfo> {
     const existing = this.sessions.get(tenantId);
@@ -39,15 +82,6 @@ export class WhatsAppClientManager implements OnModuleDestroy {
       return { status: 'CARREGANDO' };
     }
 
-    this.limparLockOrfao(tenantId);
-
-    // Encadeia na fila: próximo initialize() só começa após o anterior atingir QR/erro
-    let sinalizarPronto!: () => void;
-    const esteInit = new Promise<void>((resolve) => { sinalizarPronto = resolve; });
-    this.initChain = this.initChain
-      .then(() => new Promise<void>((r) => setTimeout(r, 2000))) // gap entre inits
-      .then(() => esteInit);
-
     const client = new Client({
       authStrategy: new LocalAuth({
         clientId: tenantId,
@@ -55,11 +89,7 @@ export class WhatsAppClientManager implements OnModuleDestroy {
       }),
       puppeteer: {
         headless: true,
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-        ],
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
       },
     });
 
@@ -67,39 +97,35 @@ export class WhatsAppClientManager implements OnModuleDestroy {
     this.sessions.set(tenantId, entry);
 
     let intentionalDestroy = false;
+    let sinalizarPronto!: () => void;
+    const prontoParaProximo = new Promise<void>((resolve) => { sinalizarPronto = resolve; });
+
+    // Timeout via ref — iniciado só quando o Chrome realmente sobe (dentro da fila)
+    const timeoutRef = { handle: null as ReturnType<typeof setTimeout> | null };
 
     const destruir = (): void => {
+      if (timeoutRef.handle) clearTimeout(timeoutRef.handle);
       intentionalDestroy = true;
-      sinalizarPronto(); // libera fila mesmo em caso de erro
+      sinalizarPronto();
       client.removeAllListeners();
       this.sessions.delete(tenantId);
       void client.destroy().catch(() => undefined);
     };
-
-    // Timeout somente para a fase CARREGANDO — QR gerado limpa o timeout
-    const timeoutHandle = setTimeout(() => {
-      if (entry.status === 'CARREGANDO') {
-        this.logger.error(`Timeout na inicialização WhatsApp para tenant ${tenantId}`);
-        entry.status = 'DESCONECTADO';
-        destruir();
-      }
-    }, 90_000);
 
     client.on('loading_screen', (percent: number, message: string) => {
       this.logger.debug(`[${tenantId}] WAWeb carregando: ${percent}% — ${message}`);
     });
 
     client.on('qr', (qr: string) => {
-      clearTimeout(timeoutHandle);
-      sinalizarPronto(); // libera próximo da fila — Chrome já carregou WAWeb
+      if (timeoutRef.handle) clearTimeout(timeoutRef.handle);
+      sinalizarPronto(); // libera próximo da fila — Chrome carregou WAWeb
       entry.status = 'AGUARDANDO_QR';
       entry.qrCode = qr;
-      this.logger.debug(`QR gerado para tenant ${tenantId}`);
     });
 
     client.on('ready', () => {
-      clearTimeout(timeoutHandle);
-      sinalizarPronto(); // sessão restaurada de auth salvo (sem QR)
+      if (timeoutRef.handle) clearTimeout(timeoutRef.handle);
+      sinalizarPronto(); // auth salvo restaurado — sem QR
       entry.status = 'CONECTADO';
       delete entry.qrCode;
       const info = (client as Client & { info?: { wid?: { user?: string } } }).info;
@@ -108,26 +134,50 @@ export class WhatsAppClientManager implements OnModuleDestroy {
     });
 
     client.on('auth_failure', () => {
-      clearTimeout(timeoutHandle);
       entry.status = 'DESCONECTADO';
       destruir();
       this.logger.warn(`Falha de autenticação WhatsApp para tenant ${tenantId}`);
     });
 
     client.on('disconnected', () => {
-      clearTimeout(timeoutHandle);
       entry.status = 'DESCONECTADO';
       destruir();
       this.logger.warn(`WhatsApp desconectado para tenant ${tenantId}`);
     });
 
-    client.initialize().catch((err: unknown) => {
-      if (intentionalDestroy) return;
-      clearTimeout(timeoutHandle);
-      this.logger.error(`Falha ao inicializar WhatsApp para tenant ${tenantId}`, err);
-      entry.status = 'DESCONECTADO';
-      destruir();
-    });
+    // initialize() entra na fila — só roda após tenant anterior atingir QR/ready/erro
+    this.initChain = this.initChain
+      .then(() => new Promise<void>((r) => setTimeout(r, 2000)))
+      .then(async () => {
+        if (!this.sessions.has(tenantId)) {
+          sinalizarPronto(); // sessão cancelada enquanto aguardava na fila
+          return;
+        }
+
+        await this.limparLockOrfao(tenantId);
+
+        // Timeout começa só agora — quando o Chrome realmente vai subir
+        timeoutRef.handle = setTimeout(() => {
+          if (entry.status === 'CARREGANDO') {
+            this.logger.error(`Timeout na inicialização WhatsApp para tenant ${tenantId}`);
+            entry.status = 'DESCONECTADO';
+            destruir();
+          }
+        }, 90_000);
+
+        const initPromise = client.initialize();
+        if (initPromise != null && typeof initPromise.catch === 'function') {
+          void initPromise.catch((err: unknown) => {
+            if (intentionalDestroy) return;
+            if (timeoutRef.handle) clearTimeout(timeoutRef.handle);
+            this.logger.error(`Falha ao inicializar WhatsApp para tenant ${tenantId}`, err);
+            entry.status = 'DESCONECTADO';
+            destruir();
+          });
+        }
+
+        return prontoParaProximo;
+      });
 
     return { status: 'CARREGANDO' };
   }
@@ -136,6 +186,24 @@ export class WhatsAppClientManager implements OnModuleDestroy {
     const entry = this.sessions.get(tenantId);
     if (!entry) return { status: 'DESCONECTADO' };
     return { status: entry.status, qrCode: entry.qrCode, numero: entry.numero };
+  }
+
+  /**
+   * Encerra a sessão e abre outra para emitir um **novo** QR (o anterior expira no WA Web após algum tempo).
+   * Só em `AGUARDANDO_QR` ou `CARREGANDO` — nunca desconecta um tenant já `CONECTADO`.
+   */
+  async renovarQr(tenantId: string): Promise<WaSessionInfo> {
+    const entry = this.sessions.get(tenantId);
+    if (entry?.status === 'CONECTADO') {
+      throw new BusinessException(
+        'WA_RENOVACAO_INVALIDA',
+        'WhatsApp já está conectado. Para trocar o aparelho, use encerrar sessão.',
+      );
+    }
+    await this.encerrar(tenantId);
+    // Dar tempo ao Puppeteer/Chrome fechar antes de subir novo processo
+    await new Promise<void>((r) => setTimeout(r, 400));
+    return this.iniciar(tenantId);
   }
 
   async encerrar(tenantId: string): Promise<void> {
@@ -151,7 +219,7 @@ export class WhatsAppClientManager implements OnModuleDestroy {
     this.logger.log(`Sessão WhatsApp encerrada para tenant ${tenantId}`);
   }
 
-  async getGrupos(tenantId: string): Promise<{ id: string; nome: string }[]> {
+  async getGrupos(tenantId: string): Promise<WaGrupoListItem[]> {
     const entry = this.sessions.get(tenantId);
     if (!entry || entry.status !== 'CONECTADO') {
       throw new BusinessException('WA_DESCONECTADO', 'WhatsApp não está conectado para este tenant');
@@ -159,7 +227,14 @@ export class WhatsAppClientManager implements OnModuleDestroy {
     const chats = await entry.client.getChats();
     return chats
       .filter((c) => c.isGroup)
-      .map((c) => ({ id: c.id._serialized, nome: c.name }));
+      .map((c) => {
+        const n = countGroupParticipantsFromChat(c as { isGroup: boolean; groupMetadata?: { participants?: unknown }; participants?: unknown });
+        return {
+          id: c.id._serialized,
+          nome: c.name,
+          ...(n !== undefined ? { qtdParticipantes: n } : {}),
+        };
+      });
   }
 
   async enviarParaGrupo(tenantId: string, grupoId: string, mensagem: string): Promise<void> {
@@ -170,26 +245,44 @@ export class WhatsAppClientManager implements OnModuleDestroy {
     await entry.client.sendMessage(grupoId, mensagem);
   }
 
-  private limparLockOrfao(tenantId: string): void {
+  private async limparLockOrfao(tenantId: string): Promise<void> {
     const sessionDir = join(process.cwd(), '.wa-sessions', `session-${tenantId}`);
     const lockFile = join(sessionDir, 'SingletonLock');
+
     if (!existsSync(lockFile)) return;
 
+    // SingletonLock é symlink no formato "hostname-PID" — extrair PID diretamente
     try {
-      // SingletonLock é symlink no formato "hostname-PID"
       const target = readlinkSync(lockFile);
       const pid = parseInt(target.split('-').pop() ?? '', 10);
       if (!isNaN(pid)) {
-        process.kill(pid, 'SIGKILL');
-        this.logger.warn(`Chrome órfão (PID ${pid}) encerrado para tenant ${tenantId}`);
+        try {
+          process.kill(pid, 'SIGKILL');
+          // Aguarda processo morrer antes de deletar locks —
+          // Chrome recria o SingletonLock se detecta que foi removido enquanto vivo
+          for (let i = 0; i < 40; i++) {
+            try {
+              process.kill(pid, 0); // sinal 0 = verificar se processo existe
+              await new Promise<void>((r) => setTimeout(r, 50));
+            } catch {
+              break; // ESRCH = processo morto
+            }
+          }
+          this.logger.warn(`Chrome órfão (PID ${pid}) encerrado para tenant ${tenantId}`);
+        } catch {
+          // Processo já morto
+        }
       }
     } catch {
-      // Processo já morto ou symlink ilegível — segue
+      // Lock não é symlink — segue para limpeza
     }
 
-    // Limpa toda a pasta: tentativas anteriores corrompem o perfil Chrome
-    rmSync(sessionDir, { recursive: true, force: true });
-    this.logger.warn(`Pasta de sessão corrompida removida para tenant ${tenantId}`);
+    // Deleta todos os locks DEPOIS que o processo morreu — preserva auth em Default/
+    for (const name of ['SingletonLock', 'SingletonCookie', 'SingletonSocket', 'DevToolsActivePort']) {
+      const f = join(sessionDir, name);
+      if (existsSync(f)) rmSync(f);
+    }
+    this.logger.warn(`Locks removidos para tenant ${tenantId}`);
   }
 
   async onModuleDestroy(): Promise<void> {

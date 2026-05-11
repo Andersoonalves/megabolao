@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { BusinessException } from '../../common/exceptions/business.exception';
 import { PrismaService } from '../prisma/prisma.service';
+import { TenantService } from '../tenant/tenant.service';
 import { GoogleDriveService } from './google-drive.service';
 
 // jest.mock é hoisted — factory NÃO pode referenciar variáveis do escopo do módulo
@@ -34,6 +35,10 @@ const mockPrisma = {
   $transaction: jest.fn(),
 };
 
+const mockTenantService = {
+  assertTenantPermiteCadastros: jest.fn().mockResolvedValue(undefined),
+};
+
 const mockConfig = {
   getOrThrow: jest.fn().mockReturnValue('val'),
 };
@@ -46,6 +51,7 @@ describe('GoogleDriveService', () => {
 
   beforeEach(async () => {
     jest.resetAllMocks();
+    mockTenantService.assertTenantPermiteCadastros.mockResolvedValue(undefined);
     mockConfig.getOrThrow.mockReturnValue('val');
 
     mockValuesGet    = jest.fn();
@@ -62,10 +68,12 @@ describe('GoogleDriveService', () => {
         GoogleDriveService,
         { provide: PrismaService, useValue: mockPrisma },
         { provide: ConfigService, useValue: mockConfig },
+        { provide: TenantService, useValue: mockTenantService },
       ],
     }).compile();
 
     service = module.get<GoogleDriveService>(GoogleDriveService);
+    jest.spyOn(service as unknown as { getAuth: () => unknown }, 'getAuth').mockReturnValue({});
   });
 
   // ── importarCotas ──────────────────────────────────────────────────────────
@@ -86,6 +94,18 @@ describe('GoogleDriveService', () => {
       expect(result.criadas).toBe(2);
       expect(result.erros).toHaveLength(0);
       expect(mockPrisma.cota.create).toHaveBeenCalledTimes(2);
+      expect(mockTenantService.assertTenantPermiteCadastros).toHaveBeenCalledWith(TENANT_ID);
+    });
+
+    it('lança BusinessException quando tenant não permite cadastros', async () => {
+      mockTenantService.assertTenantPermiteCadastros.mockRejectedValueOnce(
+        new BusinessException('TENANT_CADASTROS_BLOQUEADOS', 'Tenant suspenso'),
+      );
+
+      await expect(
+        service.importarCotas(TENANT_ID, BOLAO_ID, { spreadsheetId: SHEET_ID }),
+      ).rejects.toBeInstanceOf(BusinessException);
+      expect(mockValuesGet).not.toHaveBeenCalled();
     });
 
     it('pula linhas vazias (sem nome)', async () => {

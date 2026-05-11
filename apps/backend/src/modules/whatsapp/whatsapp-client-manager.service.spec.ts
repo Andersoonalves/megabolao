@@ -17,9 +17,15 @@ const TENANT_ID = 'tenant-uuid-1';
 const makeMockClient = () => ({
   initialize: jest.fn().mockResolvedValue(undefined),
   on: jest.fn(),
+  removeAllListeners: jest.fn(),
   destroy: jest.fn().mockResolvedValue(undefined),
   getChats: jest.fn().mockResolvedValue([
-    { isGroup: true,  id: { _serialized: 'grupo1@g.us' }, name: 'Grupo Bolão' },
+    {
+      isGroup: true,
+      id: { _serialized: 'grupo1@g.us' },
+      name: 'Grupo Bolão',
+      groupMetadata: { participants: [{}, {}, {}] },
+    },
     { isGroup: false, id: { _serialized: 'contato@c.us' }, name: 'Contato' },
   ]),
   sendMessage: jest.fn().mockResolvedValue({}),
@@ -45,17 +51,28 @@ describe('WhatsAppClientManager', () => {
     manager = module.get<WhatsAppClientManager>(WhatsAppClientManager);
   });
 
+  afterEach(async () => {
+    jest.clearAllTimers();
+    await manager.encerrar(TENANT_ID);
+  });
+
   // ── iniciar ────────────────────────────────────────────────────────────────
 
   describe('iniciar', () => {
     it('cria novo cliente e retorna status CARREGANDO', async () => {
-      // Act
-      const result = await manager.iniciar(TENANT_ID);
+      jest.useFakeTimers();
+      try {
+        // Act
+        const result = await manager.iniciar(TENANT_ID);
 
-      // Assert
-      expect(result.status).toBe('CARREGANDO');
-      expect(Client).toHaveBeenCalledTimes(1);
-      expect(mockClient.initialize).toHaveBeenCalledTimes(1);
+        // Assert — retorno imediato; initialize entra na fila (+2s)
+        expect(result.status).toBe('CARREGANDO');
+        expect(Client).toHaveBeenCalledTimes(1);
+        await jest.advanceTimersByTimeAsync(2500);
+        expect(mockClient.initialize).toHaveBeenCalledTimes(1);
+      } finally {
+        jest.useRealTimers();
+      }
     });
 
     it('retorna status AGUARDANDO_QR quando QR já foi emitido', async () => {
@@ -154,7 +171,7 @@ describe('WhatsAppClientManager', () => {
 
       // Assert
       expect(result).toHaveLength(1);
-      expect(result[0]).toEqual({ id: 'grupo1@g.us', nome: 'Grupo Bolão' });
+      expect(result[0]).toEqual({ id: 'grupo1@g.us', nome: 'Grupo Bolão', qtdParticipantes: 3 });
     });
 
     it('lança BusinessException quando não está CONECTADO', async () => {
@@ -182,6 +199,15 @@ describe('WhatsAppClientManager', () => {
     it('lança BusinessException quando não está CONECTADO', async () => {
       // Act / Assert
       await expect(manager.enviarParaGrupo(TENANT_ID, 'g@g.us', 'msg')).rejects.toBeInstanceOf(BusinessException);
+    });
+  });
+
+  describe('renovarQr', () => {
+    it('rejeita quando a sessão já está CONECTADA', async () => {
+      await manager.iniciar(TENANT_ID);
+      const readyHandler = mockClient.on.mock.calls.find(([e]: [string]) => e === 'ready')?.[1] as () => void;
+      readyHandler?.();
+      await expect(manager.renovarQr(TENANT_ID)).rejects.toBeInstanceOf(BusinessException);
     });
   });
 });
