@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { BusinessException } from '../../common/exceptions/business.exception';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import { WhatsAppClientManager } from '../whatsapp/whatsapp-client-manager.service';
 
 export interface PortalPremioResponse {
   id: string;
@@ -33,7 +34,10 @@ export interface PortalBolaoResponse {
   dataTermino: string | null;
   totalCotasAtivas: number;
   valorBrutoArrecadado: number;
-  /** URL `https://wa.me/...` para falar com o organizador (admin do tenant); `null` se não houver celular cadastrado. */
+  /**
+   * URL `https://wa.me/...` para falar com o organizador.
+   * Prioridade: celular do primeiro ADMIN no perfil; senão, número da sessão WhatsApp do tenant (conectada).
+   */
   linkWhatsappOrganizador: string | null;
   cotas: PortalCotaResponse[];
   sorteios: {
@@ -68,7 +72,10 @@ export interface PortalRankingItem {
 
 @Injectable()
 export class PortalService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly waClient: WhatsAppClientManager,
+  ) {}
 
   async solicitarOtp(celular: string): Promise<{ ok: true }> {
     const phone = this.normalizePhone(celular);
@@ -140,7 +147,7 @@ export class PortalService {
     }
 
     const nome = boloes[0].cotas[0]?.nomeIdentificacao ?? 'Participante';
-    const dialOrganizador = await this.findAdminWhatsappDial(tenantId);
+    const dialOrganizador = await this.resolveOrganizadorWhatsappDial(tenantId);
     const mapped = boloes.map((b): PortalBolaoResponse => {
       const valorCota = b.valorCota.toNumber();
       return {
@@ -333,5 +340,18 @@ export class PortalService {
     const raw = row?.celular?.trim();
     if (!raw) return null;
     return this.toWhatsAppDialDigits(raw);
+  }
+
+  /**
+   * Número para `wa.me`: perfil do admin (preferencial) ou linha da sessão WhatsApp Web do tenant.
+   */
+  private async resolveOrganizadorWhatsappDial(tenantId: string): Promise<string | null> {
+    const fromProfile = await this.findAdminWhatsappDial(tenantId);
+    if (fromProfile) return fromProfile;
+    const wa = this.waClient.getStatus(tenantId);
+    if (wa.status === 'CONECTADO' && wa.numero) {
+      return this.toWhatsAppDialDigits(wa.numero);
+    }
+    return null;
   }
 }

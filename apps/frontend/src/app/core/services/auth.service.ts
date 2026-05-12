@@ -12,6 +12,8 @@ export interface AuthUser {
   role: UserRole;
   tenantId: string | null;
   celular: string | null;
+  /** `user_metadata.nome_completo` — opcional. */
+  nomeCompleto: string | null;
   permissoes: CodigoPermissao[];
 }
 
@@ -100,6 +102,7 @@ export class AuthService {
       papel?: string;
       tenant_id?: string;
       celular?: string;
+      nome_completo?: string;
       permissoes?: CodigoPermissao[];
     };
     const role: UserRole = meta.papel === 'MASTER' ? 'MASTER'
@@ -111,13 +114,44 @@ export class AuthService {
       : Array.isArray(meta.permissoes) ? meta.permissoes : [];
 
     return {
-      id:       user.id,
-      email:    user.email ?? '',
+      id:             user.id,
+      email:          user.email ?? '',
       role,
-      tenantId: role === 'MASTER' ? null : (meta.tenant_id ?? null),
-      celular:  meta.celular ?? user.phone ?? null,
+      tenantId:       role === 'MASTER' ? null : (meta.tenant_id ?? null),
+      celular:        meta.celular ?? user.phone ?? null,
+      nomeCompleto:   typeof meta.nome_completo === 'string' && meta.nome_completo.trim()
+        ? meta.nome_completo.trim()
+        : null,
       permissoes,
     };
+  }
+
+  /** Atualiza senha (Supabase Auth). */
+  async updatePassword(newPassword: string): Promise<void> {
+    const { error } = await this.supabase.auth.updateUser({ password: newPassword });
+    if (error) throw error;
+  }
+
+  /**
+   * Mescla chaves em `user_metadata` e atualiza o JWT.
+   * Usado para nome completo e celular exibidos no painel.
+   */
+  async updateUserMetadata(partial: Record<string, string | null>): Promise<void> {
+    const { data: { user }, error: gu } = await this.supabase.auth.getUser();
+    if (gu) throw gu;
+    const base = { ...(user?.user_metadata ?? {}) } as Record<string, unknown>;
+    for (const [k, v] of Object.entries(partial)) {
+      if (v === null || v === '') {
+        delete base[k];
+      } else {
+        base[k] = v;
+      }
+    }
+    const { error } = await this.supabase.auth.updateUser({
+      data: base as User['user_metadata'],
+    });
+    if (error) throw error;
+    await this.refreshSession();
   }
 
   // ── RBAC: helpers reativos ────────────────────────────────────────────────

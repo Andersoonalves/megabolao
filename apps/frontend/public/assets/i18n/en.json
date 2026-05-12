@@ -31,7 +31,55 @@
     "profiles": "Profiles",
     "audit": "Audit",
     "overview": "Overview",
-    "tenants": "Tenants"
+    "tenants": "Tenants",
+    "myAccount": "My account"
+  },
+  "minhaConta": {
+    "breadcrumb": "My account",
+    "pageTitle": "My account",
+    "subtitle": "Manage your profile, security, and console preferences.",
+    "saved": "Changes saved.",
+    "personalData": "Personal details",
+    "fullName": "Full name",
+    "fullNamePlaceholder": "Your name",
+    "cpf": "Tax ID (CPF)",
+    "cpfHint": "CPF is not stored in this console.",
+    "phone": "Mobile",
+    "phonePlaceholder": "(00) 00000-0000",
+    "tenantRole": "Role in tenant",
+    "tenantRoleHint": "Roles and permissions are managed by the platform admin or Master.",
+    "emailHint": "To change your email, contact support.",
+    "changePhoto": "Change photo",
+    "removePhoto": "Remove",
+    "security": "Security",
+    "password": "Password",
+    "passwordHint": "Use a strong password unique to the console.",
+    "changePassword": "Change password",
+    "passwordModalHint": "After confirming, use the new password on all devices.",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm password",
+    "updatePassword": "Update password",
+    "passwordTooShort": "Password must be at least 6 characters.",
+    "passwordMismatch": "Passwords do not match.",
+    "twoFactor": "Two-factor authentication",
+    "twoFactorHint": "Extra protection for your account.",
+    "sessions": "Active sessions",
+    "sessionsHint": "Sign out other devices.",
+    "manageSessions": "Manage",
+    "soon": "Coming soon",
+    "preferences": "Preferences",
+    "prefEmail": "Email notifications",
+    "prefPayments": "Payment and reconciliation alerts",
+    "prefWeekly": "Weekly inbox summary",
+    "prefWhatsapp": "Alert when WhatsApp is disconnected",
+    "prefsLocalHint": "Preferences are stored in this browser until we sync them server-side.",
+    "saveChanges": "Save changes",
+    "roleMaster": "Master",
+    "roleAdmin": "Administrator",
+    "statusActive": "Active",
+    "statusSuspended": "Suspended",
+    "statusInactive": "Inactive",
+    "statusUnknown": "Unknown status"
   },
   "lang": {
     "pt": "Portuguese",
@@ -85,7 +133,8 @@
   "portal": {
     "nav": {
       "pools": "Pools",
-      "prizes": "Prizes"
+      "prizes": "Prizes",
+      "account": "Account"
     }
   },
   "portalBusca": {
@@ -165,7 +214,7 @@
     "copyLink": "Copy link",
     "shareCopied": "Link copied!",
     "openWhatsapp": "Open WhatsApp",
-    "shareUnavailable": "The organizer has not registered a contact number yet. Ask the administrator to add a mobile number in the system profile."
+    "shareUnavailable": "No WhatsApp contact number is available yet. The administrator can add a mobile number on the admin user profile or keep the pool WhatsApp session connected in the console."
   },
   "portalDetalhe": {
     "title": "My quotas",

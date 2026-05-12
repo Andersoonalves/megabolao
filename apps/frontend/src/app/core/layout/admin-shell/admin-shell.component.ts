@@ -52,6 +52,7 @@ const ADMIN_NAV: NavItem[] = [
     ],
   },
   { sectionKey: 'nav.section.system' },
+  { id: 'minha-conta', labelKey: 'nav.myAccount', icon: '⚙', route: '/minha-conta' },
   { id: 'relatorios', labelKey: 'nav.reports',   icon: '📄', route: '/relatorios', permissoes: ['relatorio.gerar'] },
   { id: 'usuarios',   labelKey: 'nav.users',     icon: '👤', route: '/usuarios',   permissoes: ['usuario.ler'] },
   { id: 'perfis',     labelKey: 'nav.profiles',  icon: '🛡', route: '/perfis',     permissoes: ['perfil.ler'] },
@@ -64,6 +65,7 @@ const MASTER_NAV: NavItem[] = [
   { id: 'master-dashboard', labelKey: 'nav.overview', icon: '◈', route: '/dashboard-master' },
   { id: 'tenants',          labelKey: 'nav.tenants',  icon: '🏢', route: '/tenants' },
   { sectionKey: 'nav.section.system' },
+  { id: 'minha-conta',      labelKey: 'nav.myAccount', icon: '⚙', route: '/minha-conta' },
   { id: 'relatorios',       labelKey: 'nav.reports',   icon: '📄', route: '/relatorios' },
   { id: 'auditoria',        labelKey: 'nav.audit',     icon: '📋', route: '/auditoria' },
 ];
@@ -176,7 +178,7 @@ const MASTER_COM_TENANT_NAV: NavItem[] = [
             <div class="flex flex-col gap-0.5">
               <a [routerLink]="item.route"
                  routerLinkActive="bg-green-50 text-green-800 font-semibold"
-                 [routerLinkActiveOptions]="{ exact: item.route === '/dashboard' || item.route === '/dashboard-master' || item.route === '/whatsapp' }"
+                 [routerLinkActiveOptions]="{ exact: item.route === '/dashboard' || item.route === '/dashboard-master' || item.route === '/whatsapp' || item.route === '/minha-conta' }"
                  (click)="shell.closeDrawer()"
                  class="flex items-center gap-2.5 px-2.5 py-3 lg:py-2 rounded-md text-slate-500 text-[13px] font-medium hover:bg-slate-100 hover:text-slate-900 transition-all duration-100 no-underline">
                 <span class="text-base leading-none w-4 text-center flex-shrink-0">{{ item.icon }}</span>
@@ -194,7 +196,7 @@ const MASTER_COM_TENANT_NAV: NavItem[] = [
           } @else {
             <a [routerLink]="item.route"
                routerLinkActive="bg-green-50 text-green-800 font-semibold"
-               [routerLinkActiveOptions]="{ exact: item.route === '/dashboard' || item.route === '/dashboard-master' }"
+               [routerLinkActiveOptions]="{ exact: item.route === '/dashboard' || item.route === '/dashboard-master' || item.route === '/minha-conta' }"
                (click)="shell.closeDrawer()"
                class="flex items-center gap-2.5 px-2.5 py-3 lg:py-2 rounded-md text-slate-500 text-[13px] font-medium hover:bg-slate-100 hover:text-slate-900 transition-all duration-100 no-underline">
               <span class="text-base leading-none w-4 text-center flex-shrink-0">{{ item.icon }}</span>
@@ -226,7 +228,12 @@ const MASTER_COM_TENANT_NAV: NavItem[] = [
           <div id="admin-user-menu"
                role="menu"
                class="absolute bottom-full left-2 right-2 mb-1.5 py-1.5 bg-white border border-slate-200 rounded-xl shadow-lg z-[80]">
-            <div class="px-3 py-1.5 text-[10px] font-semibold text-slate-500 uppercase tracking-wide border-b border-slate-100">
+            <a routerLink="/minha-conta" role="menuitem"
+               (click)="userMenuOpen.set(false); shell.closeDrawer()"
+               class="block px-3 py-2.5 text-[13px] font-semibold text-slate-800 hover:bg-slate-50 rounded-lg mx-1 transition-colors min-h-10 no-underline">
+              {{ 'nav.myAccount' | translate }}
+            </a>
+            <div class="px-3 py-1.5 text-[10px] font-semibold text-slate-500 uppercase tracking-wide border-t border-b border-slate-100 mt-0.5">
               {{ 'shell.language' | translate }}
             </div>
             <div class="flex gap-1 p-2">

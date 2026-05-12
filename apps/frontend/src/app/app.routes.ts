@@ -32,6 +32,10 @@ export const appRoutes: Route[] = [
         loadComponent: () => import('./features/dashboard/dashboard-master/dashboard-master.component').then(m => m.DashboardMasterComponent),
       },
       {
+        path: 'minha-conta',
+        loadComponent: () => import('./features/minha-conta/minha-conta.component').then(m => m.MinhaContaComponent),
+      },
+      {
         path: 'boloes',
         loadComponent: () => import('./features/bolao/lista-bolaoes/lista-bolaoes.component').then(m => m.ListaBolaoesComponent),
       },

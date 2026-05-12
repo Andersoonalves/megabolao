@@ -31,7 +31,55 @@
     "profiles": "Perfis",
     "audit": "Auditoria",
     "overview": "Visão geral",
-    "tenants": "Tenants"
+    "tenants": "Tenants",
+    "myAccount": "Minha conta"
+  },
+  "minhaConta": {
+    "breadcrumb": "Minha conta",
+    "pageTitle": "Minha conta",
+    "subtitle": "Gerencie seus dados pessoais, segurança e preferências do painel.",
+    "saved": "Alterações salvas.",
+    "personalData": "Dados pessoais",
+    "fullName": "Nome completo",
+    "fullNamePlaceholder": "Seu nome",
+    "cpf": "CPF",
+    "cpfHint": "CPF não é armazenado neste painel.",
+    "phone": "Celular",
+    "phonePlaceholder": "(00) 00000-0000",
+    "tenantRole": "Papel no tenant",
+    "tenantRoleHint": "O papel e permissões são definidos pelo administrador da plataforma ou pelo Master.",
+    "emailHint": "Para alterar o e-mail, entre em contato com o suporte.",
+    "changePhoto": "Trocar foto",
+    "removePhoto": "Remover",
+    "security": "Segurança",
+    "password": "Senha",
+    "passwordHint": "Use uma senha forte e exclusiva para o painel.",
+    "changePassword": "Alterar senha",
+    "passwordModalHint": "Após confirmar, use a nova senha em todos os dispositivos.",
+    "newPassword": "Nova senha",
+    "confirmPassword": "Confirmar senha",
+    "updatePassword": "Atualizar senha",
+    "passwordTooShort": "A senha deve ter pelo menos 6 caracteres.",
+    "passwordMismatch": "As senhas não coincidem.",
+    "twoFactor": "Verificação em duas etapas",
+    "twoFactorHint": "Camada extra de segurança para sua conta.",
+    "sessions": "Sessões ativas",
+    "sessionsHint": "Encerre sessões em outros dispositivos.",
+    "manageSessions": "Gerenciar",
+    "soon": "Em breve",
+    "preferences": "Preferências",
+    "prefEmail": "Notificações por e-mail",
+    "prefPayments": "Alertas de pagamentos e conferências",
+    "prefWeekly": "Resumo semanal na caixa de entrada",
+    "prefWhatsapp": "Aviso quando o WhatsApp estiver desconectado",
+    "prefsLocalHint": "Preferências são guardadas neste navegador até integrarmos ao servidor.",
+    "saveChanges": "Salvar alterações",
+    "roleMaster": "Master",
+    "roleAdmin": "Administrador",
+    "statusActive": "Ativo",
+    "statusSuspended": "Suspenso",
+    "statusInactive": "Inativo",
+    "statusUnknown": "Status desconhecido"
   },
   "lang": {
     "pt": "Português",
@@ -85,7 +133,8 @@
   "portal": {
     "nav": {
       "pools": "Bolões",
-      "prizes": "Prêmios"
+      "prizes": "Prêmios",
+      "account": "Conta"
     }
   },
   "portalBusca": {
@@ -165,7 +214,7 @@
     "copyLink": "Copiar link",
     "shareCopied": "Link copiado!",
     "openWhatsapp": "Abrir WhatsApp",
-    "shareUnavailable": "O organizador ainda não cadastrou um celular de contato. Peça ao administrador para informar o número no perfil do sistema."
+    "shareUnavailable": "Não há número para contato pelo WhatsApp. O administrador pode informar o celular no perfil do usuário admin ou manter a sessão WhatsApp do bolão conectada no painel."
   },
   "portalDetalhe": {
     "title": "Minhas cotas",

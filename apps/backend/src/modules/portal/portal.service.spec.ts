@@ -1,6 +1,7 @@
 import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../prisma/prisma.service';
+import { WhatsAppClientManager } from '../whatsapp/whatsapp-client-manager.service';
 import { PortalService } from './portal.service';
 
 const TENANT_ID = 'tenant-uuid-1';
@@ -22,16 +23,22 @@ const mockPrisma = {
   },
 };
 
+const mockWaClient = {
+  getStatus: jest.fn().mockReturnValue({ status: 'DESCONECTADO' as const }),
+};
+
 describe('PortalService', () => {
   let service: PortalService;
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    mockWaClient.getStatus.mockReturnValue({ status: 'DESCONECTADO' });
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PortalService,
         { provide: PrismaService, useValue: mockPrisma },
+        { provide: WhatsAppClientManager, useValue: mockWaClient },
       ],
     }).compile();
 
@@ -171,6 +178,48 @@ describe('PortalService', () => {
 
       expect(result.boloes[0].linkWhatsappOrganizador).toContain('https://wa.me/5583988887777');
       expect(result.boloes[0].linkWhatsappOrganizador).toContain(encodeURIComponent('Bolão Zap'));
+    });
+
+    it('usa número da sessão WhatsApp do tenant quando não há celular de admin no perfil', async () => {
+      mockPrisma.userProfile.findFirst.mockResolvedValue(null);
+      mockWaClient.getStatus.mockReturnValue({ status: 'CONECTADO', numero: '5583999123456' });
+      mockPrisma.bolao.findMany.mockResolvedValue([
+        {
+          id: BOLAO_ID,
+          nome: 'Bolão Só WA',
+          status: 'EM_ANDAMENTO',
+          valorCota: decimal(30),
+          dataInicio: null,
+          dataTermino: null,
+          _count: { cotas: 1 },
+          sorteios: [],
+          cotas: [
+            {
+              id: 'c1',
+              nomeIdentificacao: 'ANA',
+              numeroSequencial: 1,
+              palpites: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+              statusPagamento: 'PAGO',
+              dataConfirmacaoPagamento: null,
+              totalAcertosAcumulados: 0,
+              statusResultado: 'EM_ANDAMENTO',
+              premios: [],
+            },
+          ],
+        },
+      ]);
+
+      const result = await service.resumo({
+        id: 'u1',
+        email: '',
+        papel: 'ADMIN',
+        tenantId: TENANT_ID,
+        celular: CELULAR,
+        permissoes: [],
+      });
+
+      expect(result.boloes[0].linkWhatsappOrganizador).toContain('https://wa.me/5583999123456');
+      expect(result.boloes[0].linkWhatsappOrganizador).toContain(encodeURIComponent('Bolão Só WA'));
     });
   });
 

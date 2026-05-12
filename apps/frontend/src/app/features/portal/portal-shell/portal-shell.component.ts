@@ -25,71 +25,6 @@ const NAV_ITEMS = [
   template: `
     <div class="min-h-screen bg-slate-50 relative">
 
-      <!-- Mobile: barra superior — Olá + menu (idioma + sair) -->
-      <div
-        class="lg:hidden sticky top-0 z-40 bg-white border-b border-slate-200 shadow-sm"
-        style="padding-top: max(0.5rem, env(safe-area-inset-top, 0px))"
-      >
-        <div class="px-3 py-2 flex items-center gap-2.5 min-h-14">
-          <div
-            class="w-9 h-9 shrink-0 rounded-[10px] bg-gradient-to-br from-green-700 to-green-900 text-white flex items-center justify-center font-display font-bold text-xs tracking-tight"
-          >
-            NB
-          </div>
-          <div class="flex-1 min-w-0 relative" data-portal-user-menu-root>
-            <button
-              type="button"
-              class="flex items-center gap-2 w-full min-h-12 px-2 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-left hover:bg-slate-100 transition-colors"
-              (click)="toggleUserMenu($event)"
-              [attr.aria-expanded]="userMenuOpen()"
-              [attr.aria-label]="'shell.userMenu' | translate"
-              aria-haspopup="true"
-            >
-              <div
-                class="w-8 h-8 rounded-full bg-green-100 text-green-800 flex items-center justify-center font-semibold text-[11px] flex-shrink-0"
-              >
-                {{ initials() }}
-              </div>
-              <div class="min-w-0 flex-1">
-                <div class="text-[10.5px] text-slate-500 leading-tight">{{ 'portalCotas.hello' | translate }}</div>
-                <div class="text-[13px] font-semibold text-slate-900 truncate">{{ displayName() }}</div>
-              </div>
-              <span
-                class="text-slate-400 text-[10px] shrink-0 transition-transform"
-                [class.rotate-180]="userMenuOpen()"
-                >▼</span
-              >
-            </button>
-            @if (userMenuOpen()) {
-              <div
-                role="menu"
-                class="absolute left-0 right-0 top-full mt-1.5 py-1.5 bg-white border border-slate-200 rounded-xl shadow-lg z-[80]"
-              >
-                <div
-                  class="px-3 py-1.5 text-[10px] font-semibold text-slate-500 uppercase tracking-wide border-b border-slate-100"
-                >
-                  {{ 'shell.language' | translate }}
-                </div>
-                <div class="flex gap-1 p-2">
-                  <button type="button" role="menuitem" (click)="setLang('pt')" [class]="langBtnClass('pt')">PT</button>
-                  <button type="button" role="menuitem" (click)="setLang('en')" [class]="langBtnClass('en')">EN</button>
-                </div>
-                <div class="border-t border-slate-100 mt-0.5 pt-0.5">
-                  <button
-                    type="button"
-                    role="menuitem"
-                    (click)="onSignOut()"
-                    class="w-full text-left px-3 py-2.5 text-[13px] font-semibold text-red-700 hover:bg-red-50 rounded-lg transition-colors min-h-10"
-                  >
-                    {{ 'shell.signOut' | translate }}
-                  </button>
-                </div>
-              </div>
-            }
-          </div>
-        </div>
-      </div>
-
       <!-- Desktop: sidebar 240px | Main. Mobile: sem sidebar (usa bottom nav) -->
       <div class="lg:grid" style="grid-template-columns: 240px 1fr">
         <!-- ── Sidebar (desktop) ───────────────────────────────────────────── -->
@@ -180,28 +115,82 @@ const NAV_ITEMS = [
 
         <!-- ── Main content ────────────────────────────────────────────────── -->
         <div class="flex flex-col min-w-0">
-          <div class="flex-1 overflow-y-auto pb-[60px] lg:pb-0">
+          <div class="flex-1 overflow-y-auto pb-[calc(60px+env(safe-area-inset-bottom,0px))] lg:pb-0">
             <router-outlet />
           </div>
           <nb-pwa-banner-portal />
         </div>
       </div>
 
-      <!-- Bottom nav — mobile -->
+      <!-- Bottom nav — mobile: Conta (menu) | Bolões | Prêmios -->
       <nav
-        class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-30 lg:hidden"
-        style="height: 60px; padding-bottom: env(safe-area-inset-bottom, 0px)"
+        class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-30 lg:hidden box-border"
+        style="min-height: calc(60px + env(safe-area-inset-bottom, 0px)); padding-bottom: env(safe-area-inset-bottom, 0px)"
       >
-        <div class="flex h-full items-stretch gap-0.5 px-1 pt-0.5">
+        <div class="flex h-[60px] items-stretch gap-0.5 px-1 pt-0.5">
+          <div
+            class="w-[4.75rem] shrink-0 flex flex-col items-stretch justify-stretch rounded-t-xl relative"
+            data-portal-user-menu-root
+          >
+            <button
+              type="button"
+              class="flex flex-1 flex-col items-center justify-center gap-0.5 text-slate-500 min-h-0 w-full rounded-t-xl hover:bg-slate-50 hover:text-slate-700 transition-colors"
+              [class.bg-slate-100]="userMenuOpen()"
+              [class.text-slate-800]="userMenuOpen()"
+              (click)="toggleUserMenu($event)"
+              [attr.aria-expanded]="userMenuOpen()"
+              [attr.aria-label]="'shell.userMenu' | translate"
+              aria-haspopup="true"
+            >
+              <span
+                class="w-9 h-9 rounded-full bg-green-100 text-green-800 flex items-center justify-center font-semibold text-[11px] leading-none"
+                >{{ initials() }}</span
+              >
+              <span class="text-[10.5px] font-medium flex items-center gap-0.5 max-w-full">
+                <span class="truncate">{{ 'portal.nav.account' | translate }}</span>
+                <span class="text-[8px] text-slate-400 shrink-0" [class.rotate-180]="userMenuOpen()">▼</span>
+              </span>
+            </button>
+            @if (userMenuOpen()) {
+              <div
+                role="menu"
+                class="absolute bottom-full left-0 mb-1.5 w-[min(18rem,calc(100vw-2rem))] py-1.5 bg-white border border-slate-200 rounded-xl shadow-lg z-[80]"
+              >
+                <div class="px-3 py-2 border-b border-slate-100">
+                  <div class="text-[10px] text-slate-500 leading-tight">{{ 'portalCotas.hello' | translate }}</div>
+                  <div class="text-[13px] font-semibold text-slate-900 truncate">{{ displayName() }}</div>
+                </div>
+                <div
+                  class="px-3 py-1.5 text-[10px] font-semibold text-slate-500 uppercase tracking-wide border-b border-slate-100"
+                >
+                  {{ 'shell.language' | translate }}
+                </div>
+                <div class="flex gap-1 p-2">
+                  <button type="button" role="menuitem" (click)="setLang('pt')" [class]="langBtnClass('pt')">PT</button>
+                  <button type="button" role="menuitem" (click)="setLang('en')" [class]="langBtnClass('en')">EN</button>
+                </div>
+                <div class="border-t border-slate-100 mt-0.5 pt-0.5">
+                  <button
+                    type="button"
+                    role="menuitem"
+                    (click)="onSignOut()"
+                    class="w-full text-left px-3 py-2.5 text-[13px] font-semibold text-red-700 hover:bg-red-50 rounded-lg transition-colors min-h-10"
+                  >
+                    {{ 'shell.signOut' | translate }}
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
           @for (item of navItems; track item.id) {
             <a
               [routerLink]="item.route"
               routerLinkActive="bg-green-50 text-green-800 font-semibold shadow-[inset_0_3px_0_0_#166534]"
               [routerLinkActiveOptions]="{ exact: true }"
-              class="flex-1 flex flex-col items-center justify-center gap-0.5 text-slate-500 no-underline transition-colors min-h-0 rounded-t-xl hover:bg-slate-50 hover:text-slate-700"
+              class="flex-1 flex flex-col items-center justify-center gap-0.5 text-slate-500 no-underline transition-colors min-h-0 min-w-0 rounded-t-xl hover:bg-slate-50 hover:text-slate-700"
             >
               <span class="text-xl leading-none">{{ item.icon }}</span>
-              <span class="text-[10.5px] font-medium">{{ item.labelKey | translate }}</span>
+              <span class="text-[10.5px] font-medium truncate max-w-full px-0.5">{{ item.labelKey | translate }}</span>
             </a>
           }
         </div>

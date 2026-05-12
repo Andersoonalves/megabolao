@@ -12,7 +12,7 @@ import { AuthService } from '../../../core/services/auth.service';
   template: `
     @if (visible()) {
       <div class="fixed left-4 right-4 z-50 rounded-2xl px-4 py-3.5 shadow-xl flex items-center gap-3"
-           style="background: #1F4E79; bottom: calc(68px + env(safe-area-inset-bottom, 0px))">
+           style="background: #1F4E79; bottom: calc(60px + env(safe-area-inset-bottom, 0px))">
         <!-- Ícone -->
         <div class="w-10 h-10 rounded-xl bg-white/20 text-white flex items-center justify-center font-display font-bold text-sm flex-shrink-0">
           NB

@@ -1,3 +1,5 @@
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { existsSync, readdirSync, readlinkSync, rmSync } from 'fs';
 import { join } from 'path';
@@ -47,10 +49,28 @@ function countGroupParticipantsFromChat(chat: {
   }
 }
 
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isBrowserProfileLockedError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return (
+    msg.includes('browser is already running')
+    || msg.includes('userDataDir')
+    || msg.includes('SingletonLock')
+  );
+}
+
+const execFileAsync = promisify(execFile);
+
 @Injectable()
 export class WhatsAppClientManager implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(WhatsAppClientManager.name);
   private readonly sessions = new Map<string, SessionEntry>();
+
+  /** Liberação do diretório de perfil após `destroy()` — novo `iniciar` deve aguardar. */
+  private readonly pendingProfileRelease = new Map<string, Promise<void>>();
 
   // Fila garante que só um Chrome inicializa por vez — inits simultâneos causam "detached Frame"
   private initChain: Promise<void> = Promise.resolve();
@@ -64,6 +84,14 @@ export class WhatsAppClientManager implements OnModuleInit, OnModuleDestroy {
       .filter((e) => e.isDirectory() && e.name.startsWith('session-'))
       .map((e) => e.name.replace('session-', ''));
 
+    // Após restart do Node, Chrome órfão pode manter o userDataDir — libera antes de reconectar
+    for (const tenantId of tenantIds) {
+      await this.liberarPerfilChromeParaTenant(tenantId, 'startup');
+    }
+    if (tenantIds.length > 0) {
+      await delay(500);
+    }
+
     for (const tenantId of tenantIds) {
       this.logger.log(`Auto-reconectando WhatsApp para tenant ${tenantId}`);
       void this.iniciar(tenantId);
@@ -71,6 +99,13 @@ export class WhatsAppClientManager implements OnModuleInit, OnModuleDestroy {
   }
 
   async iniciar(tenantId: string): Promise<WaSessionInfo> {
+    await this.pendingProfileRelease.get(tenantId)?.catch(() => undefined);
+
+    const zombie = this.sessions.get(tenantId);
+    if (zombie?.status === 'DESCONECTADO') {
+      this.sessions.delete(tenantId);
+    }
+
     const existing = this.sessions.get(tenantId);
     if (existing?.status === 'CONECTADO') {
       return { status: 'CONECTADO', numero: existing.numero };
@@ -107,9 +142,22 @@ export class WhatsAppClientManager implements OnModuleInit, OnModuleDestroy {
       if (timeoutRef.handle) clearTimeout(timeoutRef.handle);
       intentionalDestroy = true;
       sinalizarPronto();
+      entry.status = 'DESCONECTADO';
       client.removeAllListeners();
-      this.sessions.delete(tenantId);
-      void client.destroy().catch(() => undefined);
+
+      const release = (async (): Promise<void> => {
+        try {
+          await client.destroy();
+        } catch {
+          /* sessão já inválida */
+        }
+        await delay(450);
+        this.sessions.delete(tenantId);
+      })().finally(() => {
+        this.pendingProfileRelease.delete(tenantId);
+      });
+
+      this.pendingProfileRelease.set(tenantId, release);
     };
 
     client.on('loading_screen', (percent: number, message: string) => {
@@ -134,13 +182,11 @@ export class WhatsAppClientManager implements OnModuleInit, OnModuleDestroy {
     });
 
     client.on('auth_failure', () => {
-      entry.status = 'DESCONECTADO';
       destruir();
       this.logger.warn(`Falha de autenticação WhatsApp para tenant ${tenantId}`);
     });
 
     client.on('disconnected', () => {
-      entry.status = 'DESCONECTADO';
       destruir();
       this.logger.warn(`WhatsApp desconectado para tenant ${tenantId}`);
     });
@@ -154,27 +200,45 @@ export class WhatsAppClientManager implements OnModuleInit, OnModuleDestroy {
           return;
         }
 
-        await this.limparLockOrfao(tenantId);
+        await this.liberarPerfilChromeParaTenant(tenantId, 'pre-init');
 
         // Timeout começa só agora — quando o Chrome realmente vai subir
         timeoutRef.handle = setTimeout(() => {
           if (entry.status === 'CARREGANDO') {
             this.logger.error(`Timeout na inicialização WhatsApp para tenant ${tenantId}`);
-            entry.status = 'DESCONECTADO';
             destruir();
           }
         }, 90_000);
 
-        const initPromise = client.initialize();
-        if (initPromise != null && typeof initPromise.catch === 'function') {
-          void initPromise.catch((err: unknown) => {
+        const runInitialize = async (): Promise<void> => {
+          try {
+            await client.initialize();
+          } catch (err: unknown) {
             if (intentionalDestroy) return;
+            if (isBrowserProfileLockedError(err)) {
+              this.logger.warn(
+                `Perfil Chrome ocupado para tenant ${tenantId} — matando órfãos, limpando locks e repetindo initialize uma vez`,
+              );
+              await this.liberarPerfilChromeParaTenant(tenantId, 'retry');
+              await delay(1200);
+              try {
+                await client.initialize();
+                return;
+              } catch (err2: unknown) {
+                if (intentionalDestroy) return;
+                if (timeoutRef.handle) clearTimeout(timeoutRef.handle);
+                this.logger.error(`Falha ao inicializar WhatsApp para tenant ${tenantId}`, err2);
+                destruir();
+                return;
+              }
+            }
             if (timeoutRef.handle) clearTimeout(timeoutRef.handle);
             this.logger.error(`Falha ao inicializar WhatsApp para tenant ${tenantId}`, err);
-            entry.status = 'DESCONECTADO';
             destruir();
-          });
-        }
+          }
+        };
+
+        void runInitialize();
 
         return prontoParaProximo;
       });
@@ -207,15 +271,20 @@ export class WhatsAppClientManager implements OnModuleInit, OnModuleDestroy {
   }
 
   async encerrar(tenantId: string): Promise<void> {
+    await this.pendingProfileRelease.get(tenantId)?.catch(() => undefined);
+
     const entry = this.sessions.get(tenantId);
     if (!entry) return;
+    entry.status = 'DESCONECTADO';
     entry.client.removeAllListeners();
     try {
       await entry.client.destroy();
     } catch {
       // Sessão pode já estar inválida
     }
+    await delay(450);
     this.sessions.delete(tenantId);
+    this.pendingProfileRelease.delete(tenantId);
     this.logger.log(`Sessão WhatsApp encerrada para tenant ${tenantId}`);
   }
 
@@ -245,44 +314,112 @@ export class WhatsAppClientManager implements OnModuleInit, OnModuleDestroy {
     await entry.client.sendMessage(grupoId, mensagem);
   }
 
-  private async limparLockOrfao(tenantId: string): Promise<void> {
-    const sessionDir = join(process.cwd(), '.wa-sessions', `session-${tenantId}`);
-    const lockFile = join(sessionDir, 'SingletonLock');
+  private sessionPath(tenantId: string): string {
+    return join(process.cwd(), '.wa-sessions', `session-${tenantId}`);
+  }
 
-    if (!existsSync(lockFile)) return;
+  /**
+   * Mata processos cuja linha de comando referencia este userDataDir (Chrome órfão após crash do backend)
+   * e remove arquivos de lock. No Windows não faz nada (dev local costuma ser macOS/Linux).
+   */
+  private async liberarPerfilChromeParaTenant(tenantId: string, motivo: string): Promise<void> {
+    await this.matarBrowsersOrfaosDoPerfil(tenantId);
+    await this.limparLockOrfao(tenantId, motivo);
+  }
 
-    // SingletonLock é symlink no formato "hostname-PID" — extrair PID diretamente
+  private async matarBrowsersOrfaosDoPerfil(tenantId: string): Promise<void> {
+    if (process.platform === 'win32') return;
+
+    const sessionDir = this.sessionPath(tenantId);
+    if (!existsSync(sessionDir)) return;
+
     try {
-      const target = readlinkSync(lockFile);
-      const pid = parseInt(target.split('-').pop() ?? '', 10);
-      if (!isNaN(pid)) {
+      const { stdout } = await execFileAsync('pgrep', ['-f', sessionDir], {
+        encoding: 'utf8',
+        maxBuffer: 1024 * 1024,
+      });
+      const pids = [...new Set(
+        stdout
+          .trim()
+          .split(/\n/)
+          .map((s) => parseInt(s.trim(), 10))
+          .filter((n) => !Number.isNaN(n) && n > 0 && n !== process.pid),
+      )];
+      if (pids.length === 0) return;
+
+      this.logger.warn(
+        `Encerrando ${pids.length} processo(s) órfão(s) no perfil WA (${tenantId}): ${pids.join(', ')}`,
+      );
+      for (const pid of pids) {
         try {
-          process.kill(pid, 'SIGKILL');
-          // Aguarda processo morrer antes de deletar locks —
-          // Chrome recria o SingletonLock se detecta que foi removido enquanto vivo
-          for (let i = 0; i < 40; i++) {
-            try {
-              process.kill(pid, 0); // sinal 0 = verificar se processo existe
-              await new Promise<void>((r) => setTimeout(r, 50));
-            } catch {
-              break; // ESRCH = processo morto
-            }
-          }
-          this.logger.warn(`Chrome órfão (PID ${pid}) encerrado para tenant ${tenantId}`);
+          process.kill(pid, 'SIGTERM');
         } catch {
-          // Processo já morto
+          /* ESRCH */
         }
       }
-    } catch {
-      // Lock não é symlink — segue para limpeza
+      await delay(400);
+      for (const pid of pids) {
+        try {
+          process.kill(pid, 0);
+          process.kill(pid, 'SIGKILL');
+        } catch {
+          /* já encerrou */
+        }
+      }
+      await delay(300);
+    } catch (err: unknown) {
+      const e = err as { code?: string | number; status?: number; errno?: string };
+      if (e.code === 'ENOENT' || e.errno === 'ENOENT') return;
+      if (e.code === 1 || e.status === 1) return;
+      this.logger.debug(`pgrep perfil WA (${tenantId}): ${String(err)}`);
+    }
+  }
+
+  private async limparLockOrfao(tenantId: string, motivo: string): Promise<void> {
+    const sessionDir = this.sessionPath(tenantId);
+    if (!existsSync(sessionDir)) return;
+
+    const lockFile = join(sessionDir, 'SingletonLock');
+    let matouPorSymlink = false;
+
+    if (existsSync(lockFile)) {
+      // SingletonLock é symlink no formato "hostname-PID" — extrair PID diretamente
+      try {
+        const target = readlinkSync(lockFile);
+        const pid = parseInt(target.split('-').pop() ?? '', 10);
+        if (!isNaN(pid)) {
+          try {
+            process.kill(pid, 'SIGKILL');
+            for (let i = 0; i < 40; i++) {
+              try {
+                process.kill(pid, 0);
+                await new Promise<void>((r) => setTimeout(r, 50));
+              } catch {
+                break;
+              }
+            }
+            this.logger.warn(`Chrome órfão (PID ${pid}) encerrado via SingletonLock — tenant ${tenantId} (${motivo})`);
+            matouPorSymlink = true;
+          } catch {
+            // Processo já morto
+          }
+        }
+      } catch {
+        // Lock não é symlink — segue para limpeza de artefatos
+      }
     }
 
-    // Deleta todos os locks DEPOIS que o processo morreu — preserva auth em Default/
+    let removeu = false;
     for (const name of ['SingletonLock', 'SingletonCookie', 'SingletonSocket', 'DevToolsActivePort']) {
       const f = join(sessionDir, name);
-      if (existsSync(f)) rmSync(f);
+      if (existsSync(f)) {
+        rmSync(f);
+        removeu = true;
+      }
     }
-    this.logger.warn(`Locks removidos para tenant ${tenantId}`);
+    if (removeu || matouPorSymlink) {
+      this.logger.warn(`Perfil WA liberado para tenant ${tenantId} (${motivo})`);
+    }
   }
 
   async onModuleDestroy(): Promise<void> {
