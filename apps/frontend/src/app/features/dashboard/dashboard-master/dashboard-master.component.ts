@@ -5,6 +5,7 @@ import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { ApiService } from '../../../core/services/api.service';
+import { MegaSenaAlertComponent } from '../../../shared/components/mega-sena-alert/mega-sena-alert.component';
 import { BrlPipe, LocalNumPipe } from '../../../shared/pipes/locale-pipes';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -51,7 +52,7 @@ const STATIC_STATS: Record<string, Omit<TenantDisplay, keyof TenantResponse>> = 
 @Component({
   selector: 'nb-dashboard-master',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, LocalNumPipe, BrlPipe, TranslatePipe],
+  imports: [RouterLink, LocalNumPipe, BrlPipe, TranslatePipe, MegaSenaAlertComponent],
   template: `
     <!-- Topbar -->
     <div class="bg-white border-b border-slate-200 px-4 lg:px-7 py-3 flex items-center justify-between gap-4 sticky top-14 lg:top-0 z-10">
@@ -72,6 +73,8 @@ const STATIC_STATS: Record<string, Omit<TenantDisplay, keyof TenantResponse>> = 
         </a>
       </div>
     </div>
+
+    <nb-mega-sena-alert />
 
     <!-- Page -->
     <div class="p-4 lg:p-7">

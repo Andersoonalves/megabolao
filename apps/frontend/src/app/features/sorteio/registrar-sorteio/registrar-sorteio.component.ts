@@ -7,6 +7,19 @@ import { firstValueFrom } from 'rxjs';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { ApiService } from '../../../core/services/api.service';
 import { BackButtonComponent } from '../../../shared/components/back-button/back-button.component';
+import { MegaSenaAlertComponent } from '../../../shared/components/mega-sena-alert/mega-sena-alert.component';
+
+interface ResultadoPendente {
+  numeroConcurso: number;
+  dataSorteio: string;
+  bolasSorteadas: number[];
+}
+
+interface CheckPendenteResponse {
+  hasPendente: boolean;
+  resultado: ResultadoPendente | null;
+  autoApply: boolean;
+}
 
 interface SorteioRecente {
   id: string;
@@ -30,7 +43,7 @@ interface ResultadoCaixa {
 @Component({
   selector: 'nb-registrar-sorteio',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [BackButtonComponent, FormsModule, TranslatePipe],
+  imports: [BackButtonComponent, FormsModule, TranslatePipe, MegaSenaAlertComponent],
   template: `
     <!-- Topbar -->
     <div class="bg-white border-b border-slate-200 px-4 lg:px-7 py-3 flex items-center gap-3 sticky top-14 lg:top-0 z-10">
@@ -50,6 +63,9 @@ interface ResultadoCaixa {
         </button>
       </div>
     </div>
+
+    <!-- Alerta resultado pendente (componente compartilhado) -->
+    <nb-mega-sena-alert (applied)="loadRecentes()" />
 
     <!-- Page -->
     <div class="p-4 lg:p-7 max-w-[1100px]">
@@ -240,6 +256,32 @@ interface ResultadoCaixa {
               <strong>{{ 'registrarSorteio.tipTitle' | translate }}</strong> {{ 'registrarSorteio.tipBody' | translate }}
             </p>
           </div>
+
+          <!-- Config auto-apply -->
+          <div class="bg-white border border-slate-200 rounded-lg p-4">
+            <h3 class="font-display font-semibold text-[14px] mb-3 flex items-center gap-2">
+              ⚙ Automação
+            </h3>
+            <label class="flex items-start gap-3 cursor-pointer">
+              <div class="relative mt-0.5">
+                <input type="checkbox"
+                       [checked]="autoApply()"
+                       (change)="toggleAutoApply($event)"
+                       class="sr-only" />
+                <div class="w-10 h-6 rounded-full transition-colors"
+                     [class]="autoApply() ? 'bg-green-700' : 'bg-slate-200'">
+                  <div class="w-4 h-4 bg-white rounded-full shadow mt-1 transition-transform"
+                       [class]="autoApply() ? 'translate-x-5 ml-0.5' : 'translate-x-1'"></div>
+                </div>
+              </div>
+              <div>
+                <div class="text-[13px] font-semibold text-slate-800">Aplicar resultado automaticamente</div>
+                <div class="text-[11.5px] text-slate-500 mt-0.5">
+                  Quando houver resultado novo, aplica em todos os bolões em andamento sem confirmação manual
+                </div>
+              </div>
+            </label>
+          </div>
         </aside>
       </div>
     </div>
@@ -266,13 +308,62 @@ export class RegistrarSorteioComponent implements OnInit {
   erroCaixa     = signal('');
   previewCaixa  = signal<ResultadoCaixa | null>(null);
 
+  pendente       = signal<ResultadoPendente | null>(null);
+  autoApply      = signal(false);
+  loadingPendente = signal(false);
+
   valido        = computed(() => this.bolasSelected().length === 6 && this.numeroConcurso() > 0);
   bolasOrdenadas = computed(() => [...this.bolasSelected()].sort((a, b) => a - b));
   readonly nums60 = Array.from({ length: 60 }, (_, i) => i + 1);
 
-  ngOnInit(): void { this.loadRecentes(); }
+  ngOnInit(): void {
+    this.loadRecentes();
+    void this.checkPendente();
+  }
 
-  private async loadRecentes(): Promise<void> {
+  private async checkPendente(): Promise<void> {
+    try {
+      const res = await firstValueFrom(this.api.get<CheckPendenteResponse>('/sorteios/mega-sena/pendente'));
+      this.pendente.set(res.hasPendente ? res.resultado : null);
+      this.autoApply.set(res.autoApply);
+    } catch { /* silencioso */ }
+  }
+
+  async aplicarPendente(): Promise<void> {
+    if (this.loadingPendente()) return;
+    this.loadingPendente.set(true);
+    try {
+      await firstValueFrom(this.api.post('/sorteios/mega-sena/aplicar', {}));
+      this.pendente.set(null);
+      await this.loadRecentes();
+      this.sucesso.set(true);
+      this.ultimoConcurso.set(this.pendente()?.numeroConcurso ?? 0);
+    } catch (err: unknown) {
+      this.error.set((err as { error?: { message?: string } })?.error?.message ?? 'Erro ao aplicar resultado');
+    } finally {
+      this.loadingPendente.set(false);
+    }
+  }
+
+  async ignorarPendente(): Promise<void> {
+    if (this.loadingPendente()) return;
+    this.loadingPendente.set(true);
+    try {
+      await firstValueFrom(this.api.post('/sorteios/mega-sena/ignorar', {}));
+      this.pendente.set(null);
+    } catch { /* silencioso */ }
+    finally { this.loadingPendente.set(false); }
+  }
+
+  async toggleAutoApply(event: Event): Promise<void> {
+    const checked = (event.target as HTMLInputElement).checked;
+    try {
+      await firstValueFrom(this.api.patch('/sorteios/mega-sena/config', { autoApply: checked }));
+      this.autoApply.set(checked);
+    } catch { this.autoApply.set(!checked); } // reverte se falhar
+  }
+
+  async loadRecentes(): Promise<void> {
     this.loadingRecentes.set(true);
     try {
       const res = await firstValueFrom(this.api.get<SorteioRecente[]>('/sorteios/recentes'));

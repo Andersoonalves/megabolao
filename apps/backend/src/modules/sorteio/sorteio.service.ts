@@ -269,6 +269,76 @@ export class SorteioService {
     };
   }
 
+  // ── Notificação / Auto-apply Mega-Sena ────────────────────────────────────
+
+  async verificarPendente(tenantId: string | null): Promise<{
+    hasPendente: boolean;
+    resultado: { numeroConcurso: number; dataSorteio: string; bolasSorteadas: number[] } | null;
+    autoApply: boolean;
+  }> {
+    this.assertTenantId(tenantId);
+
+    const tenant = await this.prisma.tenant.findUniqueOrThrow({ where: { id: tenantId } });
+
+    const ultimoGlobal = await this.prisma.megaResultado.findFirst({
+      orderBy: { numeroConcurso: 'desc' },
+    });
+
+    if (!ultimoGlobal) return { hasPendente: false, resultado: null, autoApply: tenant.sorteioAutoApply };
+
+    // Já foi dispensado pelo tenant
+    if (tenant.sorteioUltimoIgnorado !== null && tenant.sorteioUltimoIgnorado >= ultimoGlobal.numeroConcurso) {
+      return { hasPendente: false, resultado: null, autoApply: tenant.sorteioAutoApply };
+    }
+
+    // Já foi aplicado neste tenant
+    const jaAplicado = await this.prisma.sorteio.findFirst({
+      where: { tenantId, numeroConcurso: ultimoGlobal.numeroConcurso },
+    });
+
+    if (jaAplicado) return { hasPendente: false, resultado: null, autoApply: tenant.sorteioAutoApply };
+
+    return {
+      hasPendente: true,
+      resultado: {
+        numeroConcurso: ultimoGlobal.numeroConcurso,
+        dataSorteio:    ultimoGlobal.dataSorteio.toISOString().split('T')[0],
+        bolasSorteadas: ultimoGlobal.bolasSorteadas,
+      },
+      autoApply: tenant.sorteioAutoApply,
+    };
+  }
+
+  async aplicarPendente(tenantId: string | null) {
+    this.assertTenantId(tenantId);
+    const { hasPendente, resultado } = await this.verificarPendente(tenantId);
+    if (!hasPendente || !resultado) {
+      throw new BusinessException('NENHUM_PENDENTE', 'Não há resultado pendente para aplicar');
+    }
+    return this.registrarGlobal(tenantId, resultado);
+  }
+
+  async ignorarPendente(tenantId: string | null): Promise<{ ok: true }> {
+    this.assertTenantId(tenantId);
+    const { resultado } = await this.verificarPendente(tenantId);
+    if (!resultado) throw new BusinessException('NENHUM_PENDENTE', 'Não há resultado pendente para ignorar');
+
+    await this.prisma.tenant.update({
+      where: { id: tenantId },
+      data: { sorteioUltimoIgnorado: resultado.numeroConcurso },
+    });
+    return { ok: true };
+  }
+
+  async configurarAutoApply(tenantId: string | null, autoApply: boolean): Promise<{ autoApply: boolean }> {
+    this.assertTenantId(tenantId);
+    await this.prisma.tenant.update({
+      where: { id: tenantId },
+      data: { sorteioAutoApply: autoApply },
+    });
+    return { autoApply };
+  }
+
   private assertTenantId(tenantId: string | null): asserts tenantId is string {
     if (!tenantId) throw new ForbiddenException('TENANT_ID_OBRIGATORIO');
   }

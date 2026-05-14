@@ -4,6 +4,7 @@ import { DecimalPipe, CurrencyPipe, DatePipe, SlicePipe } from '@angular/common'
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../../core/services/api.service';
+import { MegaSenaAlertComponent } from '../../../shared/components/mega-sena-alert/mega-sena-alert.component';
 
 interface BolaoItem {
   id: string;
@@ -19,7 +20,7 @@ interface BolaoItem {
 @Component({
   selector: 'nb-dashboard-admin',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, DecimalPipe, CurrencyPipe, DatePipe, SlicePipe, TranslatePipe],
+  imports: [RouterLink, DecimalPipe, CurrencyPipe, DatePipe, SlicePipe, TranslatePipe, MegaSenaAlertComponent],
   template: `
     <!-- Topbar -->
     <div class="bg-white border-b border-slate-200 px-4 lg:px-7 py-3 flex items-center justify-between gap-4 sticky top-14 lg:top-0 z-10">
@@ -31,6 +32,8 @@ interface BolaoItem {
         </a>
       </div>
     </div>
+
+    <nb-mega-sena-alert (applied)="ngOnInit()" />
 
     <div class="p-4 lg:p-7">
 

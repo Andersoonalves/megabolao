@@ -93,6 +93,8 @@ model Tenant {
   status                TenantStatus @default(ATIVO)
   taxaAdministrativaPct Decimal      @default(15.00) @db.Decimal(5, 2) @map("taxa_administrativa_pct")
   branding              Json         @default("{}")
+  sorteioAutoApply      Boolean      @default(false) @map("sorteio_auto_apply")
+  sorteioUltimoIgnorado Int?         @map("sorteio_ultimo_ignorado")
   criadoEm              DateTime     @default(now()) @db.Timestamptz() @map("criado_em")
   atualizadoEm          DateTime     @default(now()) @db.Timestamptz() @map("atualizado_em")
 
@@ -425,4 +427,14 @@ model Auditoria {
   @@index([acao])
   @@index([recurso, recursoId])
   @@map("auditoria")
+}
+
+model MegaResultado {
+  id              Int      @id @default(autoincrement())
+  numeroConcurso  Int      @unique @map("numero_concurso")
+  dataSorteio     DateTime @db.Date @map("data_sorteio")
+  bolasSorteadas  Int[]    @map("bolas_sorteadas")
+  criadoEm        DateTime @default(now()) @db.Timestamptz() @map("criado_em")
+
+  @@map("mega_resultados")
 }
