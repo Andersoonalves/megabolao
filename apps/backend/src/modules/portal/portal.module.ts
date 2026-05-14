@@ -1,10 +1,11 @@
 import { Module } from '@nestjs/common';
 import { WhatsAppModule } from '../whatsapp/whatsapp.module';
+import { SorteioModule } from '../sorteio/sorteio.module';
 import { PortalController } from './portal.controller';
 import { PortalService } from './portal.service';
 
 @Module({
-  imports: [WhatsAppModule],
+  imports: [WhatsAppModule, SorteioModule],
   controllers: [PortalController],
   providers: [PortalService],
 })

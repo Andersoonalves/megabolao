@@ -34,6 +34,7 @@ const ADMIN_NAV: NavItem[] = [
   { id: 'boloes',     labelKey: 'nav.myPools',     icon: '🎲', route: '/boloes', permissoes: ['bolao.ler'] },
   { id: 'participantes', labelKey: 'nav.participants', icon: '👥', route: '/participantes', permissoes: ['participante.ler'] },
   { id: 'sorteio',       labelKey: 'nav.draws',       icon: '✦', route: '/sorteios', permissoes: ['sorteio.ler'] },
+  { id: 'mega-sena',    labelKey: 'nav.megaSena',    icon: '🎱', route: '/mega-sena', permissoes: ['sorteio.ler'] },
   // { id: 'premios',       labelKey: 'nav.prizes',      icon: '🏆', route: '/bolao/0/premios', permissoes: ['premio.ler'] },
   { sectionKey: 'nav.section.communication' },
   {

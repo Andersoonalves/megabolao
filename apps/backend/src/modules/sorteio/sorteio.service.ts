@@ -229,6 +229,46 @@ export class SorteioService {
     return sorteio;
   }
 
+  async buscarMegaSena(numeroConcurso?: number, ultimos?: number): Promise<
+    { numeroConcurso: number; dataSorteio: string; bolasSorteadas: number[] } |
+    { numeroConcurso: number; dataSorteio: string; bolasSorteadas: number[] }[]
+  > {
+    const ultimo = await this.fetchCaixa(numeroConcurso);
+
+    if (!ultimos || ultimos <= 1) return ultimo;
+
+    const qtd = Math.min(ultimos, 20);
+    const concursos = Array.from({ length: qtd - 1 }, (_, i) => ultimo.numeroConcurso - 1 - i);
+    const anteriores = await Promise.all(concursos.map(n => this.fetchCaixa(n).catch(() => null)));
+
+    return [ultimo, ...anteriores.filter((r): r is NonNullable<typeof r> => r !== null)];
+  }
+
+  private async fetchCaixa(numeroConcurso?: number): Promise<{ numeroConcurso: number; dataSorteio: string; bolasSorteadas: number[] }> {
+    const url = numeroConcurso
+      ? `https://servicebus2.caixa.gov.br/portaldeloterias/api/megasena/${numeroConcurso}`
+      : 'https://servicebus2.caixa.gov.br/portaldeloterias/api/megasena';
+
+    let res: Response;
+    try {
+      res = await fetch(url, { headers: { Accept: 'application/json' } });
+    } catch {
+      throw new BusinessException('CAIXA_INDISPONIVEL', 'Não foi possível conectar à API da Caixa');
+    }
+
+    if (!res.ok) {
+      throw new BusinessException('CAIXA_RESULTADO_NAO_ENCONTRADO', `Concurso não encontrado na Caixa (status ${res.status})`);
+    }
+
+    const data = await res.json() as { numero: number; dataApuracao: string; listaDezenas: string[] };
+    const [d, m, y] = data.dataApuracao.split('/');
+    return {
+      numeroConcurso: data.numero,
+      dataSorteio: `${y}-${m}-${d}`,
+      bolasSorteadas: data.listaDezenas.map(Number).sort((a, b) => a - b),
+    };
+  }
+
   private assertTenantId(tenantId: string | null): asserts tenantId is string {
     if (!tenantId) throw new ForbiddenException('TENANT_ID_OBRIGATORIO');
   }

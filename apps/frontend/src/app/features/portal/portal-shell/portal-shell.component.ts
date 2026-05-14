@@ -14,8 +14,9 @@ import { PwaBannerPortalComponent } from '../../../shared/components/pwa-banner/
 import { PortalApiService } from '../portal-api.service';
 
 const NAV_ITEMS = [
-  { id: 'cotas',   labelKey: 'portal.nav.pools',  icon: '🏠', route: '/portal/cotas' },
-  { id: 'premios', labelKey: 'portal.nav.prizes', icon: '🏆', route: '/portal/premios' },
+  { id: 'cotas',    labelKey: 'portal.nav.pools',   icon: '🏠', route: '/portal/cotas' },
+  { id: 'sorteios', labelKey: 'portal.nav.draws',   icon: '🎱', route: '/portal/sorteios' },
+  { id: 'premios',  labelKey: 'portal.nav.prizes',  icon: '🏆', route: '/portal/premios' },
 ];
 
 @Component({

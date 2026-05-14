@@ -1,15 +1,27 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { Public } from '../auth/decorators/public.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { PortalService } from './portal.service';
+import { SorteioService } from '../sorteio/sorteio.service';
 import { SolicitarPortalOtpDto } from './dto/solicitar-portal-otp.dto';
 
 @ApiTags('portal')
 @Controller('portal')
 export class PortalController {
-  constructor(private readonly portalService: PortalService) {}
+  constructor(
+    private readonly portalService: PortalService,
+    private readonly sorteioService: SorteioService,
+  ) {}
+
+  @Public()
+  @Get('mega-sena')
+  @ApiOperation({ summary: 'Últimos resultados Mega-Sena (público, proxy Caixa)' })
+  @ApiQuery({ name: 'ultimos', required: false, type: Number })
+  buscarMegaSena(@Query('ultimos') ultimos?: string) {
+    return this.sorteioService.buscarMegaSena(undefined, ultimos ? +ultimos : 20);
+  }
 
   @Public()
   @Post('acesso/solicitar-otp')

@@ -64,6 +64,10 @@ export const appRoutes: Route[] = [
         loadComponent: () => import('./features/sorteio/registrar-sorteio/registrar-sorteio.component').then(m => m.RegistrarSorteioComponent),
       },
       {
+        path: 'mega-sena',
+        loadComponent: () => import('./features/sorteio/resultados-mega/resultados-mega.component').then(m => m.ResultadosMegaComponent),
+      },
+      {
         path: 'participantes',
         loadComponent: () => import('./features/participantes/participantes.component').then(m => m.ParticipantesComponent),
       },

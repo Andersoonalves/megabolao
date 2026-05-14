@@ -23,6 +23,7 @@
     "myPools": "Meus bolões",
     "participants": "Participantes",
     "draws": "Sorteios",
+    "megaSena": "Resultados Mega",
     "prizes": "Prêmios",
     "whatsapp": "WhatsApp",
     "whatsappSendSteps": "Enviar em Etapas…",
@@ -133,6 +134,7 @@
   "portal": {
     "nav": {
       "pools": "Bolões",
+      "draws": "Sorteios",
       "prizes": "Prêmios",
       "account": "Conta"
     }

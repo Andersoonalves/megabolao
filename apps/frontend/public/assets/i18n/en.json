@@ -23,6 +23,7 @@
     "myPools": "My pools",
     "participants": "Participants",
     "draws": "Draws",
+    "megaSena": "Mega Results",
     "prizes": "Prizes",
     "whatsapp": "WhatsApp",
     "whatsappSendSteps": "Send in steps…",
@@ -133,6 +134,7 @@
   "portal": {
     "nav": {
       "pools": "Pools",
+      "draws": "Draws",
       "prizes": "Prizes",
       "account": "Account"
     }

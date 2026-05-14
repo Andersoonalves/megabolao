@@ -17,7 +17,10 @@ export const portalRoutes: Route[] = [
         loadComponent: () => import('./portal-cotas/portal-cotas.component').then(m => m.PortalCotasComponent),
       },
       { path: 'ranking', redirectTo: 'cotas', pathMatch: 'full' },
-      { path: 'sorteios', redirectTo: 'cotas', pathMatch: 'full' },
+      {
+        path: 'sorteios',
+        loadComponent: () => import('./portal-sorteios/portal-sorteios.component').then(m => m.PortalSorteiosComponent),
+      },
       {
         path: 'premios',
         loadComponent: () => import('./portal-detalhe/portal-detalhe.component').then(m => m.PortalDetalheComponent),

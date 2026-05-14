@@ -21,6 +21,12 @@ interface RegistroResult {
   sorteios: SorteioRecente[];
 }
 
+interface ResultadoCaixa {
+  numeroConcurso: number;
+  dataSorteio: string;
+  bolasSorteadas: number[];
+}
+
 @Component({
   selector: 'nb-registrar-sorteio',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -78,19 +84,55 @@ interface RegistroResult {
             <h3 class="font-display font-semibold text-[15px]">{{ 'registrarSorteio.cardTitle' | translate }}</h3>
           </div>
 
+          <!-- Buscar da Caixa -->
+          @if (previewCaixa()) {
+            <div class="mx-5 mt-5 p-4 bg-blue-50 border border-blue-200 rounded-xl flex items-start justify-between gap-3">
+              <div>
+                <div class="text-[11.5px] font-semibold text-blue-800 mb-1">Resultado da Caixa — Concurso #{{ previewCaixa()!.numeroConcurso }}</div>
+                <div class="flex gap-1.5 flex-wrap">
+                  @for (n of previewCaixa()!.bolasSorteadas; track n) {
+                    <span class="w-8 h-8 rounded-full flex items-center justify-center font-mono font-semibold text-[12px] bg-blue-700 text-white shadow-sm">{{ pad(n) }}</span>
+                  }
+                </div>
+                <div class="text-[11px] text-blue-600 mt-1.5">{{ fmtDate(previewCaixa()!.dataSorteio) }}</div>
+              </div>
+              <div class="flex flex-col gap-2 shrink-0">
+                <button type="button" (click)="confirmarCaixa()"
+                        class="px-3 py-1.5 bg-blue-700 hover:bg-blue-800 text-white text-xs font-semibold rounded-lg transition-colors">
+                  Usar este resultado
+                </button>
+                <button type="button" (click)="previewCaixa.set(null)"
+                        class="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-semibold rounded-lg transition-colors">
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          }
+
           <div class="p-5">
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
               <div>
                 <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">
                   {{ 'registrarSorteio.numConcurso' | translate }} <span class="text-red-500">*</span>
                 </label>
-                <input [ngModel]="numeroConcurso()" (ngModelChange)="numeroConcurso.set(+$event)"
-                       name="concurso" type="number" inputmode="numeric" min="1"
-                       class="w-full px-3 py-2.5 border rounded-[10px] text-sm font-mono focus:outline-none tabular"
-                       [class]="numeroConcurso() > 0 ? 'border-slate-200 focus:border-green-700' : 'border-red-300 bg-red-50'"
-                       [placeholder]="'registrarSorteio.numPh' | translate" />
+                <div class="flex gap-2">
+                  <input [ngModel]="numeroConcurso()" (ngModelChange)="numeroConcurso.set(+$event)"
+                         name="concurso" type="number" inputmode="numeric" min="1"
+                         class="flex-1 min-w-0 px-3 py-2.5 border rounded-[10px] text-sm font-mono focus:outline-none tabular"
+                         [class]="numeroConcurso() > 0 ? 'border-slate-200 focus:border-green-700' : 'border-red-300 bg-red-50'"
+                         [placeholder]="'registrarSorteio.numPh' | translate" />
+                  <button type="button" (click)="buscarCaixa()"
+                          [disabled]="loadingCaixa()"
+                          title="Buscar resultado na Caixa"
+                          class="shrink-0 px-3 py-2 bg-[#1F4E79] hover:bg-[#2E75B6] disabled:opacity-50 text-white text-xs font-semibold rounded-[10px] transition-colors whitespace-nowrap">
+                    {{ loadingCaixa() ? '…' : '🔍 Caixa' }}
+                  </button>
+                </div>
                 @if (numeroConcurso() === 0) {
                   <p class="text-[11px] text-red-600 mt-1">{{ 'registrarSorteio.numRequired' | translate }}</p>
+                }
+                @if (erroCaixa()) {
+                  <p class="text-[11px] text-red-600 mt-1">{{ erroCaixa() }}</p>
                 }
               </div>
               <div>
@@ -220,6 +262,10 @@ export class RegistrarSorteioComponent implements OnInit {
   ultimoConcurso = signal(0);
   ultimosBoloes  = signal(0);
 
+  loadingCaixa  = signal(false);
+  erroCaixa     = signal('');
+  previewCaixa  = signal<ResultadoCaixa | null>(null);
+
   valido        = computed(() => this.bolasSelected().length === 6 && this.numeroConcurso() > 0);
   bolasOrdenadas = computed(() => [...this.bolasSelected()].sort((a, b) => a - b));
   readonly nums60 = Array.from({ length: 60 }, (_, i) => i + 1);
@@ -275,6 +321,32 @@ export class RegistrarSorteioComponent implements OnInit {
     } finally {
       this.loading.set(false);
     }
+  }
+
+  async buscarCaixa(): Promise<void> {
+    if (this.loadingCaixa()) return;
+    this.loadingCaixa.set(true);
+    this.erroCaixa.set('');
+    this.previewCaixa.set(null);
+    try {
+      const params = this.numeroConcurso() > 0 ? `?concurso=${this.numeroConcurso()}` : '';
+      const res = await firstValueFrom(this.api.get<ResultadoCaixa>(`/sorteios/mega-sena${params}`));
+      this.previewCaixa.set(res);
+    } catch (err: unknown) {
+      const msg = (err as { error?: { message?: string } })?.error?.message ?? 'Erro ao buscar resultado na Caixa';
+      this.erroCaixa.set(msg);
+    } finally {
+      this.loadingCaixa.set(false);
+    }
+  }
+
+  confirmarCaixa(): void {
+    const p = this.previewCaixa();
+    if (!p) return;
+    this.numeroConcurso.set(p.numeroConcurso);
+    this.dataSorteio.set(p.dataSorteio);
+    this.bolasSelected.set(p.bolasSorteadas);
+    this.previewCaixa.set(null);
   }
 
   pad(n: number): string { return String(n).padStart(2, '0'); }
