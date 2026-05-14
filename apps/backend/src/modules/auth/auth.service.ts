@@ -10,6 +10,7 @@ interface SupabaseUserMetadata {
   celular?: string;
   permissoes?: string[];
   permissoes_rev?: string;
+  mfa_enrolled?: boolean;
 }
 
 @Injectable()
@@ -35,6 +36,8 @@ export class AuthService {
 
       const papel = meta.papel as PapelUsuario | undefined;
 
+      const mfaEnrolled = meta.mfa_enrolled === true;
+
       // Sessão OTP (portal participante) — sem papel definido. RLS Supabase governa.
       if (!papel || !(['MASTER', 'ADMIN'] as PapelUsuario[]).includes(papel)) {
         return {
@@ -44,6 +47,7 @@ export class AuthService {
           tenantId: meta.tenant_id ?? null,
           celular: meta.celular ?? user.phone ?? null,
           permissoes: [],
+          mfaEnrolled: false, // participantes do portal não usam 2FA admin
         };
       }
 
@@ -56,6 +60,7 @@ export class AuthService {
           tenantId: null,
           celular: null,
           permissoes: [WILDCARD_PERMISSAO],
+          mfaEnrolled,
         };
       }
 
@@ -78,6 +83,7 @@ export class AuthService {
         tenantId: meta.tenant_id ?? null,
         celular: null,
         permissoes,
+        mfaEnrolled,
       };
     } catch (err) {
       this.logger.error('Erro ao validar token Supabase', err);

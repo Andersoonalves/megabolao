@@ -180,14 +180,94 @@ function savePrefsLocal(p: AdminPrefs): void {
               {{ 'minhaConta.changePassword' | translate }}
             </button>
           </div>
-          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 py-4">
-            <div>
-              <div class="font-medium text-[14px]">{{ 'minhaConta.twoFactor' | translate }}</div>
-              <div class="text-[12.5px] text-slate-500">{{ 'minhaConta.twoFactorHint' | translate }}</div>
+          <!-- 2FA Section -->
+          <div class="py-4 flex flex-col gap-3">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <div class="font-medium text-[14px] flex items-center gap-2">
+                  {{ 'minhaConta.twoFactor' | translate }}
+                  @if (mfaEnrolled()) {
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10.5px] font-bold uppercase bg-green-100 text-green-700">Ativo</span>
+                  } @else {
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10.5px] font-bold uppercase bg-slate-100 text-slate-500">Inativo</span>
+                  }
+                </div>
+                <div class="text-[12.5px] text-slate-500">{{ 'minhaConta.twoFactorHint' | translate }}</div>
+              </div>
+              <div class="flex gap-2 shrink-0">
+                @if (mfaEnrolled()) {
+                  <button type="button" (click)="iniciarDesativar2FA()"
+                          [disabled]="mfaLoading()"
+                          class="inline-flex items-center px-4 py-2.5 bg-white border border-red-200 text-red-700 hover:bg-red-50 rounded-lg text-sm font-semibold min-h-12 disabled:opacity-50">
+                    {{ mfaLoading() ? 'Aguarde…' : 'Desativar 2FA' }}
+                  </button>
+                } @else {
+                  <button type="button" (click)="iniciarAtivar2FA()"
+                          [disabled]="mfaLoading()"
+                          class="inline-flex items-center px-4 py-2.5 bg-[#1F4E79] hover:bg-[#2E75B6] text-white rounded-lg text-sm font-semibold min-h-12 disabled:opacity-50">
+                    {{ mfaLoading() ? 'Aguarde…' : 'Ativar 2FA' }}
+                  </button>
+                }
+              </div>
             </div>
-            <span class="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-bold uppercase bg-slate-100 text-slate-500 shrink-0">
-              {{ 'minhaConta.soon' | translate }}
-            </span>
+
+            <!-- Enrollment: QR Code -->
+            @if (mfaStep() === 'qr') {
+              <div class="p-4 bg-blue-50 border border-blue-200 rounded-xl flex flex-col gap-3">
+                <div class="text-[13px] font-semibold text-blue-900">1. Escaneie o QR Code com seu app autenticador</div>
+                <div class="flex gap-4 items-start">
+                  <div class="bg-white p-2 rounded-lg border border-blue-200 shrink-0">
+                    <img [src]="mfaQrCode()" alt="QR Code 2FA" class="w-32 h-32" />
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <div class="text-[11.5px] text-blue-700 mb-1">Ou insira o código manualmente:</div>
+                    <code class="text-[11px] font-mono bg-white border border-blue-200 rounded px-2 py-1 break-all block">{{ mfaSecret() }}</code>
+                  </div>
+                </div>
+                <div class="text-[13px] font-semibold text-blue-900">2. Digite o código gerado pelo app</div>
+                <div class="flex gap-2">
+                  <input [ngModel]="mfaCode()" (ngModelChange)="mfaCode.set($event)"
+                         type="text" inputmode="numeric" maxlength="6" placeholder="000000"
+                         class="flex-1 px-3 py-2.5 border border-blue-200 rounded-lg text-center font-mono text-xl tracking-[0.3em] focus:outline-none focus:border-blue-500" />
+                  <button type="button" (click)="confirmarEnroll()"
+                          [disabled]="mfaCode().length !== 6 || mfaLoading()"
+                          class="px-4 py-2.5 bg-green-700 hover:bg-green-800 text-white rounded-lg text-sm font-semibold disabled:opacity-50">
+                    {{ mfaLoading() ? '…' : 'Confirmar' }}
+                  </button>
+                  <button type="button" (click)="cancelarMfa()"
+                          class="px-4 py-2.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-lg text-sm font-semibold">
+                    Cancelar
+                  </button>
+                </div>
+                @if (mfaError()) {
+                  <div class="text-[12px] text-red-600">⚠ {{ mfaError() }}</div>
+                }
+              </div>
+            }
+
+            <!-- Disable: confirm code -->
+            @if (mfaStep() === 'disable') {
+              <div class="p-4 bg-red-50 border border-red-200 rounded-xl flex flex-col gap-3">
+                <div class="text-[13px] font-semibold text-red-900">Confirme seu código TOTP para desativar</div>
+                <div class="flex gap-2">
+                  <input [ngModel]="mfaCode()" (ngModelChange)="mfaCode.set($event)"
+                         type="text" inputmode="numeric" maxlength="6" placeholder="000000"
+                         class="flex-1 px-3 py-2.5 border border-red-200 rounded-lg text-center font-mono text-xl tracking-[0.3em] focus:outline-none focus:border-red-500" />
+                  <button type="button" (click)="confirmarDesativar()"
+                          [disabled]="mfaCode().length !== 6 || mfaLoading()"
+                          class="px-4 py-2.5 bg-red-700 hover:bg-red-800 text-white rounded-lg text-sm font-semibold disabled:opacity-50">
+                    {{ mfaLoading() ? '…' : 'Desativar' }}
+                  </button>
+                  <button type="button" (click)="cancelarMfa()"
+                          class="px-4 py-2.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-lg text-sm font-semibold">
+                    Cancelar
+                  </button>
+                </div>
+                @if (mfaError()) {
+                  <div class="text-[12px] text-red-600">⚠ {{ mfaError() }}</div>
+                }
+              </div>
+            }
           </div>
           <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 py-4 last:pb-0">
             <div>
@@ -314,6 +394,16 @@ export class MinhaContaComponent implements OnInit {
   pwdShowModel = false;
   readonly pwdError = signal<string | null>(null);
   readonly pwdSaving = signal(false);
+
+  // ── 2FA ────────────────────────────────────────────────────────────────────
+  readonly mfaEnrolled = computed(() => this.auth.user()?.mfaEnrolled ?? false);
+  readonly mfaLoading  = signal(false);
+  readonly mfaError    = signal('');
+  readonly mfaStep     = signal<'idle' | 'qr' | 'disable'>('idle');
+  readonly mfaQrCode   = signal('');
+  readonly mfaSecret   = signal('');
+  readonly mfaCode     = signal('');
+  private mfaFactorId  = '';
 
   private snapshotNome = '';
   private snapshotCelular = '';
@@ -448,6 +538,81 @@ export class MinhaContaComponent implements OnInit {
   closePwdModalBackdrop(ev: MouseEvent): void {
     if (ev.target === ev.currentTarget) this.closePwdModal();
   }
+
+  // ── Métodos 2FA ────────────────────────────────────────────────────────────
+
+  async iniciarAtivar2FA(): Promise<void> {
+    this.mfaLoading.set(true);
+    this.mfaError.set('');
+    try {
+      // Admin API garante limpeza de fatores pendentes (SDK não lista não verificados)
+      await firstValueFrom(this.api.delete('/auth/mfa/self')).catch(() => undefined);
+      const result = await this.auth.enrollTotp();
+      this.mfaFactorId = result.factorId;
+      this.mfaQrCode.set(result.qrCode);
+      this.mfaSecret.set(result.secret);
+      this.mfaCode.set('');
+      this.mfaStep.set('qr');
+    } catch (e: unknown) {
+      this.mfaError.set(e instanceof Error ? e.message : 'Erro ao gerar QR Code');
+    } finally {
+      this.mfaLoading.set(false);
+    }
+  }
+
+  async confirmarEnroll(): Promise<void> {
+    if (this.mfaCode().length !== 6 || this.mfaLoading()) return;
+    this.mfaLoading.set(true);
+    this.mfaError.set('');
+    try {
+      await this.auth.verifyTotpEnrollment(this.mfaFactorId, this.mfaCode());
+      // Sincroniza flag no backend
+      await firstValueFrom(this.api.post('/auth/mfa/sync', { enrolled: true }));
+      await this.auth.refreshSession();
+      this.mfaStep.set('idle');
+    } catch {
+      this.mfaError.set('Código inválido. Verifique seu app autenticador.');
+      this.mfaCode.set('');
+    } finally {
+      this.mfaLoading.set(false);
+    }
+  }
+
+  iniciarDesativar2FA(): void {
+    this.mfaCode.set('');
+    this.mfaError.set('');
+    this.mfaStep.set('disable');
+  }
+
+  async confirmarDesativar(): Promise<void> {
+    if (this.mfaCode().length !== 6 || this.mfaLoading()) return;
+    this.mfaLoading.set(true);
+    this.mfaError.set('');
+    try {
+      const fatores = await this.auth.listTotpFactors();
+      if (fatores.length === 0) throw new Error('Nenhum fator encontrado');
+      await this.auth.unenrollTotp(fatores[0].id, this.mfaCode());
+      // Sincroniza flag no backend
+      await firstValueFrom(this.api.post('/auth/mfa/sync', { enrolled: false }));
+      await this.auth.refreshSession();
+      this.mfaStep.set('idle');
+    } catch {
+      this.mfaError.set('Código inválido ou erro ao desativar. Tente novamente.');
+      this.mfaCode.set('');
+    } finally {
+      this.mfaLoading.set(false);
+    }
+  }
+
+  cancelarMfa(): void {
+    this.mfaStep.set('idle');
+    this.mfaCode.set('');
+    this.mfaError.set('');
+    this.mfaQrCode.set('');
+    this.mfaSecret.set('');
+  }
+
+  // ── Senha ──────────────────────────────────────────────────────────────────
 
   async submitPassword(): Promise<void> {
     this.pwdError.set(null);

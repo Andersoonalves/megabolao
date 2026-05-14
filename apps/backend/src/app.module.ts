@@ -2,6 +2,7 @@ import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { MfaGuard } from './modules/auth/mfa.guard';
 import { AuthMiddleware } from './modules/auth/auth.middleware';
 import { AuthModule } from './modules/auth/auth.module';
 import { JwtAuthGuard } from './modules/auth/auth.guard';
@@ -51,9 +52,10 @@ import { PortalModule } from './modules/portal/portal.module';
     PortalModule,
   ],
   providers: [
-    // Ordem: throttle → autenticação → role → permissões
+    // Ordem: throttle → autenticação → 2FA → role → permissões
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: MfaGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
     { provide: APP_GUARD, useClass: PermissoesGuard },
   ],

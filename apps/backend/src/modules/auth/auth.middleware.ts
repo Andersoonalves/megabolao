@@ -10,6 +10,8 @@ declare global {
       user?: AuthenticatedUser;
       tenantId?: string | null;
       rawToken?: string;
+      /** Nível de garantia de autenticação do JWT Supabase: 'aal1' | 'aal2'. */
+      aal?: string;
     }
   }
 }
@@ -23,6 +25,18 @@ export class AuthMiddleware implements NestMiddleware {
 
     if (authHeader?.startsWith('Bearer ')) {
       const token = authHeader.slice(7);
+
+      // Decodifica JWT (sem verificar assinatura — Supabase já validou)
+      // para extrair o claim `aal` (Authentication Assurance Level)
+      try {
+        const payload = JSON.parse(
+          Buffer.from(token.split('.')[1], 'base64url').toString('utf8'),
+        ) as { aal?: string };
+        req.aal = payload.aal;
+      } catch {
+        // JWT malformado — getUser() vai rejeitar também
+      }
+
       const user = await this.authService.validateToken(token);
 
       if (user) {

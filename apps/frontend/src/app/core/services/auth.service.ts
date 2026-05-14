@@ -15,6 +15,19 @@ export interface AuthUser {
   /** `user_metadata.nome_completo` — opcional. */
   nomeCompleto: string | null;
   permissoes: CodigoPermissao[];
+  mfaEnrolled: boolean;
+}
+
+export interface MfaEnrollResult {
+  factorId: string;
+  qrCode: string;  // SVG data URI
+  secret: string;  // para entrada manual no app
+}
+
+export interface MfaAssuranceLevel {
+  currentLevel: 'aal1' | 'aal2';
+  nextLevel: 'aal1' | 'aal2';
+  needsVerification: boolean;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -65,13 +78,31 @@ export class AuthService {
   }
 
   // ── Autenticação email/senha (Admin / Master) ─────────────────────────────
-  async signInWithEmail(email: string, password: string): Promise<void> {
+
+  /**
+   * Realiza login e verifica se 2FA é necessário.
+   * Retorna `{ needsMfa: true }` se sessão precisa de verificação TOTP antes de navegar.
+   * Retorna `{ needsMfa: false }` e navega automaticamente se 2FA não é necessário.
+   */
+  async signInWithEmail(email: string, password: string): Promise<{ needsMfa: boolean }> {
     const { data, error } = await this.supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
-    // MASTER não tem tenant — não pode cair no dashboard admin (/boloes exige X-Tenant-Id).
+
     const meta = data.user?.user_metadata as { papel?: string } | undefined;
-    const dest = meta?.papel === 'MASTER' ? '/dashboard-master' : '/dashboard';
-    await this.router.navigate([dest]);
+    this._postLoginDest = meta?.papel === 'MASTER' ? '/dashboard-master' : '/dashboard';
+
+    const aal = await this.getMfaAssuranceLevel();
+    if (aal.needsVerification) return { needsMfa: true };
+
+    await this.router.navigate([this._postLoginDest]);
+    return { needsMfa: false };
+  }
+
+  private _postLoginDest = '/dashboard';
+
+  /** Navega para o destino pós-login (chamado após verificação TOTP bem-sucedida). */
+  async navigateAfterLogin(): Promise<void> {
+    await this.router.navigate([this._postLoginDest]);
   }
 
   // ── OTP (Portal participante) ─────────────────────────────────────────────
@@ -123,6 +154,7 @@ export class AuthService {
         ? meta.nome_completo.trim()
         : null,
       permissoes,
+      mfaEnrolled:    (meta as { mfa_enrolled?: boolean }).mfa_enrolled === true,
     };
   }
 
@@ -184,5 +216,70 @@ export class AuthService {
   async refreshSession(): Promise<void> {
     const { error } = await this.supabase.auth.refreshSession();
     if (error) throw error;
+  }
+
+  // ── 2FA / MFA (TOTP) ─────────────────────────────────────────────────────
+
+  /** Verifica se a sessão atual precisa de verificação TOTP. */
+  async getMfaAssuranceLevel(): Promise<MfaAssuranceLevel> {
+    const { data, error } = await this.supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (error) throw error;
+    return {
+      currentLevel: data.currentLevel as 'aal1' | 'aal2',
+      nextLevel: data.nextLevel as 'aal1' | 'aal2',
+      needsVerification: data.currentLevel !== data.nextLevel,
+    };
+  }
+
+  /** Inicia enrollment de TOTP — retorna QR code e secret para o usuário escanear. */
+  async enrollTotp(): Promise<MfaEnrollResult> {
+    const { data, error } = await this.supabase.auth.mfa.enroll({ factorType: 'totp', issuer: 'NossoBolão' });
+    if (error) throw error;
+    return {
+      factorId: data.id,
+      qrCode: data.totp.qr_code,
+      secret: data.totp.secret,
+    };
+  }
+
+  /** Verifica o código TOTP e conclui o enrollment. */
+  async verifyTotpEnrollment(factorId: string, code: string): Promise<void> {
+    const { data: challenge, error: ce } = await this.supabase.auth.mfa.challenge({ factorId });
+    if (ce) throw ce;
+    const { error: ve } = await this.supabase.auth.mfa.verify({ factorId, challengeId: challenge.id, code });
+    if (ve) throw ve;
+  }
+
+  /** Remove o fator TOTP (auto-desativar pelo próprio usuário). Requer código atual para confirmar. */
+  async unenrollTotp(factorId: string, code: string): Promise<void> {
+    // Verifica o código antes de desabilitar para confirmar que o usuário tem acesso ao app
+    const { data: challenge, error: ce } = await this.supabase.auth.mfa.challenge({ factorId });
+    if (ce) throw ce;
+    const { error: ve } = await this.supabase.auth.mfa.verify({ factorId, challengeId: challenge.id, code });
+    if (ve) throw ve;
+
+    const { error } = await this.supabase.auth.mfa.unenroll({ factorId });
+    if (error) throw error;
+  }
+
+  /** Verifica código TOTP para elevar sessão de aal1 → aal2 (fluxo pós-login). */
+  async verifyTotpChallenge(code: string): Promise<void> {
+    const { data: factors } = await this.supabase.auth.mfa.listFactors();
+    const totp = factors?.totp?.[0];
+    if (!totp) throw new Error('Nenhum fator TOTP encontrado');
+
+    const { data: challenge, error: ce } = await this.supabase.auth.mfa.challenge({ factorId: totp.id });
+    if (ce) throw ce;
+    const { error } = await this.supabase.auth.mfa.verify({ factorId: totp.id, challengeId: challenge.id, code });
+    if (error) throw error;
+
+    // Sessão agora é aal2 — recarrega para o backend aceitar
+    await this.refreshSession();
+  }
+
+  /** Lista fatores TOTP ativos. */
+  async listTotpFactors(): Promise<{ id: string; status: string }[]> {
+    const { data } = await this.supabase.auth.mfa.listFactors();
+    return data?.totp ?? [];
   }
 }

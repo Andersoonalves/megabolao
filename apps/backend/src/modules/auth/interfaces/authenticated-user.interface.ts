@@ -8,4 +8,6 @@ export interface AuthenticatedUser {
   celular: string | null;
   /** Permissões efetivas resolvidas (união dos perfis). MASTER recebe `['*']`. */
   permissoes: CodigoPermissao[];
+  /** 2FA TOTP ativo para este usuário (lido de user_metadata.mfa_enrolled). */
+  mfaEnrolled: boolean;
 }

@@ -39,6 +39,33 @@ import { LangToggleComponent } from '../../../shared/components/lang-toggle/lang
             <div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{{ error() }}</div>
           }
 
+          @if (showMfaChallenge()) {
+            <!-- Step 2: TOTP challenge -->
+            <div class="flex flex-col gap-4">
+              <div class="p-4 bg-blue-50 border border-blue-200 rounded-xl text-center">
+                <div class="text-3xl mb-2">🔐</div>
+                <div class="font-semibold text-[14px] text-slate-800 mb-1">Verificação em dois fatores</div>
+                <div class="text-[12.5px] text-slate-500">Insira o código de 6 dígitos do seu aplicativo autenticador.</div>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">Código TOTP</label>
+                <input [ngModel]="totpCode()" (ngModelChange)="totpCode.set($event)"
+                       name="totp" type="text" inputmode="numeric" autocomplete="one-time-code"
+                       maxlength="6" placeholder="000000"
+                       class="w-full px-3 py-3 border border-slate-200 rounded-[10px] text-center text-2xl font-mono tracking-[0.4em] focus:outline-none focus:border-green-700 transition-all" />
+              </div>
+              <button type="button" (click)="submitMfa()"
+                      [disabled]="totpCode().length !== 6 || loadingMfa()"
+                      class="w-full min-h-12 px-5 py-3 bg-green-700 hover:bg-green-800 disabled:opacity-50 text-white font-semibold rounded-[10px] transition-colors text-sm shadow-sm">
+                {{ loadingMfa() ? 'Verificando…' : 'Verificar' }}
+              </button>
+              <button type="button" (click)="voltarLogin()"
+                      class="text-[12.5px] text-slate-400 hover:text-slate-600 text-center transition-colors">
+                ← Voltar ao login
+              </button>
+            </div>
+          } @else {
+
           <form (ngSubmit)="submit()" class="flex flex-col gap-3.5">
             <div>
               <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">{{ 'auth.email' | translate }}</label>
@@ -91,6 +118,7 @@ import { LangToggleComponent } from '../../../shared/components/lang-toggle/lang
               💬 {{ 'auth.portalLink' | translate }}
             </a>
           </form>
+          } <!-- end @else (form normal) -->
         </div>
       </div>
 
@@ -126,12 +154,18 @@ export class LoginComponent {
   loading      = signal(false);
   error        = signal('');
 
+  // Step 2: TOTP challenge
+  showMfaChallenge = signal(false);
+  totpCode         = signal('');
+  loadingMfa       = signal(false);
+
   async submit(): Promise<void> {
     if (!this.email || !this.password) return;
     this.loading.set(true);
     this.error.set('');
     try {
-      await this.auth.signInWithEmail(this.email, this.password);
+      const { needsMfa } = await this.auth.signInWithEmail(this.email, this.password);
+      if (needsMfa) this.showMfaChallenge.set(true);
     } catch (err) {
       this.error.set(
         err instanceof Error ? err.message : this.translate.instant('auth.loginError'),
@@ -139,5 +173,27 @@ export class LoginComponent {
     } finally {
       this.loading.set(false);
     }
+  }
+
+  async submitMfa(): Promise<void> {
+    const code = this.totpCode().replace(/\s/g, '');
+    if (code.length !== 6) return;
+    this.loadingMfa.set(true);
+    this.error.set('');
+    try {
+      await this.auth.verifyTotpChallenge(code);
+      await this.auth.navigateAfterLogin();
+    } catch {
+      this.error.set('Código inválido ou expirado. Tente novamente.');
+      this.totpCode.set('');
+    } finally {
+      this.loadingMfa.set(false);
+    }
+  }
+
+  voltarLogin(): void {
+    this.showMfaChallenge.set(false);
+    this.totpCode.set('');
+    this.error.set('');
   }
 }
