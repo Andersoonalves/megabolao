@@ -1,5 +1,6 @@
 import { Route } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
+import { masterGuard } from './core/guards/master.guard';
 import { permissaoGuard } from './core/guards/permissao.guard';
 import { adminDashboardGuard } from './core/guards/admin-dashboard.guard';
 
@@ -29,6 +30,7 @@ export const appRoutes: Route[] = [
       },
       {
         path: 'dashboard-master',
+        canActivate: [masterGuard],
         loadComponent: () => import('./features/dashboard/dashboard-master/dashboard-master.component').then(m => m.DashboardMasterComponent),
       },
       {
@@ -99,14 +101,17 @@ export const appRoutes: Route[] = [
       },
       {
         path: 'relatorios',
+        canActivate: [permissaoGuard('relatorio.gerar')],
         loadComponent: () => import('./features/relatorios/relatorios/relatorios.component').then(m => m.RelatoriosComponent),
       },
       {
         path: 'tenants',
+        canActivate: [masterGuard],
         loadComponent: () => import('./features/master/tenants/tenants.component').then(m => m.TenantsComponent),
       },
       {
         path: 'tenants/novo',
+        canActivate: [masterGuard],
         loadComponent: () => import('./features/master/novo-tenant/novo-tenant.component').then(m => m.NovoTenantComponent),
       },
       {

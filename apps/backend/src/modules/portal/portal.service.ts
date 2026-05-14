@@ -81,22 +81,9 @@ export class PortalService {
     const phone = this.normalizePhone(celular);
     const tenants = await this.findTenantIdsByPhone(phone);
 
-    if (tenants.length === 0) {
-      throw new NotFoundException({
-        statusCode: 404,
-        error: 'CELULAR_NAO_ENCONTRADO',
-        message: 'Número não encontrado neste portal.',
-        details: [{ field: 'celular', code: 'CELULAR_NAO_ENCONTRADO', message: 'Nenhuma cota vinculada a este celular' }],
-      });
-    }
-
-    if (tenants.length > 1) {
-      throw new ConflictException({
-        statusCode: 409,
-        error: 'CELULAR_MULTIPLOS_TENANTS',
-        message: 'Este celular está vinculado a mais de um tenant. Acesse pelo portal específico do tenant.',
-        details: [{ field: 'celular', code: 'CELULAR_AMBIGUO', message: 'Celular encontrado em mais de um tenant' }],
-      });
+    // Resposta idêntica independente do resultado — previne enumeração de celulares
+    if (tenants.length === 0 || tenants.length > 1) {
+      return { ok: true };
     }
 
     return { ok: true };

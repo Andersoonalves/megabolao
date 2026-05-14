@@ -28,10 +28,24 @@ async function bootstrap(): Promise<void> {
   const port = config.get<number>('API_PORT', 3000);
   const corsOrigins = config.get<string>('CORS_ORIGINS', 'http://localhost:4200');
 
-  app.use(helmet());
+  app.use(helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc:  ["'self'"],
+        styleSrc:   ["'self'", "'unsafe-inline'"],
+        imgSrc:     ["'self'", 'data:', 'https:'],
+        connectSrc: ["'self'"],
+        frameSrc:   ["'none'"],
+        objectSrc:  ["'none'"],
+      },
+    },
+    crossOriginEmbedderPolicy: false, // Swagger precisa disto desligado
+    hsts: env === 'production' ? { maxAge: 31_536_000, includeSubDomains: true } : false,
+  }));
 
   app.enableCors({
-    origin: env === 'local' ? true : corsOrigins.split(','),
+    origin: env === 'local' ? true : corsOrigins.split(',').map(o => o.trim()),
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Authorization', 'Content-Type', 'X-Tenant-Id', 'X-Request-Id'],

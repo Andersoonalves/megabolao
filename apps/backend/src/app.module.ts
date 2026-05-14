@@ -1,6 +1,7 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { AuthMiddleware } from './modules/auth/auth.middleware';
 import { AuthModule } from './modules/auth/auth.module';
 import { JwtAuthGuard } from './modules/auth/auth.guard';
@@ -26,6 +27,10 @@ import { PortalModule } from './modules/portal/portal.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ThrottlerModule.forRoot([
+      { name: 'short',  ttl: 1_000,  limit: 10  }, // 10 req/s por IP
+      { name: 'medium', ttl: 60_000, limit: 100 }, // 100 req/min por IP
+    ]),
     SupabaseModule,
     PrismaModule,
     AuthModule,
@@ -46,7 +51,8 @@ import { PortalModule } from './modules/portal/portal.module';
     PortalModule,
   ],
   providers: [
-    // Ordem: autenticação → role legado → permissões granulares
+    // Ordem: throttle → autenticação → role → permissões
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
     { provide: APP_GUARD, useClass: PermissoesGuard },
