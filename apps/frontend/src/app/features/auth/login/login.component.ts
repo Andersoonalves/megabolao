@@ -169,10 +169,12 @@ export class LoginComponent implements OnInit {
 
   ngOnInit(): void {
     this.sessionExpired.set(this.auth.consumeSessionExpiredNotice());
+    this.email = localStorage.getItem('nb_last_email') ?? '';
   }
 
   async submit(): Promise<void> {
     if (!this.email || !this.password) return;
+    localStorage.setItem('nb_last_email', this.email);
     this.loading.set(true);
     this.error.set('');
     try {
