@@ -262,34 +262,53 @@ export class SorteioService {
     return [ultimo, ...anteriores.filter((r): r is NonNullable<typeof r> => r !== null)];
   }
 
-  /**
-   * Painel admin: resultados da Caixa + metadados (prêmio, acumulação, próximo concurso)
-   * e vínculos com sorteios já registrados no tenant.
-   */
-  async buscarMegaSenaPainel(tenantId: string | null, ultimos = 20): Promise<MegaSenaPainelResponseDto> {
-    const consultadoEm = new Date().toISOString();
-    const ultimo = await this.fetchCaixaCompleto(undefined);
-    const qtd = Math.min(Math.max(ultimos, 1), 20);
+  /** Busca resultado(s) completos da Caixa incluindo metadados. Usado pelo checker para popular cache. */
+  async buscarMegaSenaComMeta(
+    numeroConcurso?: number,
+    ultimos = 1,
+  ): Promise<(MegaSenaResultadoCaixaDto & MegaSenaCaixaMetaDto)[]> {
+    const ultimo = await this.fetchCaixaCompleto(numeroConcurso);
+    if (ultimos <= 1) return [ultimo];
 
+    const qtd = Math.min(ultimos, 20);
     const concursos = Array.from({ length: qtd - 1 }, (_, i) => ultimo.numeroConcurso - 1 - i);
     const anteriores = await Promise.all(concursos.map(n => this.fetchCaixaCompleto(n).catch(() => null)));
-    const completos = [ultimo, ...anteriores.filter((r): r is NonNullable<typeof r> => r !== null)];
+    return [ultimo, ...anteriores.filter((r): r is NonNullable<typeof r> => r !== null)];
+  }
 
-    const numeros = completos.map((c) => c.numeroConcurso);
+  /**
+   * Painel admin: lê do cache local (megaResultado) — zero chamadas à API da Caixa por request.
+   * O cache é populado/atualizado pelo CheckMegaSenaProcessor nas janelas de sorteio.
+   */
+  async buscarMegaSenaPainel(tenantId: string | null, ultimos = 10): Promise<MegaSenaPainelResponseDto> {
+    const consultadoEm = new Date().toISOString();
+    const qtd = Math.min(Math.max(ultimos, 1), 10);
+
+    const cached = await this.prisma.megaResultado.findMany({
+      orderBy: { numeroConcurso: 'desc' },
+      take: qtd,
+    });
+
+    // Cache vazio: fallback único para popular (não bloqueia, só log)
+    if (cached.length === 0) {
+      return this.buscarMegaSenaPainelFallback(tenantId, consultadoEm);
+    }
+
+    const numeros = cached.map((c) => c.numeroConcurso);
     const aplicMap = tenantId
       ? await this.buscarAplicacoesPorConcurso(tenantId, numeros)
       : new Map<number, MegaSenaPainelItemDto['aplicacoes']>();
 
-    const itens: MegaSenaPainelItemDto[] = completos.map((row) => ({
+    const itens: MegaSenaPainelItemDto[] = cached.map((row) => ({
       numeroConcurso: row.numeroConcurso,
-      dataSorteio: row.dataSorteio,
+      dataSorteio:    row.dataSorteio.toISOString().split('T')[0],
       bolasSorteadas: row.bolasSorteadas,
-      ganhadoresSena: row.ganhadoresSena,
-      acumulado: row.acumulado,
-      valorArrecadado: row.valorArrecadado,
-      estimativaProximoConcurso: row.estimativaProximoConcurso,
-      dataProximoConcurso: row.dataProximoConcurso,
-      numeroConcursoProximo: row.numeroConcursoProximo,
+      ganhadoresSena: row.ganhadores,
+      acumulado:      row.acumulado,
+      valorArrecadado: row.valorArrecadado ?? null,
+      estimativaProximoConcurso: row.estimativaProximo ?? null,
+      dataProximoConcurso: row.dataProximoConcurso ?? null,
+      numeroConcursoProximo: row.numeroConcursoProximo ?? null,
       aplicacoes: aplicMap.get(row.numeroConcurso) ?? [],
     }));
 
@@ -308,15 +327,58 @@ export class SorteioService {
       bolaoAtivoNome = b?.nome ?? null;
     }
 
+    const latest = cached[0];
     return {
       consultadoEm,
       bolaoAtivoNome,
       resumo: { aplicadosNoPeriodo, totalNoPeriodo: itens.length },
       proximo: {
-        numero: ultimo.numeroConcursoProximo,
-        data: ultimo.dataProximoConcurso,
+        numero: latest.numeroConcursoProximo ?? null,
+        data:   latest.dataProximoConcurso ?? null,
       },
       itens,
+    };
+  }
+
+  /** Fallback para primeira carga quando cache está vazio: 1 request à Caixa. */
+  private async buscarMegaSenaPainelFallback(
+    tenantId: string | null,
+    consultadoEm: string,
+  ): Promise<MegaSenaPainelResponseDto> {
+    const ultimo = await this.fetchCaixaCompleto(undefined);
+    const aplicMap = tenantId
+      ? await this.buscarAplicacoesPorConcurso(tenantId, [ultimo.numeroConcurso])
+      : new Map<number, MegaSenaPainelItemDto['aplicacoes']>();
+
+    const item: MegaSenaPainelItemDto = {
+      numeroConcurso: ultimo.numeroConcurso,
+      dataSorteio:    ultimo.dataSorteio,
+      bolasSorteadas: ultimo.bolasSorteadas,
+      ganhadoresSena: ultimo.ganhadoresSena,
+      acumulado:      ultimo.acumulado,
+      valorArrecadado: ultimo.valorArrecadado,
+      estimativaProximoConcurso: ultimo.estimativaProximoConcurso,
+      dataProximoConcurso: ultimo.dataProximoConcurso,
+      numeroConcursoProximo: ultimo.numeroConcursoProximo,
+      aplicacoes: aplicMap.get(ultimo.numeroConcurso) ?? [],
+    };
+
+    let bolaoAtivoNome: string | null = null;
+    if (tenantId) {
+      const b = await this.prisma.bolao.findFirst({
+        where: { tenantId, status: 'EM_ANDAMENTO' },
+        orderBy: { nome: 'asc' },
+        select: { nome: true },
+      });
+      bolaoAtivoNome = b?.nome ?? null;
+    }
+
+    return {
+      consultadoEm,
+      bolaoAtivoNome,
+      resumo: { aplicadosNoPeriodo: item.aplicacoes.length > 0 ? 1 : 0, totalNoPeriodo: 1 },
+      proximo: { numero: ultimo.numeroConcursoProximo, data: ultimo.dataProximoConcurso },
+      itens: [item],
     };
   }
 

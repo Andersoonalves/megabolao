@@ -430,11 +430,17 @@ model Auditoria {
 }
 
 model MegaResultado {
-  id              Int      @id @default(autoincrement())
-  numeroConcurso  Int      @unique @map("numero_concurso")
-  dataSorteio     DateTime @db.Date @map("data_sorteio")
-  bolasSorteadas  Int[]    @map("bolas_sorteadas")
-  criadoEm        DateTime @default(now()) @db.Timestamptz() @map("criado_em")
+  id                      Int      @id @default(autoincrement())
+  numeroConcurso          Int      @unique @map("numero_concurso")
+  dataSorteio             DateTime @db.Date @map("data_sorteio")
+  bolasSorteadas          Int[]    @map("bolas_sorteadas")
+  ganhadores              Int      @default(0) @map("ganhadores_sena")
+  acumulado               Boolean  @default(false)
+  valorArrecadado         Float?   @map("valor_arrecadado")
+  estimativaProximo       Float?   @map("estimativa_proximo")
+  dataProximoConcurso     String?  @map("data_proximo_concurso")
+  numeroConcursoProximo   Int?     @map("numero_concurso_proximo")
+  criadoEm               DateTime @default(now()) @db.Timestamptz() @map("criado_em")
 
   @@map("mega_resultados")
 }
