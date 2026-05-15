@@ -1,4 +1,4 @@
-import { Component, signal, ChangeDetectionStrategy, inject } from '@angular/core';
+import { Component, signal, ChangeDetectionStrategy, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
@@ -45,6 +45,13 @@ type Step = 'phone' | 'otp';
           @if (step() === 'phone') {
             <h2 class="font-display text-2xl sm:text-3xl font-semibold tracking-tight mb-2">{{ 'portalBusca.phoneTitle' | translate }}</h2>
             <p class="text-slate-500 text-[13px] sm:text-[13.5px] mb-5 sm:mb-6 leading-relaxed">{{ 'portalBusca.phoneHint' | translate }}</p>
+
+            @if (sessionExpired()) {
+              <div class="mb-4 p-3.5 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-900" role="alert">
+                <div class="font-semibold mb-0.5">{{ 'auth.sessionExpiredTitle' | translate }}</div>
+                <div class="text-amber-800/90 leading-relaxed">{{ 'auth.sessionExpiredMessage' | translate }}</div>
+              </div>
+            }
 
             @if (error()) {
               <div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{{ error() }}</div>
@@ -134,7 +141,7 @@ type Step = 'phone' | 'otp';
     </div>
   `,
 })
-export class PortalBuscaComponent {
+export class PortalBuscaComponent implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly portalApi = inject(PortalApiService);
   private readonly router = inject(Router);
@@ -145,6 +152,11 @@ export class PortalBuscaComponent {
   step     = signal<Step>('phone');
   loading  = signal(false);
   error    = signal('');
+  sessionExpired = signal(false);
+
+  ngOnInit(): void {
+    this.sessionExpired.set(this.auth.consumeSessionExpiredNotice());
+  }
 
   async enviarOtp(): Promise<void> {
     if (!this.celular || this.loading()) return;

@@ -1,6 +1,6 @@
 import { Injectable, signal, computed } from '@angular/core';
 import { Router } from '@angular/router';
-import { createClient, Session, SupabaseClient, User } from '@supabase/supabase-js';
+import { AuthChangeEvent, createClient, Session, SupabaseClient, User } from '@supabase/supabase-js';
 import { CodigoPermissao, WILDCARD_PERMISSAO } from '@nossobolao/shared-types';
 import { environment } from '../../../environments/environment';
 
@@ -30,6 +30,9 @@ export interface MfaAssuranceLevel {
   needsVerification: boolean;
 }
 
+/** sessionStorage — aviso na próxima tela de login após expiração. */
+export const SESSION_EXPIRED_STORAGE_KEY = 'nb_session_expired';
+
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly supabase: SupabaseClient;
@@ -38,6 +41,10 @@ export class AuthService {
   private readonly _loading = signal(true);
   // Token armazenado sincronamente — usado pelo authInterceptor
   private _currentToken: string | null = null;
+  private _sessionExpiryInProgress = false;
+  private _manualSignOut = false;
+  /** Evita tratar SIGNED_OUT inicial (visitante sem login) como expiração. */
+  private _hadAuthenticatedSession = false;
 
   readonly user            = this._user.asReadonly();
   readonly loading         = this._loading.asReadonly();
@@ -55,21 +62,100 @@ export class AuthService {
 
   private initAuth(): void {
     // 1. Restaurar sessão do localStorage (necessário no page refresh)
-    this.supabase.auth.getSession().then(({ data }) => {
-      this.applySession(data.session);
+    this.supabase.auth.getSession().then(({ data, error }) => {
+      if (error) {
+        const hadStoredSession = this.hasPersistedSupabaseSession();
+        this.clearLocalSession();
+        if ((this._hadAuthenticatedSession || hadStoredSession) && !this._manualSignOut) {
+          void this.handleSessionExpired();
+        }
+      } else {
+        this.applySession(data.session);
+      }
       this._loading.set(false);
     });
 
     // 2. Reagir a mudanças de sessão (login, logout, token refresh)
-    this.supabase.auth.onAuthStateChange((_event, session) => {
-      this.applySession(session);
+    this.supabase.auth.onAuthStateChange((event, session) => {
+      this.onAuthEvent(event, session);
       this._loading.set(false);
     });
   }
 
+  private onAuthEvent(event: AuthChangeEvent, session: Session | null): void {
+    if (event === 'SIGNED_OUT') {
+      const wasLoggedIn = this._hadAuthenticatedSession;
+      this.clearLocalSession();
+      this._hadAuthenticatedSession = false;
+      if (wasLoggedIn && !this._manualSignOut && !this._sessionExpiryInProgress) {
+        void this.handleSessionExpired();
+      }
+      return;
+    }
+
+    if (event === 'TOKEN_REFRESHED' && !session) {
+      void this.handleSessionExpired();
+      return;
+    }
+
+    this.applySession(session);
+  }
+
+  private clearLocalSession(): void {
+    this._currentToken = null;
+    this._user.set(null);
+  }
+
+  /**
+   * Sessão inválida ou expirada: limpa estado local, redireciona ao login e
+   * marca aviso para exibir na próxima tela de autenticação.
+   * Usa `signOut({ scope: 'local' })` para não chamar refresh no GoTrue (evita 403/oauth).
+   */
+  async handleSessionExpired(): Promise<void> {
+    if (this._sessionExpiryInProgress) return;
+    if (this.isAuthRoute()) return;
+
+    this._sessionExpiryInProgress = true;
+    sessionStorage.setItem(SESSION_EXPIRED_STORAGE_KEY, '1');
+    this.clearLocalSession();
+
+    try {
+      await this.supabase.auth.signOut({ scope: 'local' });
+    } catch {
+      /* token já inválido — limpeza local basta */
+    }
+
+    const dest = this.router.url.startsWith('/portal') ? '/portal/login' : '/login';
+    await this.router.navigateByUrl(dest, { replaceUrl: true });
+    this._sessionExpiryInProgress = false;
+  }
+
+  /** Lê e remove o flag de sessão expirada (telas de login). */
+  consumeSessionExpiredNotice(): boolean {
+    const flag = sessionStorage.getItem(SESSION_EXPIRED_STORAGE_KEY);
+    if (!flag) return false;
+    sessionStorage.removeItem(SESSION_EXPIRED_STORAGE_KEY);
+    return true;
+  }
+
+  private isAuthRoute(): boolean {
+    const url = this.router.url;
+    return url.startsWith('/login') || url.startsWith('/portal/login');
+  }
+
+  private hasPersistedSupabaseSession(): boolean {
+    if (typeof localStorage === 'undefined') return false;
+    return Object.keys(localStorage).some((k) => k.includes('-auth-token'));
+  }
+
   private applySession(session: Session | null): void {
     this._currentToken = session?.access_token ?? null;
-    this._user.set(session?.user ? this.mapUser(session.user) : null);
+    if (session?.user) {
+      this._hadAuthenticatedSession = true;
+      this._user.set(this.mapUser(session.user));
+    } else {
+      this._user.set(null);
+    }
   }
 
   // ── Sincrono — seguro para uso no HttpInterceptorFn ──────────────────────
@@ -124,7 +210,14 @@ export class AuthService {
   }
 
   async signOut(): Promise<void> {
-    await this.supabase.auth.signOut();
+    this._manualSignOut = true;
+    try {
+      await this.supabase.auth.signOut({ scope: 'local' });
+    } finally {
+      this.clearLocalSession();
+      this._manualSignOut = false;
+    }
+    sessionStorage.removeItem(SESSION_EXPIRED_STORAGE_KEY);
     await this.router.navigate(['/login']);
   }
 

@@ -105,7 +105,9 @@
     "heroStatCotas": "cotas no bolão",
     "heroStatPremiados": "premiados",
     "heroStatArrec": "arrecadados",
-    "loginError": "Erro ao fazer login"
+    "loginError": "Erro ao fazer login",
+    "sessionExpiredTitle": "Sessão encerrada",
+    "sessionExpiredMessage": "Sua sessão expirou por segurança. Faça login novamente para continuar."
   },
   "common": {
     "back": "Voltar",

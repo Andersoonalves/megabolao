@@ -105,7 +105,9 @@
     "heroStatCotas": "quotas in the pool",
     "heroStatPremiados": "winners",
     "heroStatArrec": "raised",
-    "loginError": "Could not sign in"
+    "loginError": "Could not sign in",
+    "sessionExpiredTitle": "Session ended",
+    "sessionExpiredMessage": "Your session has expired for security reasons. Please sign in again to continue."
   },
   "common": {
     "back": "Back",

@@ -16,6 +16,7 @@ import localePtBr from '@angular/common/locales/pt';
 import localeEn from '@angular/common/locales/en';
 import { appRoutes } from './app.routes';
 import { authInterceptor } from './core/interceptors/auth.interceptor';
+import { sessionExpiredInterceptor } from './core/interceptors/session-expired.interceptor';
 import { I18nService } from './core/services/i18n.service';
 
 registerLocaleData(localePtBr, 'pt-BR');
@@ -45,7 +46,7 @@ export const appConfig: ApplicationConfig = {
       withComponentInputBinding(),
       withRouterConfig({ paramsInheritanceStrategy: 'always' }),
     ),
-    provideHttpClient(withInterceptors([authInterceptor])),
+    provideHttpClient(withInterceptors([authInterceptor, sessionExpiredInterceptor])),
     provideServiceWorker('ngsw-worker.js', {
       enabled: !isDevMode(),
       // Registra quando o app está estável (após 30s em dev seria muito espera)
