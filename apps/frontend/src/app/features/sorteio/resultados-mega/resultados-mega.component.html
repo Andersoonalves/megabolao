@@ -1,0 +1,286 @@
+<!-- Topbar -->
+<div class="bg-white border-b border-slate-200 px-4 lg:px-7 py-3 flex flex-wrap items-center gap-3 sticky top-14 lg:top-0 z-10">
+  <nb-back-button />
+  <div class="min-w-0 flex-1">
+    <div class="flex items-center gap-2 text-[12.5px] min-w-0 truncate">
+      <span class="text-slate-400 shrink-0">{{ 'megaSenaPainel.breadcrumbParent' | translate }}</span>
+      <span class="text-slate-300 shrink-0">›</span>
+      <span class="font-semibold truncate">{{ 'megaSenaPainel.breadcrumbCurrent' | translate }}</span>
+    </div>
+  </div>
+  <div class="flex flex-wrap gap-2 shrink-0">
+    <button type="button"
+            (click)="carregar()"
+            [disabled]="loading()"
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 text-slate-800 text-sm font-semibold rounded-[10px] transition-colors min-h-9">
+      {{ loading() ? '…' : ('megaSenaPainel.btnSync' | translate) }}
+    </button>
+    <button type="button"
+            (click)="carregar()"
+            [disabled]="loading()"
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#1F4E79] hover:bg-[#2E75B6] disabled:opacity-40 text-white text-sm font-semibold rounded-[10px] transition-colors shadow-sm min-h-9">
+      {{ loading() ? '…' : ('megaSenaPainel.btnFetchLatest' | translate) }}
+    </button>
+  </div>
+</div>
+
+<nb-mega-sena-alert (applied)="carregar()" />
+
+<div class="p-4 lg:p-7 max-w-[1200px] mx-auto">
+  <div class="mb-6">
+    <h1 class="font-display text-[26px] font-semibold tracking-tight mb-1">{{ 'megaSenaPainel.title' | translate }}</h1>
+    <p class="text-slate-500 text-[13.5px] leading-relaxed">
+      {{ 'megaSenaPainel.subtitlePrefix' | translate }}
+      @if (painel(); as p) {
+        <span class="text-slate-600 font-medium">{{ relConsultado(p.consultadoEm) }}</span>
+      }
+      {{ 'megaSenaPainel.subtitleSource' | translate }}
+      <span class="font-mono text-[12px] text-slate-600">servicebus2.caixa.gov.br/portaldeloterias/api/megasena</span>
+    </p>
+  </div>
+
+  @if (error()) {
+    <div class="mb-5 p-3.5 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 flex items-center gap-2">
+      <span aria-hidden="true">⚠</span> {{ error() }}
+    </div>
+  }
+
+  @if (loading() && !painel()) {
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
+      @for (i of skeleton4; track i) {
+        <div class="h-24 rounded-xl border border-slate-200 bg-white animate-pulse"></div>
+      }
+    </div>
+    <div class="h-64 rounded-xl border border-slate-200 bg-white animate-pulse mb-5"></div>
+    <div class="h-80 rounded-xl border border-slate-200 bg-white animate-pulse"></div>
+  } @else if (painel(); as p) {
+    @if (ultimo(); as u) {
+      <!-- KPIs -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
+        <div class="rounded-xl border border-slate-200 bg-white p-[18px] shadow-sm">
+          <div class="text-[11px] font-semibold text-slate-500 uppercase tracking-widest mb-1">{{ 'megaSenaPainel.kpiUltimo' | translate }}</div>
+          <div class="font-display text-[22px] font-semibold text-slate-900">#{{ u.numeroConcurso }}</div>
+          <div class="text-[12px] text-slate-500 mt-0.5">{{ fmtDataCurta(u.dataSorteio) }} · {{ fmtDiaSemana(u.dataSorteio) }}</div>
+        </div>
+        <div class="rounded-xl border border-amber-100 bg-gradient-to-br from-white to-amber-50/80 p-[18px] shadow-sm">
+          <div class="text-[11px] font-semibold text-amber-800/80 uppercase tracking-widest mb-1">{{ 'megaSenaPainel.kpiAcumulo' | translate }}</div>
+          <div class="font-display text-[20px] font-semibold text-amber-900 tabular">{{ fmtMoedaResumida(u.estimativaProximoConcurso) }}</div>
+          <div class="text-[12px] text-amber-800/70 mt-0.5">{{ 'megaSenaPainel.kpiAcumuloHint' | translate }}</div>
+        </div>
+        <div class="rounded-xl border border-slate-200 bg-white p-[18px] shadow-sm">
+          <div class="text-[11px] font-semibold text-slate-500 uppercase tracking-widest mb-1">{{ 'megaSenaPainel.kpiAplicados' | translate }}</div>
+          <div class="font-display text-[22px] font-semibold text-[#1F4E79] tabular">{{ p.resumo.aplicadosNoPeriodo }}/{{ p.resumo.totalNoPeriodo }}</div>
+          <div class="text-[12px] text-slate-500 mt-0.5">{{ 'megaSenaPainel.kpiAplicadosHint' | translate }}</div>
+        </div>
+        <div class="rounded-xl border border-slate-200 bg-white p-[18px] shadow-sm">
+          <div class="text-[11px] font-semibold text-slate-500 uppercase tracking-widest mb-1">{{ 'megaSenaPainel.kpiProximo' | translate }}</div>
+          <div class="font-display text-[20px] font-semibold text-slate-900">{{ fmtProximoData(p.proximo.data) }}</div>
+          <div class="text-[12px] text-slate-500 mt-0.5">{{ fmtProximoExtra(p.proximo.data) }}</div>
+        </div>
+      </div>
+
+      <!-- Destaque último -->
+      <div class="mb-5 overflow-hidden rounded-xl border border-green-200 bg-white shadow-sm">
+        <div class="flex flex-col gap-4 px-5 py-4 sm:px-6 sm:py-[18px] bg-gradient-to-r from-green-800 to-green-700 text-white sm:flex-row sm:items-center sm:justify-between">
+          <div class="flex items-center gap-3 sm:gap-3.5 min-w-0">
+            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-[11px] bg-white/15 text-lg" aria-hidden="true">✨</div>
+            <div class="min-w-0">
+              <div class="text-[11px] font-semibold uppercase tracking-[0.08em] text-white/75">{{ 'megaSenaPainel.heroLabel' | translate }}</div>
+              <div class="font-display text-lg font-semibold sm:text-xl truncate">
+                {{ 'megaSenaPainel.heroTitle' | translate:{ n: u.numeroConcurso, data: fmtDataTitulo(u.dataSorteio) } }}
+              </div>
+            </div>
+          </div>
+          <div class="flex flex-col gap-2 sm:flex-row sm:shrink-0">
+            <a [href]="urlCaixa(u.numeroConcurso)"
+               target="_blank" rel="noopener noreferrer"
+               class="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg border border-white/25 bg-white/10 px-3.5 text-[13px] font-semibold text-white no-underline hover:bg-white/20">
+              {{ 'megaSenaPainel.btnCaixa' | translate }}
+            </a>
+            <button type="button"
+                    (click)="aplicarConcurso(u)"
+                    [disabled]="aplicandoId() === 'hero' || u.aplicacoes.length > 0 || aplicandoLinha() !== null"
+                    class="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg bg-white px-3.5 text-[13px] font-semibold text-green-900 shadow-sm hover:bg-green-50 disabled:cursor-not-allowed disabled:opacity-40">
+              @if (aplicandoId() === 'hero') {
+                <span class="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-green-900 border-t-transparent"></span>
+              }
+              {{ rotuloAplicarHero(p) }}
+            </button>
+          </div>
+        </div>
+        <div class="grid gap-8 p-5 sm:p-6 lg:grid-cols-[1fr_280px] lg:items-center">
+          <div>
+            <div class="mb-2.5 text-[11.5px] font-semibold uppercase tracking-wide text-slate-500">{{ 'megaSenaPainel.numerosLabel' | translate }}</div>
+            <div class="flex flex-wrap gap-2.5">
+              @for (n of u.bolasSorteadas; track n) {
+                <span class="flex h-14 w-14 items-center justify-center rounded-2xl border border-green-800 bg-green-700 font-mono text-lg font-bold text-white shadow-sm select-none sm:h-[56px] sm:w-[56px] sm:text-[18px]">
+                  {{ pad(n) }}
+                </span>
+              }
+            </div>
+          </div>
+          <div class="flex flex-col gap-3.5 border-t border-slate-200 pt-5 lg:border-t-0 lg:border-l lg:pl-8 lg:pt-0">
+            <div>
+              <div class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{{ 'megaSenaPainel.senaLabel' | translate }}</div>
+              <div class="mt-0.5 flex flex-wrap items-baseline gap-2">
+                <span class="font-display text-[22px] font-bold tabular text-green-800">{{ u.ganhadoresSena }}</span>
+                <span class="text-[12.5px] text-slate-500">
+                  {{ u.ganhadoresSena === 1 ? ('megaSenaPainel.ganhadorSing' | translate) : ('megaSenaPainel.ganhadorPlur' | translate) }}
+                  · {{ u.acumulado ? ('megaSenaPainel.acumulou' | translate) : ('megaSenaPainel.premiou' | translate) }}
+                </span>
+              </div>
+            </div>
+            <div class="h-px bg-slate-200"></div>
+            <div>
+              <div class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{{ 'megaSenaPainel.estimativaLabel' | translate }}</div>
+              <div class="font-display mt-0.5 text-[22px] font-bold tabular text-amber-800">{{ fmtMoedaResumida(u.estimativaProximoConcurso) }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Lista -->
+    <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div class="flex flex-col gap-4 border-b border-slate-200 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+        <div class="flex flex-wrap items-center gap-2">
+          <h2 class="font-display text-lg font-semibold text-slate-900">{{ 'megaSenaPainel.tabelaTitulo' | translate }}</h2>
+          <span class="rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-semibold text-slate-600">{{ p.itens.length }} {{ 'megaSenaPainel.concursos' | translate }}</span>
+        </div>
+        <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+          <div class="relative w-full sm:w-60">
+            <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" aria-hidden="true">⌕</span>
+            <input type="search"
+                   [value]="busca()"
+                   (input)="busca.set($any($event.target).value)"
+                   [placeholder]="'megaSenaPainel.buscaPlaceholder' | translate"
+                   class="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-[12.5px] outline-none focus:border-[#1F4E79] focus:ring-1 focus:ring-[#1F4E79]/30" />
+          </div>
+          <select [ngModel]="filtroStatus()"
+                  (ngModelChange)="filtroStatus.set($event)"
+                  class="min-h-10 rounded-lg border border-slate-200 bg-white px-3 text-[12.5px] font-medium text-slate-800">
+            <option value="todos">{{ 'megaSenaPainel.filtroTodos' | translate }}</option>
+            <option value="aplicados">{{ 'megaSenaPainel.filtroAplicados' | translate }}</option>
+            <option value="pendentes">{{ 'megaSenaPainel.filtroPendentes' | translate }}</option>
+          </select>
+          <button type="button"
+                  (click)="exportarCsv()"
+                  [disabled]="!tabelaFiltrada().length"
+                  class="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-[12.5px] font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-40">
+            {{ 'megaSenaPainel.btnExport' | translate }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Desktop -->
+      <div class="hidden md:block overflow-x-auto">
+        <table class="w-full min-w-[860px] text-left text-[13px]">
+          <thead class="border-b border-slate-200 bg-slate-50/80 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+            <tr>
+              <th class="px-4 py-3">{{ 'megaSenaPainel.colConcurso' | translate }}</th>
+              <th class="px-4 py-3">{{ 'megaSenaPainel.colData' | translate }}</th>
+              <th class="px-4 py-3">{{ 'megaSenaPainel.colDezenas' | translate }}</th>
+              <th class="px-4 py-3">{{ 'megaSenaPainel.colGanhadores' | translate }}</th>
+              <th class="px-4 py-3 text-right">{{ 'megaSenaPainel.colPremio' | translate }}</th>
+              <th class="px-4 py-3">{{ 'megaSenaPainel.colAplicado' | translate }}</th>
+              <th class="px-4 py-3 text-right w-28"></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (r of tabelaFiltrada(); track r.numeroConcurso) {
+              <tr class="border-b border-slate-100 hover:bg-slate-50/60">
+                <td class="px-4 py-3 font-mono font-bold text-slate-900">#{{ r.numeroConcurso }}</td>
+                <td class="px-4 py-3">
+                  <div class="font-medium text-slate-800">{{ fmtDataCurta(r.dataSorteio) }}</div>
+                  <div class="text-[11px] text-slate-500">{{ fmtDiaSemana(r.dataSorteio) }}</div>
+                </td>
+                <td class="px-4 py-3">
+                  <div class="flex flex-wrap gap-1">
+                    @for (n of r.bolasSorteadas; track n) {
+                      <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-green-700 font-mono text-[11px] font-semibold text-white">{{ pad(n) }}</span>
+                    }
+                  </div>
+                </td>
+                <td class="px-4 py-3">
+                  @if (r.ganhadoresSena === 0) {
+                    <span class="inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-900 ring-1 ring-amber-100">{{ 'megaSenaPainel.badgeAcumulou' | translate }}</span>
+                  } @else {
+                    <span class="font-mono font-semibold tabular text-slate-800">{{ r.ganhadoresSena }} {{ r.ganhadoresSena === 1 ? ('megaSenaPainel.ganhadorSing' | translate) : ('megaSenaPainel.ganhadorPlur' | translate) }}</span>
+                  }
+                </td>
+                <td class="px-4 py-3 text-right font-mono text-slate-500 tabular">{{ fmtMoedaResumida(r.valorArrecadado) }}</td>
+                <td class="px-4 py-3 text-slate-700">
+                  @if (r.aplicacoes.length) {
+                    @for (a of r.aplicacoes; track a.sorteioId) {
+                      <div class="text-[12.5px] font-medium">{{ a.bolaoNome }}</div>
+                      <div class="text-[11px] text-slate-500">{{ 'megaSenaPainel.sorteioSeq' | translate:{ n: a.sequenciaNoBolao } }}</div>
+                    }
+                  } @else {
+                    <span class="text-slate-400">—</span>
+                  }
+                </td>
+                <td class="px-4 py-3 text-right">
+                  @if (r.aplicacoes.length) {
+                    <span class="text-[11px] text-slate-400">—</span>
+                  } @else {
+                    <button type="button"
+                            (click)="aplicarConcurso(r)"
+                            [disabled]="aplicandoLinha() === r.numeroConcurso"
+                            class="inline-flex min-h-9 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 text-[12px] font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-50">
+                      @if (aplicandoLinha() === r.numeroConcurso) {
+                        <span class="inline-block h-3 w-3 animate-spin rounded-full border-2 border-slate-700 border-t-transparent"></span>
+                      }
+                      {{ 'megaSenaPainel.btnAplicar' | translate }}
+                    </button>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Mobile cards -->
+      <div class="md:hidden flex flex-col divide-y divide-slate-100">
+        @for (r of tabelaFiltrada(); track r.numeroConcurso) {
+          <div class="p-4 space-y-3">
+            <div class="flex justify-between gap-2">
+              <span class="font-mono text-base font-bold text-slate-900">#{{ r.numeroConcurso }}</span>
+              <span class="text-right text-[12px] text-slate-500">{{ fmtDataCurta(r.dataSorteio) }}<br/>{{ fmtDiaSemana(r.dataSorteio) }}</span>
+            </div>
+            <div class="flex flex-wrap gap-1">
+              @for (n of r.bolasSorteadas; track n) {
+                <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-green-700 font-mono text-[11px] font-semibold text-white">{{ pad(n) }}</span>
+              }
+            </div>
+            <div class="flex flex-wrap justify-between gap-2 text-[12px]">
+              <span class="text-slate-600">{{ 'megaSenaPainel.colGanhadores' | translate }}: @if (r.ganhadoresSena === 0) { {{ 'megaSenaPainel.badgeAcumulou' | translate }} } @else { {{ r.ganhadoresSena }} }</span>
+              <span class="font-mono text-slate-500">{{ fmtMoedaResumida(r.valorArrecadado) }}</span>
+            </div>
+            @if (r.aplicacoes.length) {
+              @for (a of r.aplicacoes; track a.sorteioId) {
+                <div class="text-[12px]"><span class="text-slate-500">{{ 'megaSenaPainel.colAplicado' | translate }}:</span> {{ a.bolaoNome }} ({{ 'megaSenaPainel.sorteioSeq' | translate:{ n: a.sequenciaNoBolao } }})</div>
+              }
+            } @else {
+              <button type="button"
+                      (click)="aplicarConcurso(r)"
+                      [disabled]="aplicandoLinha() === r.numeroConcurso"
+                      class="w-full min-h-12 rounded-lg bg-[#1F4E79] px-4 text-sm font-semibold text-white disabled:opacity-50">
+                {{ 'megaSenaPainel.btnAplicar' | translate }}
+              </button>
+            }
+          </div>
+        }
+      </div>
+
+      <div class="flex flex-col gap-2 border-t border-slate-200 px-4 py-3 text-[12px] text-slate-500 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+        <span>{{ 'megaSenaPainel.mostrando' | translate:{ n: tabelaFiltrada().length, t: tabelaBase().length } }}</span>
+      </div>
+    </div>
+  } @else if (!loading()) {
+    <div class="text-center py-16 text-slate-400 rounded-xl border border-dashed border-slate-200">
+      <div class="text-4xl mb-3" aria-hidden="true">🎱</div>
+      <p class="text-[14px]">{{ 'megaSenaPainel.empty' | translate }}</p>
+    </div>
+  }
+</div>

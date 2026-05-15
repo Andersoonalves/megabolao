@@ -4,8 +4,27 @@ import { validarBolasSorteadas } from '@nossobolao/shared-utils';
 import { PrismaService } from '../prisma/prisma.service';
 import { BusinessException } from '../../common/exceptions/business.exception';
 import { CreateSorteioDto } from './dto/create-sorteio.dto';
+import type {
+  MegaSenaCaixaMetaDto,
+  MegaSenaPainelItemDto,
+  MegaSenaPainelResponseDto,
+  MegaSenaResultadoCaixaDto,
+} from './dto/mega-sena-painel.dto';
 import { CALC_ACERTOS_QUEUE, CALC_ACERTOS_QUEUE_NAME, CalcAcertosJobData } from './jobs/calc-acertos.types';
 import { SHEETS_SYNC_QUEUE } from '../google-drive/jobs/sheets-sync.types';
+
+/**
+ * A API `servicebus2.caixa.gov.br` costuma responder 403 sem cabeçalhos típicos de navegador (WAF).
+ * @see https://github.com/BrasilAPI/BrasilAPI/issues/375
+ */
+const CAIXA_LOTERIAS_FETCH_HEADERS: Record<string, string> = {
+  Accept: 'application/json, text/plain, */*',
+  'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
+  'User-Agent':
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+  Referer: 'https://loterias.caixa.gov.br/',
+  Origin: 'https://loterias.caixa.gov.br',
+};
 
 export interface SorteioResponse {
   id: string;
@@ -230,8 +249,7 @@ export class SorteioService {
   }
 
   async buscarMegaSena(numeroConcurso?: number, ultimos?: number): Promise<
-    { numeroConcurso: number; dataSorteio: string; bolasSorteadas: number[] } |
-    { numeroConcurso: number; dataSorteio: string; bolasSorteadas: number[] }[]
+    MegaSenaResultadoCaixaDto | MegaSenaResultadoCaixaDto[]
   > {
     const ultimo = await this.fetchCaixa(numeroConcurso);
 
@@ -244,28 +262,192 @@ export class SorteioService {
     return [ultimo, ...anteriores.filter((r): r is NonNullable<typeof r> => r !== null)];
   }
 
-  private async fetchCaixa(numeroConcurso?: number): Promise<{ numeroConcurso: number; dataSorteio: string; bolasSorteadas: number[] }> {
+  /**
+   * Painel admin: resultados da Caixa + metadados (prêmio, acumulação, próximo concurso)
+   * e vínculos com sorteios já registrados no tenant.
+   */
+  async buscarMegaSenaPainel(tenantId: string | null, ultimos = 20): Promise<MegaSenaPainelResponseDto> {
+    const consultadoEm = new Date().toISOString();
+    const ultimo = await this.fetchCaixaCompleto(undefined);
+    const qtd = Math.min(Math.max(ultimos, 1), 20);
+
+    const concursos = Array.from({ length: qtd - 1 }, (_, i) => ultimo.numeroConcurso - 1 - i);
+    const anteriores = await Promise.all(concursos.map(n => this.fetchCaixaCompleto(n).catch(() => null)));
+    const completos = [ultimo, ...anteriores.filter((r): r is NonNullable<typeof r> => r !== null)];
+
+    const numeros = completos.map((c) => c.numeroConcurso);
+    const aplicMap = tenantId
+      ? await this.buscarAplicacoesPorConcurso(tenantId, numeros)
+      : new Map<number, MegaSenaPainelItemDto['aplicacoes']>();
+
+    const itens: MegaSenaPainelItemDto[] = completos.map((row) => ({
+      numeroConcurso: row.numeroConcurso,
+      dataSorteio: row.dataSorteio,
+      bolasSorteadas: row.bolasSorteadas,
+      ganhadoresSena: row.ganhadoresSena,
+      acumulado: row.acumulado,
+      valorArrecadado: row.valorArrecadado,
+      estimativaProximoConcurso: row.estimativaProximoConcurso,
+      dataProximoConcurso: row.dataProximoConcurso,
+      numeroConcursoProximo: row.numeroConcursoProximo,
+      aplicacoes: aplicMap.get(row.numeroConcurso) ?? [],
+    }));
+
+    let aplicadosNoPeriodo = 0;
+    for (const it of itens) {
+      if (it.aplicacoes.length > 0) aplicadosNoPeriodo += 1;
+    }
+
+    let bolaoAtivoNome: string | null = null;
+    if (tenantId) {
+      const b = await this.prisma.bolao.findFirst({
+        where: { tenantId, status: 'EM_ANDAMENTO' },
+        orderBy: { nome: 'asc' },
+        select: { nome: true },
+      });
+      bolaoAtivoNome = b?.nome ?? null;
+    }
+
+    return {
+      consultadoEm,
+      bolaoAtivoNome,
+      resumo: { aplicadosNoPeriodo, totalNoPeriodo: itens.length },
+      proximo: {
+        numero: ultimo.numeroConcursoProximo,
+        data: ultimo.dataProximoConcurso,
+      },
+      itens,
+    };
+  }
+
+  private async buscarAplicacoesPorConcurso(
+    tenantId: string,
+    numeros: number[],
+  ): Promise<Map<number, MegaSenaPainelItemDto['aplicacoes']>> {
+    const map = new Map<number, MegaSenaPainelItemDto['aplicacoes']>();
+    if (numeros.length === 0) return map;
+
+    const rows = await this.prisma.sorteio.findMany({
+      where: { tenantId, numeroConcurso: { in: numeros } },
+      select: {
+        id: true,
+        numeroConcurso: true,
+        sequenciaNoBolao: true,
+        bolao: { select: { id: true, nome: true } },
+      },
+      orderBy: [{ numeroConcurso: 'desc' }, { bolaoId: 'asc' }],
+    });
+
+    for (const r of rows) {
+      const list = map.get(r.numeroConcurso) ?? [];
+      list.push({
+        sorteioId: r.id,
+        bolaoId: r.bolao.id,
+        bolaoNome: r.bolao.nome,
+        sequenciaNoBolao: r.sequenciaNoBolao,
+      });
+      map.set(r.numeroConcurso, list);
+    }
+    return map;
+  }
+
+  private async fetchCaixa(numeroConcurso?: number): Promise<MegaSenaResultadoCaixaDto> {
+    const full = await this.fetchCaixaCompleto(numeroConcurso);
+    return {
+      numeroConcurso: full.numeroConcurso,
+      dataSorteio: full.dataSorteio,
+      bolasSorteadas: full.bolasSorteadas,
+    };
+  }
+
+  private async fetchCaixaCompleto(numeroConcurso?: number): Promise<MegaSenaResultadoCaixaDto & MegaSenaCaixaMetaDto> {
     const url = numeroConcurso
       ? `https://servicebus2.caixa.gov.br/portaldeloterias/api/megasena/${numeroConcurso}`
       : 'https://servicebus2.caixa.gov.br/portaldeloterias/api/megasena';
 
     let res: Response;
     try {
-      res = await fetch(url, { headers: { Accept: 'application/json' } });
+      res = await fetch(url, { headers: CAIXA_LOTERIAS_FETCH_HEADERS });
     } catch {
       throw new BusinessException('CAIXA_INDISPONIVEL', 'Não foi possível conectar à API da Caixa');
     }
 
     if (!res.ok) {
-      throw new BusinessException('CAIXA_RESULTADO_NAO_ENCONTRADO', `Concurso não encontrado na Caixa (status ${res.status})`);
+      if (res.status === 403) {
+        throw new BusinessException(
+          'CAIXA_ACESSO_NEGADO',
+          'A API da Caixa retornou 403 (acesso negado). O WAF da Caixa pode bloquear o IP do servidor; em ambiente local costuma funcionar com estes cabeçalhos.',
+        );
+      }
+      throw new BusinessException(
+        'CAIXA_RESULTADO_NAO_ENCONTRADO',
+        `Concurso não encontrado ou indisponível na Caixa (HTTP ${res.status})`,
+      );
     }
 
-    const data = await res.json() as { numero: number; dataApuracao: string; listaDezenas: string[] };
-    const [d, m, y] = data.dataApuracao.split('/');
+    const data = await res.json() as Record<string, unknown>;
+    const base = this.normalizarBaseCaixaMega(data);
+    const meta = this.parseCaixaMegaMeta(data);
+    return { ...base, ...meta };
+  }
+
+  private normalizarBaseCaixaMega(data: Record<string, unknown>): MegaSenaResultadoCaixaDto {
+    const numero = Number(data.numero);
+    const dataApuracao = String(data.dataApuracao ?? '');
+    const lista = data.listaDezenas;
+    if (!Number.isFinite(numero) || !dataApuracao.includes('/') || !Array.isArray(lista)) {
+      throw new BusinessException('CAIXA_RESPOSTA_INVALIDA', 'Resposta inesperada da API da Caixa');
+    }
+    const [d, m, y] = dataApuracao.split('/');
     return {
-      numeroConcurso: data.numero,
+      numeroConcurso: numero,
       dataSorteio: `${y}-${m}-${d}`,
-      bolasSorteadas: data.listaDezenas.map(Number).sort((a, b) => a - b),
+      bolasSorteadas: lista.map((x) => Number(String(x))).sort((a, b) => a - b),
+    };
+  }
+
+  private parseCaixaMegaMeta(data: Record<string, unknown>): MegaSenaCaixaMetaDto {
+    const listaRaw = data.listaRateioPremio;
+    const lista = Array.isArray(listaRaw) ? listaRaw as Record<string, unknown>[] : [];
+
+    const faixaSena = lista.find((f) => {
+      const faixa = Number(f.faixa);
+      const desc = String(f.descricaoFaixa ?? '').toLowerCase();
+      return faixa === 1 || desc.includes('6 acertos') || desc.includes('sena');
+    });
+
+    const ganhadoresSena = typeof faixaSena?.numeroDeGanhadores === 'number'
+      ? faixaSena.numeroDeGanhadores
+      : 0;
+
+    const acumuladoRaw = data.acumulado;
+    const acumulado = acumuladoRaw === true
+      || String(acumuladoRaw).toLowerCase() === 'sim'
+      || String(acumuladoRaw).toLowerCase() === 'true';
+
+    const toNum = (v: unknown): number | null => {
+      if (typeof v === 'number' && Number.isFinite(v)) return v;
+      if (typeof v === 'string') {
+        const t = v.trim();
+        if (!t) return null;
+        const normalized = t.includes(',') && t.includes('.')
+          ? t.replace(/\./g, '').replace(',', '.')
+          : t.replace(',', '.');
+        const n = Number(normalized);
+        return Number.isFinite(n) ? n : null;
+      }
+      return null;
+    };
+
+    return {
+      ganhadoresSena,
+      acumulado,
+      valorArrecadado: toNum(data.valorArrecadado),
+      estimativaProximoConcurso: toNum(
+        data.valorEstimadoProximoConcurso ?? data.valorAcumuladoProximoConcurso,
+      ),
+      dataProximoConcurso: typeof data.dataProximoConcurso === 'string' ? data.dataProximoConcurso : null,
+      numeroConcursoProximo: toNum(data.numeroConcursoProximo),
     };
   }
 

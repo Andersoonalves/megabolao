@@ -38,14 +38,24 @@ export class SorteioGlobalController {
 
   @Get('mega-sena')
   @RequerPermissoes('sorteio.ler')
-  @ApiOperation({ summary: 'Busca resultado(s) Mega-Sena direto da Caixa (proxy)' })
+  @ApiOperation({
+    summary: 'Busca resultado(s) Mega-Sena na Caixa. Com painel=1 retorna metadados (prêmio, próximo concurso) e aplicações no tenant.',
+  })
   @ApiQuery({ name: 'concurso', required: false, type: Number })
   @ApiQuery({ name: 'ultimos', required: false, type: Number })
-  buscarMegaSena(@Query('concurso') concurso?: string, @Query('ultimos') ultimos?: string) {
-    return this.sorteioService.buscarMegaSena(
-      concurso ? +concurso : undefined,
-      ultimos ? +ultimos : undefined,
-    );
+  @ApiQuery({ name: 'painel', required: false, description: '1 = resposta enriquecida para tela admin', enum: ['0', '1'] })
+  buscarMegaSena(
+    @TenantId() tenantId: string | null,
+    @Query('concurso') concurso?: string,
+    @Query('ultimos') ultimos?: string,
+    @Query('painel') painel?: string,
+  ) {
+    const u = ultimos ? +ultimos : undefined;
+    const c = concurso ? +concurso : undefined;
+    if (painel === '1' || painel === 'true') {
+      return this.sorteioService.buscarMegaSenaPainel(tenantId, u ?? 20);
+    }
+    return this.sorteioService.buscarMegaSena(c, u);
   }
 
   @Get('mega-sena/pendente')

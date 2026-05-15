@@ -1,137 +1,251 @@
 import {
-  Component, signal, computed, OnInit, ChangeDetectionStrategy, inject,
+  Component, computed, signal, OnInit, ChangeDetectionStrategy, inject,
 } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
-import { TranslateService } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { ApiService } from '../../../core/services/api.service';
 import { BackButtonComponent } from '../../../shared/components/back-button/back-button.component';
+import { MegaSenaAlertComponent } from '../../../shared/components/mega-sena-alert/mega-sena-alert.component';
 
-interface ResultadoCaixa {
+interface MegaSenaAplicacaoBolao {
+  sorteioId: string;
+  bolaoId: string;
+  bolaoNome: string;
+  sequenciaNoBolao: number;
+}
+
+interface MegaSenaPainelItem {
   numeroConcurso: number;
   dataSorteio: string;
   bolasSorteadas: number[];
+  ganhadoresSena: number;
+  acumulado: boolean;
+  valorArrecadado: number | null;
+  estimativaProximoConcurso: number | null;
+  dataProximoConcurso: string | null;
+  numeroConcursoProximo: number | null;
+  aplicacoes: MegaSenaAplicacaoBolao[];
+}
+
+interface MegaSenaPainelResponse {
+  consultadoEm: string;
+  bolaoAtivoNome: string | null;
+  resumo: { aplicadosNoPeriodo: number; totalNoPeriodo: number };
+  proximo: { numero: number | null; data: string | null };
+  itens: MegaSenaPainelItem[];
 }
 
 @Component({
   selector: 'nb-resultados-mega',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [BackButtonComponent],
-  template: `
-    <!-- Topbar -->
-    <div class="bg-white border-b border-slate-200 px-4 lg:px-7 py-3 flex items-center gap-3 sticky top-14 lg:top-0 z-10">
-      <nb-back-button />
-      <div class="min-w-0 flex-1">
-        <div class="flex items-center gap-2 text-[12.5px] min-w-0 truncate">
-          <span class="text-slate-400 shrink-0">Mega-Sena</span>
-          <span class="text-slate-300 shrink-0">›</span>
-          <span class="font-semibold truncate">Últimos resultados</span>
-        </div>
-      </div>
-      <button (click)="atualizar()"
-              [disabled]="loading()"
-              class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#1F4E79] hover:bg-[#2E75B6] disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-[10px] transition-colors shadow-sm">
-        {{ loading() ? 'Buscando…' : '🔄 Atualizar' }}
-      </button>
-    </div>
-
-    <!-- Page -->
-    <div class="p-4 lg:p-7 max-w-[860px]">
-      <div class="mb-6">
-        <h1 class="font-display text-[26px] font-semibold tracking-tight mb-1">Últimos resultados da Mega-Sena</h1>
-        <p class="text-slate-500 text-[13.5px]">Dados buscados diretamente da Caixa Econômica Federal.</p>
-      </div>
-
-      @if (error()) {
-        <div class="mb-5 p-3.5 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 flex items-center gap-2">
-          <span>⚠</span> {{ error() }}
-        </div>
-      }
-
-      @if (loading() && resultados().length === 0) {
-        <!-- Skeleton -->
-        <div class="flex flex-col gap-3">
-          @for (i of skeleton; track i) {
-            <div class="bg-white border border-slate-200 rounded-xl p-4 animate-pulse">
-              <div class="flex items-center justify-between mb-3">
-                <div class="h-4 bg-slate-100 rounded w-24"></div>
-                <div class="h-3 bg-slate-100 rounded w-20"></div>
-              </div>
-              <div class="flex gap-2">
-                @for (j of [1,2,3,4,5,6]; track j) {
-                  <div class="w-10 h-10 rounded-full bg-slate-100"></div>
-                }
-              </div>
-            </div>
-          }
-        </div>
-      } @else if (resultados().length > 0) {
-        <div class="flex flex-col gap-3">
-          @for (r of resultados(); track r.numeroConcurso) {
-            <div class="bg-white border border-slate-200 rounded-xl p-4 hover:border-slate-300 transition-colors">
-              <div class="flex items-center justify-between mb-3">
-                <div class="flex items-center gap-3">
-                  <span class="font-display font-bold text-[17px] text-slate-900">#{{ r.numeroConcurso }}</span>
-                  @if (r.numeroConcurso === ultimo()) {
-                    <span class="text-[10.5px] font-semibold text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full">Último</span>
-                  }
-                </div>
-                <span class="text-[12.5px] text-slate-400 font-medium">{{ fmtDate(r.dataSorteio) }}</span>
-              </div>
-              <div class="flex gap-2 flex-wrap">
-                @for (n of r.bolasSorteadas; track n) {
-                  <span class="w-10 h-10 rounded-full flex items-center justify-center font-mono font-bold text-[13px] bg-green-700 text-white shadow-sm select-none">
-                    {{ pad(n) }}
-                  </span>
-                }
-              </div>
-            </div>
-          }
-        </div>
-      } @else if (!loading()) {
-        <div class="text-center py-16 text-slate-400">
-          <div class="text-4xl mb-3">🎱</div>
-          <p class="text-[14px]">Clique em Atualizar para buscar os resultados</p>
-        </div>
-      }
-    </div>
-  `,
+  imports: [BackButtonComponent, MegaSenaAlertComponent, TranslatePipe, FormsModule],
+  templateUrl: './resultados-mega.component.html',
 })
 export class ResultadosMegaComponent implements OnInit {
-  private readonly api       = inject(ApiService);
+  private readonly api        = inject(ApiService);
   private readonly translate = inject(TranslateService);
 
-  loading   = signal(false);
-  error     = signal('');
-  resultados = signal<ResultadoCaixa[]>([]);
-  ultimo    = computed(() => this.resultados()[0]?.numeroConcurso ?? 0);
+  loading = signal(false);
+  error   = signal('');
+  painel  = signal<MegaSenaPainelResponse | null>(null);
 
-  readonly skeleton = Array.from({ length: 6 }, (_, i) => i);
+  busca         = signal('');
+  filtroStatus  = signal<'todos' | 'aplicados' | 'pendentes'>('todos');
+  aplicandoId   = signal<'hero' | null>(null);
+  aplicandoLinha = signal<number | null>(null);
 
-  ngOnInit(): void { void this.atualizar(); }
+  readonly skeleton4 = [0, 1, 2, 3];
 
-  async atualizar(): Promise<void> {
+  ultimo = computed(() => this.painel()?.itens[0] ?? null);
+
+  tabelaBase = computed(() => {
+    const p = this.painel();
+    if (!p?.itens.length) return [];
+    return p.itens.slice(1);
+  });
+
+  tabelaFiltrada = computed(() => {
+    let rows = [...this.tabelaBase()];
+    const st = this.filtroStatus();
+    if (st === 'aplicados') rows = rows.filter((r) => r.aplicacoes.length > 0);
+    else if (st === 'pendentes') rows = rows.filter((r) => r.aplicacoes.length === 0);
+
+    const q = this.busca().trim().toLowerCase();
+    if (q) {
+      rows = rows.filter((r) => {
+        const dataFmt = this.fmtDataCurta(r.dataSorteio).toLowerCase();
+        return String(r.numeroConcurso).includes(q)
+          || r.dataSorteio.toLowerCase().includes(q)
+          || dataFmt.includes(q);
+      });
+    }
+    return rows;
+  });
+
+  ngOnInit(): void { void this.carregar(); }
+
+  async carregar(): Promise<void> {
     if (this.loading()) return;
     this.loading.set(true);
     this.error.set('');
     try {
       const res = await firstValueFrom(
-        this.api.get<ResultadoCaixa[]>('/sorteios/mega-sena?ultimos=20'),
+        this.api.get<MegaSenaPainelResponse>('/sorteios/mega-sena?painel=1&ultimos=20'),
       );
-      this.resultados.set(Array.isArray(res) ? res : [res]);
+      this.painel.set(res);
     } catch (err: unknown) {
       const msg = (err as { error?: { message?: string } })?.error?.message
-        ?? 'Não foi possível buscar os resultados da Caixa';
+        ?? this.translate.instant('megaSenaPainel.empty');
       this.error.set(msg);
+      this.painel.set(null);
     } finally {
       this.loading.set(false);
     }
   }
 
+  rotuloAplicarHero(p: MegaSenaPainelResponse): string {
+    const u = p.itens[0];
+    if (u?.aplicacoes.length) return this.translate.instant('megaSenaPainel.heroJaAplicado');
+    const nome = p.bolaoAtivoNome;
+    if (nome) return this.translate.instant('megaSenaPainel.heroAplicarNome', { nome });
+    return this.translate.instant('megaSenaPainel.heroAplicar');
+  }
+
+  async aplicarConcurso(row: MegaSenaPainelItem, destaque = false): Promise<void> {
+    if (destaque) this.aplicandoId.set('hero');
+    else this.aplicandoLinha.set(row.numeroConcurso);
+    this.error.set('');
+    try {
+      await firstValueFrom(this.api.post('/sorteios', {
+        numeroConcurso: row.numeroConcurso,
+        dataSorteio:    row.dataSorteio,
+        bolasSorteadas: row.bolasSorteadas,
+      }));
+      await this.carregar();
+    } catch {
+      this.error.set(this.translate.instant('megaSenaPainel.errAplicar'));
+    } finally {
+      this.aplicandoId.set(null);
+      this.aplicandoLinha.set(null);
+    }
+  }
+
+  exportarCsv(): void {
+    const rows = this.tabelaFiltrada();
+    const sep = ';';
+    const h = [
+      this.translate.instant('megaSenaPainel.colConcurso'),
+      this.translate.instant('megaSenaPainel.colData'),
+      this.translate.instant('megaSenaPainel.colDezenas'),
+      this.translate.instant('megaSenaPainel.colGanhadores'),
+      this.translate.instant('megaSenaPainel.colPremio'),
+      this.translate.instant('megaSenaPainel.colAplicado'),
+    ].join(sep);
+    const body = rows.map((r) => {
+      const dez = r.bolasSorteadas.map((n) => this.pad(n)).join(' ');
+      const ganh = r.ganhadoresSena === 0
+        ? this.translate.instant('megaSenaPainel.badgeAcumulou')
+        : String(r.ganhadoresSena);
+      const prem = this.fmtMoedaCsv(r.valorArrecadado);
+      const apl = r.aplicacoes.map((a) => `${a.bolaoNome} #${a.sequenciaNoBolao}`).join(' | ');
+      return [
+        r.numeroConcurso,
+        r.dataSorteio,
+        dez,
+        ganh,
+        prem,
+        apl || '—',
+      ].join(sep);
+    }).join('\n');
+    const blob = new Blob([`${h}\n${body}`], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'mega-sena-sortearios.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  urlCaixa(numeroConcurso: number): string {
+    return `https://loterias.caixa.gov.br/pesquisa/resultados/mega-sena/${numeroConcurso}`;
+  }
+
   pad(n: number): string { return String(n).padStart(2, '0'); }
 
-  fmtDate(iso: string): string {
+  relConsultado(iso: string): string {
+    const min = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60_000));
+    if (min < 1) return this.translate.instant('megaSenaPainel.consultadoAgora');
+    if (min < 60) return this.translate.instant('megaSenaPainel.consultadoMin', { n: min });
+    const h = Math.floor(min / 60);
+    return this.translate.instant('megaSenaPainel.consultadoHora', { n: h });
+  }
+
+  fmtDataCurta(iso: string): string {
     const loc = this.translate.currentLang?.startsWith('en') ? 'en-US' : 'pt-BR';
-    try { return new Date(iso + 'T12:00:00').toLocaleDateString(loc, { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' }); }
-    catch { return iso; }
+    try {
+      return new Date(`${iso}T12:00:00`).toLocaleDateString(loc, {
+        day: '2-digit', month: 'short', year: 'numeric',
+      });
+    } catch { return iso; }
+  }
+
+  fmtDiaSemana(iso: string): string {
+    const loc = this.translate.currentLang?.startsWith('en') ? 'en-US' : 'pt-BR';
+    try {
+      return new Date(`${iso}T12:00:00`).toLocaleDateString(loc, { weekday: 'short' }).replace(/\./g, '').trim();
+    } catch { return ''; }
+  }
+
+  fmtDataTitulo(iso: string): string {
+    const loc = this.translate.currentLang?.startsWith('en') ? 'en-US' : 'pt-BR';
+    try {
+      const d = new Date(`${iso}T12:00:00`);
+      if (loc === 'en-US') {
+        const wd = d.toLocaleDateString('en-US', { weekday: 'short' });
+        const rest = d.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
+        return `${rest} (${wd})`;
+      }
+      const months = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+      const dd = String(d.getDate()).padStart(2, '0');
+      const mon = months[d.getMonth()] ?? '';
+      const yyyy = d.getFullYear();
+      const wd = d.toLocaleDateString('pt-BR', { weekday: 'short' }).replace(/\./g, '').trim();
+      return `${dd}/${mon}/${yyyy} (${wd})`;
+    } catch { return iso; }
+  }
+
+  fmtProximoData(br: string | null): string {
+    if (!br) return this.translate.instant('megaSenaPainel.proximoDiaUnknown');
+    const [d, m, y] = br.split('/').map((x) => Number(x));
+    if (!d || !m || !y) return br;
+    const dt = new Date(y, m - 1, d, 12, 0, 0, 0);
+    const loc = this.translate.currentLang?.startsWith('en') ? 'en-US' : 'pt-BR';
+    return dt.toLocaleDateString(loc, { day: '2-digit', month: 'short' });
+  }
+
+  fmtProximoExtra(br: string | null): string {
+    if (!br) return '';
+    const [d, m, y] = br.split('/').map((x) => Number(x));
+    if (!d || !m || !y) return '';
+    const dt = new Date(y, m - 1, d, 12, 0, 0, 0);
+    const loc = this.translate.currentLang?.startsWith('en') ? 'en-US' : 'pt-BR';
+    const wd = dt.toLocaleDateString(loc, { weekday: 'long' });
+    return `${wd} · 20h00`;
+  }
+
+  fmtMoedaResumida(n: number | null): string {
+    if (n === null || !Number.isFinite(n)) return '—';
+    if (n >= 1_000_000) {
+      const v = (n / 1_000_000).toLocaleString('pt-BR', { maximumFractionDigits: 1 });
+      return `R$ ${v} mi`;
+    }
+    const v = (n / 1_000).toLocaleString('pt-BR', { maximumFractionDigits: 0 });
+    return `R$ ${v} mil`;
+  }
+
+  fmtMoedaCsv(n: number | null): string {
+    if (n === null || !Number.isFinite(n)) return '';
+    return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 }

@@ -1,6 +1,7 @@
 import {
-  Component, signal, OnInit, OnDestroy, ChangeDetectionStrategy, inject, output,
+  Component, signal, OnInit, OnDestroy, ChangeDetectionStrategy, inject, input, output,
 } from '@angular/core';
+import { NgClass } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../../core/services/api.service';
@@ -20,98 +21,93 @@ interface CheckPendenteResponse {
 @Component({
   selector: 'nb-mega-sena-alert',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink],
+  imports: [RouterLink, NgClass],
   template: `
     @if (pendente(); as r) {
-      <div class="mx-4 lg:mx-7 mt-5
-                  bg-white border border-[#C25B00]/50 rounded-lg shadow-sm
-                  dark:bg-slate-800 dark:border-[#C25B00]/40">
+      <div
+        class="mx-4 lg:mx-7 mt-5 mb-5 rounded-[14px] border border-[#fef3c7] border-l-4 border-l-[#f59e0b]
+               bg-gradient-to-br from-white to-[#fffbeb]
+               shadow-[0_4px_14px_rgba(217,119,6,0.08)]
+               dark:from-slate-900 dark:to-amber-950/40 dark:border-amber-900/50 dark:border-l-amber-500
+               dark:shadow-[0_4px_14px_rgba(0,0,0,0.35)]"
+        [ngClass]="variant() === 'compact' ? 'px-[18px] py-3.5' : 'px-5 py-4'">
 
-        <!-- Cabeçalho -->
-        <div class="flex items-start justify-between gap-3 px-4 pt-4 pb-3">
-          <div class="flex items-center gap-2.5 min-w-0">
-            <div class="w-8 h-8 rounded-md bg-[#C25B00]/10 dark:bg-gold-500/10
-                        flex items-center justify-center shrink-0 text-base">
-              🎱
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between lg:gap-4">
+          <!-- Bloco principal (protótipo NovoSorteioAlert) -->
+          <div class="min-w-0 flex-1">
+            <div class="mb-1">
+              <span
+                class="inline-flex items-center gap-1.5 rounded-full bg-[#f59e0b] px-2.5 py-1
+                       text-[10.5px] font-bold uppercase tracking-[0.06em] text-white
+                       dark:bg-amber-500">
+                <span class="text-[12px] leading-none" aria-hidden="true">✨</span>
+                Novo sorteio Mega-Sena
+              </span>
             </div>
-            <div class="min-w-0">
-              <div class="flex items-center gap-2 flex-wrap">
-                <span class="font-display font-semibold text-[14px] text-[#C25B00] dark:text-gold-400">
-                  Novo resultado Mega-Sena
-                </span>
-                <span class="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide
-                             bg-[#C25B00]/10 text-[#C25B00] dark:bg-gold-500/15 dark:text-gold-400">
-                  #{{ r.numeroConcurso }}
-                </span>
+            <div class="font-display text-[15px] font-semibold text-slate-900 dark:text-slate-100 sm:text-base">
+              Concurso #{{ r.numeroConcurso }} · {{ fmtDateLinha(r.dataSorteio) }}
+            </div>
+            <div class="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-2">
+              <div class="flex flex-wrap gap-1">
+                @for (n of r.bolasSorteadas; track n) {
+                  <div
+                    class="flex h-7 w-7 select-none items-center justify-center rounded-lg border border-green-700
+                           bg-green-700 font-mono text-[11px] font-semibold text-white shadow-sm
+                           dark:border-green-600 dark:bg-green-800">
+                    {{ pad(n) }}
+                  </div>
+                }
               </div>
-              <div class="text-[11.5px] text-[#C25B00]/60 dark:text-gold-500/50 mt-0.5">
-                {{ fmtDate(r.dataSorteio) }} · Aguardando aplicação nos bolões em andamento
-              </div>
+              <span class="hidden text-slate-300 sm:inline dark:text-slate-600" aria-hidden="true">·</span>
+              <span class="text-[12px] text-slate-500 dark:text-slate-400">
+                Aguardando aplicação nos bolões em andamento
+              </span>
             </div>
           </div>
 
-          <!-- Botão dispensar (X) -->
-          <button (click)="dispensar()"
-                  [disabled]="loading()"
-                  title="Dispensar"
-                  class="w-7 h-7 rounded-md flex items-center justify-center shrink-0
-                         text-[#C25B00]/40 hover:text-[#C25B00] hover:bg-[#C25B00]/10
-                         dark:text-gold-500/40 dark:hover:text-gold-400 dark:hover:bg-gold-500/10
-                         transition-colors disabled:opacity-40">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-            </svg>
-          </button>
-        </div>
-
-        <!-- Divider -->
-        <div class="mx-4 h-px bg-[#C25B00]/15 dark:bg-[#C25B00]/20"></div>
-
-        <!-- Bolas -->
-        <div class="flex items-center gap-2 px-4 py-3 flex-wrap">
-          @for (n of r.bolasSorteadas; track n) {
-            <div class="w-9 h-9 rounded-full flex items-center justify-center
-                        font-mono font-bold text-[12.5px] shadow-sm select-none
-                        bg-green-700 text-white
-                        dark:bg-green-800">
-              {{ pad(n) }}
+          <!-- Ações -->
+          <div class="flex w-full shrink-0 flex-col gap-2 sm:items-end lg:w-auto">
+            <div class="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:justify-end">
+              <button (click)="dispensar()"
+                      type="button"
+                      [disabled]="loading()"
+                      class="inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-200
+                             bg-white px-4 text-[13px] font-semibold text-slate-700 transition-colors
+                             hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40
+                             dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">
+                Lembrar depois
+              </button>
+              <button (click)="aplicar()"
+                      type="button"
+                      [disabled]="loading()"
+                      class="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg border border-[#d97706]
+                             bg-[#d97706] px-4 text-[13px] font-semibold text-white shadow-sm transition-colors
+                             hover:bg-[#b45309] disabled:cursor-not-allowed disabled:opacity-50
+                             dark:border-amber-600 dark:bg-amber-600 dark:hover:bg-amber-700">
+                @if (loading()) {
+                  <svg class="h-3.5 w-3.5 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                  </svg>
+                  Aplicando…
+                } @else {
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                       stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M5 12h14M13 6l6 6-6 6"/>
+                  </svg>
+                  Aplicar aos bolões
+                }
+              </button>
             </div>
-          }
-        </div>
-
-        <!-- Divider -->
-        <div class="mx-4 h-px bg-[#C25B00]/15 dark:bg-[#C25B00]/20"></div>
-
-        <!-- Ações -->
-        <div class="flex items-center justify-between gap-3 px-4 py-3">
-          <a routerLink="/sorteios"
-             class="text-[12px] font-medium text-[#C25B00]/60 hover:text-[#C25B00]
-                    dark:text-gold-500/50 dark:hover:text-gold-400
-                    transition-colors no-underline">
-            Ver configurações →
-          </a>
-
-          <div class="flex gap-2">
-            <button (click)="aplicar()"
-                    [disabled]="loading()"
-                    class="inline-flex items-center gap-1.5 px-4 py-2 rounded-md
-                           font-semibold text-[13px] transition-colors min-h-10 shadow-sm
-                           bg-[#C25B00] hover:bg-[#a84e00] text-white
-                           dark:bg-gold-600 dark:hover:bg-gold-700
-                           disabled:opacity-50 disabled:cursor-not-allowed">
-              @if (loading()) {
-                <svg class="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                </svg>
-                Aplicando…
-              } @else {
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                  <polyline points="20 6 9 17 4 12"/>
-                </svg>
-                Aplicar a todos os bolões
-              }
-            </button>
+            <a routerLink="/mega-sena"
+               class="text-center text-[10.5px] font-medium text-slate-500 no-underline transition-colors hover:text-[#b45309]
+                      sm:text-right dark:text-slate-500 dark:hover:text-amber-400">
+              Ver resultados oficiais →
+            </a>
+            <div class="text-center text-[10.5px] text-slate-500 sm:text-right dark:text-slate-400">
+              <span class="font-semibold text-green-700 dark:text-green-500">●</span>
+              Resultado da Caixa disponível — aplique para atualizar acertos nos bolões ativos
+            </div>
           </div>
         </div>
       </div>
@@ -120,6 +116,9 @@ interface CheckPendenteResponse {
 })
 export class MegaSenaAlertComponent implements OnInit, OnDestroy {
   private readonly api = inject(ApiService);
+
+  /** `compact` — padding menor, alinhado ao protótipo na tela Registrar sorteio */
+  readonly variant = input<'default' | 'compact'>('default');
 
   readonly applied = output<void>();
 
@@ -169,11 +168,18 @@ export class MegaSenaAlertComponent implements OnInit, OnDestroy {
 
   pad(n: number): string { return String(n).padStart(2, '0'); }
 
-  fmtDate(iso: string): string {
+  /** Ex.: 01/mai/2026 (sáb) — alinhado ao protótipo `NovoSorteioAlert` */
+  fmtDateLinha(iso: string): string {
     try {
-      return new Date(iso + 'T12:00:00').toLocaleDateString('pt-BR', {
-        weekday: 'long', day: '2-digit', month: 'long',
-      });
-    } catch { return iso; }
+      const d = new Date(`${iso}T12:00:00`);
+      const months = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+      const dd = String(d.getDate()).padStart(2, '0');
+      const mon = months[d.getMonth()] ?? '';
+      const yyyy = d.getFullYear();
+      const wd = d.toLocaleDateString('pt-BR', { weekday: 'short' }).replace(/\./g, '').trim();
+      return `${dd}/${mon}/${yyyy} (${wd})`;
+    } catch {
+      return iso;
+    }
   }
 }

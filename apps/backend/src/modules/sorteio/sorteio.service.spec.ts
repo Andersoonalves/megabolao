@@ -231,4 +231,47 @@ describe('SorteioService', () => {
       );
     });
   });
+
+  describe('buscarMegaSenaPainel', () => {
+    it('combina resposta da Caixa com aplicações do tenant', async () => {
+      const makeCaixa = (num: number) => ({
+        numero: num,
+        dataApuracao: '10/05/2026',
+        listaDezenas: ['10', '20', '30', '40', '50', '60'],
+        acumulado: false,
+        valorArrecadado: 5_000_000,
+        valorEstimadoProximoConcurso: 6_000_000,
+        dataProximoConcurso: '13/05/2026',
+        numeroConcursoProximo: num + 1,
+        listaRateioPremio: [{ faixa: 1, descricaoFaixa: '6 acertos', numeroDeGanhadores: 2, valorPremio: 1000 }],
+      });
+
+      const fetchSpy = jest.spyOn(global, 'fetch');
+      fetchSpy.mockResolvedValueOnce({ ok: true, json: async () => makeCaixa(100) } as Response);
+      fetchSpy.mockResolvedValueOnce({ ok: true, json: async () => makeCaixa(99) } as Response);
+
+      mockPrisma.sorteio.findMany.mockResolvedValue([
+        {
+          id: 'sort-1',
+          numeroConcurso: 100,
+          sequenciaNoBolao: 2,
+          bolao: { id: 'bol-1', nome: 'Bolão Alfa' },
+        },
+      ]);
+      mockPrisma.bolao.findFirst.mockResolvedValue({ nome: 'Bolão Ativo' });
+
+      const r = await service.buscarMegaSenaPainel(TENANT_ID, 2);
+
+      expect(r.itens).toHaveLength(2);
+      expect(r.itens[0].numeroConcurso).toBe(100);
+      expect(r.itens[0].ganhadoresSena).toBe(2);
+      expect(r.itens[0].aplicacoes).toHaveLength(1);
+      expect(r.itens[0].aplicacoes[0].bolaoNome).toBe('Bolão Alfa');
+      expect(r.itens[1].aplicacoes).toHaveLength(0);
+      expect(r.resumo.aplicadosNoPeriodo).toBe(1);
+      expect(r.bolaoAtivoNome).toBe('Bolão Ativo');
+
+      fetchSpy.mockRestore();
+    });
+  });
 });
