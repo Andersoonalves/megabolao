@@ -47,7 +47,7 @@ export class WhatsAppComponent implements OnInit, OnDestroy {
   loadingMsgs   = signal(false);
 
   // QR countdown — ~60s antes do QR expirar e novo ser emitido
-  qrCountdown = signal(60);
+  qrCountdown = signal(20);
   qrExpired   = computed(() => this.qrCountdown() === 0);
 
   private pollInterval:      ReturnType<typeof setInterval> | null = null;
@@ -91,7 +91,7 @@ export class WhatsAppComponent implements OnInit, OnDestroy {
       if (currentQr && currentQr !== this.lastQrCode) {
         // Novo QR recebido — reinicia o contador
         this.lastQrCode = currentQr;
-        this.qrCountdown.set(60);
+        this.qrCountdown.set(20);
         return;
       }
 

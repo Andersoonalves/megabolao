@@ -104,7 +104,7 @@
                     <div class="h-1 w-full bg-slate-100 rounded-full overflow-hidden">
                       <div class="h-full rounded-full transition-all duration-1000"
                            [class]="qrCountdown() > 30 ? 'bg-green-500' : qrCountdown() > 20 ? 'bg-amber-400' : 'bg-red-400'"
-                           [style.width.%]="qrCountdown() / 60 * 100"></div>
+                           [style.width.%]="qrCountdown() / 20 * 100"></div>
                     </div>
                     <!-- Label -->
                     <div class="mt-1.5 flex items-center justify-between text-[11px]">
