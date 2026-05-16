@@ -46,6 +46,10 @@ export const appRoutes: Route[] = [
         loadComponent: () => import('./features/bolao/criar-bolao/criar-bolao.component').then(m => m.CriarBolaoComponent),
       },
       {
+        path: 'bolao/:id/editar',
+        loadComponent: () => import('./features/bolao/criar-bolao/criar-bolao.component').then(m => m.CriarBolaoComponent),
+      },
+      {
         path: 'bolao/:id/detalhes',
         loadComponent: () => import('./features/bolao/bolao-detalhes/bolao-detalhes.component').then(m => m.BolaoDetalhesComponent),
       },

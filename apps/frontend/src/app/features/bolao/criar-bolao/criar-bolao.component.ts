@@ -1,5 +1,5 @@
 import {
-  Component, signal, computed, ChangeDetectionStrategy, inject,
+  Component, signal, computed, ChangeDetectionStrategy, inject, input, effect,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -27,6 +27,24 @@ interface CategoriaForm {
   acumulaSemGanhador: boolean;
 }
 
+interface BolaoResponse {
+  id: string;
+  nome: string;
+  status: string;
+  valorCota: number;
+  dataInicio: string | null;
+  categorias: {
+    id: string;
+    nome: string;
+    tipo: CategoriaTipo;
+    acertosAlvo: number | null;
+    sorteioReferencia: number | null;
+    percentual: number;
+    acumulaSemGanhador: boolean;
+    ordem: number;
+  }[];
+}
+
 // Categoria inicial baseada no BOLAO_REF (soma = 100%)
 const INITIAL_CATS: CategoriaForm[] = [
   { _id: '1', nome: 'Taxa Administrativa',    tipo: 'TAXA_ADMINISTRATIVA',     acertosAlvo: null, sorteioReferencia: null, percentual: 15, acumulaSemGanhador: false },
@@ -47,6 +65,8 @@ let _nextId = 10;
   templateUrl: './criar-bolao.component.html',
 })
 export class CriarBolaoComponent {
+  readonly id = input<string>('');
+
   private readonly api = inject(ApiService);
   private readonly router = inject(Router);
   private readonly translate = inject(TranslateService);
@@ -56,9 +76,42 @@ export class CriarBolaoComponent {
   dataInicio = '';
   valorCota  = 30;
 
-  categorias = signal<CategoriaForm[]>(INITIAL_CATS.map(c => ({ ...c })));
-  loading    = signal(false);
-  error      = signal('');
+  categorias  = signal<CategoriaForm[]>(INITIAL_CATS.map(c => ({ ...c })));
+  loading     = signal(false);
+  loadingData = signal(false);
+  bloqueado   = signal(false);
+  error       = signal('');
+
+  get modoEditar(): boolean { return !!this.id(); }
+
+  constructor() {
+    effect(() => { if (this.id()) this.loadExisting(); });
+  }
+
+  private async loadExisting(): Promise<void> {
+    this.loadingData.set(true);
+    this.error.set('');
+    try {
+      const b = await firstValueFrom(this.api.get<BolaoResponse>(`/boloes/${this.id()}`));
+      this.nome       = b.nome;
+      this.valorCota  = b.valorCota;
+      this.dataInicio = b.dataInicio ?? '';
+      this.categorias.set(b.categorias.map(c => ({
+        _id: c.id,
+        nome: c.nome,
+        tipo: c.tipo,
+        acertosAlvo: c.acertosAlvo,
+        sorteioReferencia: c.sorteioReferencia,
+        percentual: c.percentual,
+        acumulaSemGanhador: c.acumulaSemGanhador,
+      })));
+      if (b.status !== 'A_SER_INICIADO') this.bloqueado.set(true);
+    } catch {
+      this.error.set(this.translate.instant('errors.loadDetails'));
+    } finally {
+      this.loadingData.set(false);
+    }
+  }
 
   // ── Computed ─────────────────────────────────────────────────────────────────
   soma = computed(() =>
@@ -182,29 +235,45 @@ export class CriarBolaoComponent {
 
   // ── Submit ───────────────────────────────────────────────────────────────────
   async submit(): Promise<void> {
-    if (!this.valido() || this.loading()) return;
+    if (!this.valido() || this.loading() || this.bloqueado()) return;
 
     this.loading.set(true);
     this.error.set('');
 
+    const cats = this.categorias().map((c, i) => ({
+      nome: c.nome,
+      tipo: c.tipo,
+      ...(c.acertosAlvo       !== null && { acertosAlvo: c.acertosAlvo }),
+      ...(c.sorteioReferencia !== null && { sorteioReferencia: c.sorteioReferencia }),
+      percentual: c.percentual,
+      acumulaSemGanhador: c.acumulaSemGanhador,
+      ordem: i + 1,
+    }));
+
     try {
-      await firstValueFrom(
-        this.api.post('/boloes', {
-          nome: this.nome,
-          valorCota: this.valorCota,
-          dataInicio: this.dataInicio || undefined,
-          categorias: this.categorias().map((c, i) => ({
-            nome: c.nome,
-            tipo: c.tipo,
-            ...(c.acertosAlvo    !== null && { acertosAlvo: c.acertosAlvo }),
-            ...(c.sorteioReferencia !== null && { sorteioReferencia: c.sorteioReferencia }),
-            percentual: c.percentual,
-            acumulaSemGanhador: c.acumulaSemGanhador,
-            ordem: i + 1,
-          })),
-        }),
-      );
-      await this.router.navigate(['/dashboard']);
+      if (this.modoEditar) {
+        await firstValueFrom(
+          this.api.patch(`/boloes/${this.id()}`, {
+            nome: this.nome,
+            valorCota: this.valorCota,
+            dataInicio: this.dataInicio || undefined,
+          }),
+        );
+        await firstValueFrom(
+          this.api.patch(`/boloes/${this.id()}/categorias`, { categorias: cats }),
+        );
+        await this.router.navigate(['/bolao', this.id(), 'detalhes']);
+      } else {
+        await firstValueFrom(
+          this.api.post('/boloes', {
+            nome: this.nome,
+            valorCota: this.valorCota,
+            dataInicio: this.dataInicio || undefined,
+            categorias: cats,
+          }),
+        );
+        await this.router.navigate(['/dashboard']);
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message
         : (err as { error?: { message?: string } })?.error?.message ?? this.translate.instant('errors.createPool');

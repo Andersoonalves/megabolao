@@ -7,27 +7,42 @@
           <span class="text-slate-300 shrink-0">›</span>
           <span class="text-slate-400 shrink-0">{{ 'criarBolao.breadcrumbPools' | translate }}</span>
           <span class="text-slate-300 shrink-0">›</span>
-          <span class="font-semibold truncate">{{ 'criarBolao.breadcrumbCreate' | translate }}</span>
+          <span class="font-semibold truncate">{{ modoEditar ? ('criarBolao.breadcrumbEdit' | translate) : ('criarBolao.breadcrumbCreate' | translate) }}</span>
         </div>
       </div>
       <div class="flex items-center gap-2 shrink-0">
-        <a routerLink="/dashboard"
+        <a [routerLink]="modoEditar ? ['/bolao', id(), 'detalhes'] : '/dashboard'"
            class="inline-flex items-center px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-sm font-semibold rounded-[10px] no-underline text-slate-700 transition-colors">
           {{ 'criarBolao.cancel' | translate }}
         </a>
-        <button (click)="submit()" [disabled]="!valido() || loading()"
+        <button (click)="submit()" [disabled]="!valido() || loading() || bloqueado()"
                 class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-800 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-[10px] transition-colors shadow-sm">
-          ✓ {{ loading() ? ('criarBolao.creating' | translate) : ('criarBolao.submit' | translate) }}
+          ✓ {{ loading() ? (modoEditar ? ('criarBolao.saving' | translate) : ('criarBolao.creating' | translate)) : (modoEditar ? ('criarBolao.submitEdit' | translate) : ('criarBolao.submit' | translate)) }}
         </button>
       </div>
     </div>
 
     <!-- Page -->
     <div class="p-4 lg:p-7">
+      @if (loadingData()) {
+        <div class="flex items-center gap-3 text-slate-400 text-sm mb-6">
+          <div class="w-4 h-4 rounded-full border-2 border-slate-200 border-t-green-700 animate-spin"></div>
+          {{ 'criarBolao.loadingData' | translate }}
+        </div>
+      }
+
       <div class="mb-6">
-        <h1 class="font-display text-2xl lg:text-[26px] font-semibold tracking-tight mb-1">{{ 'criarBolao.title' | translate }}</h1>
+        <h1 class="font-display text-2xl lg:text-[26px] font-semibold tracking-tight mb-1">
+          {{ modoEditar ? ('criarBolao.titleEdit' | translate) : ('criarBolao.title' | translate) }}
+        </h1>
         <p class="text-slate-500 text-[13.5px]">{{ 'criarBolao.subtitle' | translate }}</p>
       </div>
+
+      @if (bloqueado()) {
+        <div class="mb-5 p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800 flex items-center gap-2">
+          <span>⚠</span> {{ 'criarBolao.bloqueadoEditar' | translate }}
+        </div>
+      }
 
       @if (error()) {
         <div class="mb-5 p-3.5 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 flex items-center gap-2">
