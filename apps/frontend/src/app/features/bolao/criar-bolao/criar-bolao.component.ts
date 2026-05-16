@@ -1,5 +1,5 @@
 import {
-  Component, signal, computed, ChangeDetectionStrategy, inject, input, effect,
+  Component, signal, computed, ChangeDetectionStrategy, inject, input, effect, OnInit,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -9,6 +9,13 @@ import { ApiService } from '../../../core/services/api.service';
 import { BackButtonComponent } from '../../../shared/components/back-button/back-button.component';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
+
+interface BolaoListItem {
+  id: string;
+  nome: string;
+  status: string;
+  totalCotasAtivas: number;
+}
 
 type CategoriaTipo =
   | 'TAXA_ADMINISTRATIVA'
@@ -64,7 +71,7 @@ let _nextId = 10;
   imports: [BackButtonComponent, FormsModule, RouterLink, TranslatePipe],
   templateUrl: './criar-bolao.component.html',
 })
-export class CriarBolaoComponent {
+export class CriarBolaoComponent implements OnInit {
   readonly id = input<string>('');
 
   private readonly api = inject(ApiService);
@@ -76,13 +83,24 @@ export class CriarBolaoComponent {
   dataInicio = '';
   valorCota  = 30;
 
-  categorias  = signal<CategoriaForm[]>(INITIAL_CATS.map(c => ({ ...c })));
-  loading     = signal(false);
-  loadingData = signal(false);
-  bloqueado   = signal(false);
-  error       = signal('');
+  categorias        = signal<CategoriaForm[]>(INITIAL_CATS.map(c => ({ ...c })));
+  loading           = signal(false);
+  loadingData       = signal(false);
+  loadingBoloes     = signal(false);
+  bloqueado         = signal(false);
+  error             = signal('');
+  boloesDisponiveis = signal<BolaoListItem[]>([]);
+  bolaoFonteId      = signal('');
+  bolaoFonteNome    = signal('');
+  bolaoFonteCotas   = signal(0);
+
+  emModoClone = computed(() => !!this.bolaoFonteId());
 
   get modoEditar(): boolean { return !!this.id(); }
+
+  ngOnInit(): void {
+    if (!this.id()) void this.loadBoloes();
+  }
 
   constructor() {
     effect(() => { if (this.id()) this.loadExisting(); });
@@ -138,7 +156,7 @@ export class CriarBolaoComponent {
         : t.instant('criarBolao.errSomaExcede', { diff: Math.abs(diff) }));
     }
     for (const cat of this.categorias()) {
-      if (cat.tipo === 'ACERTOS_EXATOS' && (!cat.acertosAlvo || cat.acertosAlvo < 1 || cat.acertosAlvo > 10)) {
+      if (cat.tipo === 'ACERTOS_EXATOS' && (cat.acertosAlvo == null || cat.acertosAlvo < 0 || cat.acertosAlvo > 10)) {
         erros.push(t.instant('criarBolao.errAcertos', { nome: cat.nome }));
       }
       if (cat.tipo === 'MAIOR_PONTUACAO_SORTEIO' && !cat.sorteioReferencia) {
@@ -233,9 +251,74 @@ export class CriarBolaoComponent {
     this.categorias.update(cats => cats.filter((_, idx) => idx !== i));
   }
 
+  // ── Clone ────────────────────────────────────────────────────────────────────
+  private async loadBoloes(): Promise<void> {
+    this.loadingBoloes.set(true);
+    try {
+      const res = await firstValueFrom(
+        this.api.get<{ data: BolaoListItem[] }>('/boloes?perPage=100'),
+      );
+      this.boloesDisponiveis.set(res.data);
+    } catch {
+      // silencioso — dropdown fica vazio
+    } finally {
+      this.loadingBoloes.set(false);
+    }
+  }
+
+  async onFonteChange(id: string): Promise<void> {
+    this.bolaoFonteId.set(id);
+    if (!id) {
+      this.bolaoFonteNome.set('');
+      this.bolaoFonteCotas.set(0);
+      this.nome      = '';
+      this.valorCota = 30;
+      this.categorias.set(INITIAL_CATS.map(c => ({ ...c })));
+      return;
+    }
+    const fonte = this.boloesDisponiveis().find(b => b.id === id);
+    this.bolaoFonteNome.set(fonte?.nome ?? '');
+    this.bolaoFonteCotas.set(fonte?.totalCotasAtivas ?? 0);
+
+    this.loadingData.set(true);
+    this.error.set('');
+    try {
+      const b = await firstValueFrom(this.api.get<BolaoResponse>(`/boloes/${id}`));
+      this.nome      = `${b.nome} (Cópia)`;
+      this.valorCota = b.valorCota;
+      this.categorias.set(b.categorias.map(c => ({
+        _id:               c.id,
+        nome:              c.nome,
+        tipo:              c.tipo,
+        acertosAlvo:       c.acertosAlvo,
+        sorteioReferencia: c.sorteioReferencia,
+        percentual:        c.percentual,
+        acumulaSemGanhador: c.acumulaSemGanhador,
+      })));
+    } catch {
+      this.error.set(this.translate.instant('errors.loadDetails'));
+    } finally {
+      this.loadingData.set(false);
+    }
+  }
+
+  submitLabel(): string {
+    const t = this.translate;
+    if (this.loading()) {
+      if (this.modoEditar)      return t.instant('criarBolao.saving');
+      if (this.emModoClone())   return t.instant('criarBolao.clonarCreating');
+      return t.instant('criarBolao.creating');
+    }
+    if (this.modoEditar)      return t.instant('criarBolao.submitEdit');
+    if (this.emModoClone())   return t.instant('criarBolao.clonarSubmit');
+    return t.instant('criarBolao.submit');
+  }
+
   // ── Submit ───────────────────────────────────────────────────────────────────
   async submit(): Promise<void> {
-    if (!this.valido() || this.loading() || this.bloqueado()) return;
+    const cloneMode = this.emModoClone();
+    if ((!this.valido() && !cloneMode) || this.loading() || this.bloqueado()) return;
+    if (!this.nome.trim()) return;
 
     this.loading.set(true);
     this.error.set('');
@@ -263,6 +346,23 @@ export class CriarBolaoComponent {
           this.api.patch(`/boloes/${this.id()}/categorias`, { categorias: cats }),
         );
         await this.router.navigate(['/bolao', this.id(), 'detalhes']);
+      } else if (cloneMode) {
+        const clonado = await firstValueFrom(
+          this.api.post<{ id: string; nome: string }>(`/boloes/${this.bolaoFonteId()}/clonar`, {}),
+        );
+        // Sempre aplica dados editáveis pelo usuário (nome, valorCota, dataInicio)
+        await firstValueFrom(
+          this.api.patch(`/boloes/${clonado.id}`, {
+            nome:       this.nome.trim(),
+            valorCota:  this.valorCota,
+            ...(this.dataInicio && { dataInicio: this.dataInicio }),
+          }),
+        );
+        // Aplica categorias editadas pelo usuário (pode diferir do fonte)
+        await firstValueFrom(
+          this.api.patch(`/boloes/${clonado.id}/categorias`, { categorias: cats }),
+        );
+        await this.router.navigate(['/bolao', clonado.id, 'detalhes']);
       } else {
         await firstValueFrom(
           this.api.post('/boloes', {

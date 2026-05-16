@@ -289,7 +289,8 @@
     "createTenant": "Could not create tenant",
     "queueWhatsapp": "Could not queue message",
     "xlsx": "Could not generate XLSX. Check the pool and calculated prizes.",
-    "pdf": "Could not generate PDF. Check the pool and calculated prizes."
+    "pdf": "Could not generate PDF. Check the pool and calculated prizes.",
+    "cloneFailed": "Failed to clone pool. Please try again."
   },
   "participantes": {
     "pageTitle": "Participants",
@@ -399,7 +400,15 @@
       "maisPontos": "Top score 1st draw",
       "nove": "09 hits — top score",
       "menos": "Lowest score"
-    }
+    },
+    "clonarSection": "Clone from existing pool",
+    "clonarHint": "Optional — copies quotas and categories from another pool",
+    "clonarSelectNone": "Start from scratch (default)",
+    "clonarCotas": "quotas",
+    "clonarInfo": "<strong>{{n}} quotas</strong> will be copied as pending. Categories and quota value replicated from source pool.",
+    "clonarCatHint": "Pre-filled from source pool — editable",
+    "clonarSubmit": "Clone pool",
+    "clonarCreating": "Cloning..."
   },
   "gestaoCotas": {
     "breadcrumbPools": "Pools",
@@ -1391,6 +1400,8 @@
       "maiorGeral": "highest cumulative overall",
       "menorGeral": "lowest cumulative overall",
       "taxa": "retained by administration"
-    }
+    },
+    "cloneBtn": "Clone",
+    "cloning": "Cloning..."
   }
 }

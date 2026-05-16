@@ -44,6 +44,10 @@ export interface BolaoResponse {
   atualizadoEm: string;
 }
 
+export interface ClonarBolaoResponse extends BolaoResponse {
+  cotasClonadas: number;
+}
+
 @Injectable()
 export class BolaoService {
   constructor(
@@ -251,6 +255,87 @@ export class BolaoService {
     return this.toResponse(updated as BolaoComTudo);
   }
 
+  async clonar(tenantId: string | null, id: string): Promise<ClonarBolaoResponse> {
+    this.assertTenantId(tenantId);
+
+    const fonte = await this.prisma.bolao.findFirst({
+      where: { id, tenantId },
+      include: {
+        categoriasPremiacao: { orderBy: { ordem: 'asc' } },
+        cotas:               { orderBy: { numeroSequencial: 'asc' } },
+      },
+    });
+
+    if (!fonte) {
+      throw new NotFoundException({
+        statusCode: 404,
+        error: 'BOLAO_NAO_ENCONTRADO',
+        message: `Bolão ${id} não encontrado`,
+        details: [],
+      });
+    }
+
+    const clonado = await this.prisma.$transaction(async (tx) => {
+      const novo = await tx.bolao.create({
+        data: {
+          tenantId,
+          nome:       `${fonte.nome} (Cópia)`,
+          valorCota:  fonte.valorCota,
+          dataInicio:  null,
+          dataTermino: null,
+        },
+      });
+
+      if (fonte.categoriasPremiacao.length > 0) {
+        await tx.categoriaPremiacao.createMany({
+          data: fonte.categoriasPremiacao.map((c) => ({
+            tenantId,
+            bolaoId:                novo.id,
+            nome:                   c.nome,
+            tipo:                   c.tipo,
+            acertosAlvo:            c.acertosAlvo,
+            sorteioReferencia:      c.sorteioReferencia,
+            percentual:             c.percentual,
+            acumulaSemGanhador:     c.acumulaSemGanhador,
+            valorAcumuladoAnterior: 0,
+            ordem:                  c.ordem,
+          })),
+        });
+      }
+
+      if (fonte.cotas.length > 0) {
+        await tx.cota.createMany({
+          data: fonte.cotas.map((c) => ({
+            tenantId,
+            bolaoId:                 novo.id,
+            participanteId:          c.participanteId,
+            nomeIdentificacao:       c.nomeIdentificacao,
+            numeroCelular:           c.numeroCelular,
+            numeroSequencial:        c.numeroSequencial,
+            palpites:                c.palpites,
+            statusPagamento:         'PENDENTE' as const,
+            dataConfirmacaoPagamento: null,
+            totalAcertosAcumulados:  0,
+            statusResultado:         'EM_ANDAMENTO' as const,
+          })),
+        });
+      }
+
+      return tx.bolao.findFirstOrThrow({
+        where: { id: novo.id },
+        include: {
+          categoriasPremiacao: { orderBy: { ordem: 'asc' } },
+          _count: { select: { cotas: { where: { statusPagamento: PagamentoStatus.PAGO } } } },
+        },
+      });
+    });
+
+    return {
+      ...this.toResponse(clonado as BolaoComTudo),
+      cotasClonadas: fonte.cotas.length,
+    };
+  }
+
   async delete(tenantId: string | null, id: string): Promise<void> {
     this.assertTenantId(tenantId);
     const bolao = await this.findOrFail(tenantId, id);
@@ -416,11 +501,11 @@ export class BolaoService {
     }
 
     for (const cat of categorias) {
-      if (cat.tipo === 'ACERTOS_EXATOS' && !cat.acertosAlvo) {
+      if (cat.tipo === 'ACERTOS_EXATOS' && (cat.acertosAlvo == null || cat.acertosAlvo < 0 || cat.acertosAlvo > 10)) {
         throw new BusinessException(
           'ACERTOS_ALVO_OBRIGATORIO',
-          `Categoria "${cat.nome}" do tipo ACERTOS_EXATOS exige acertosAlvo`,
-          [{ field: 'acertosAlvo', code: 'ACERTOS_ALVO_OBRIGATORIO', message: 'Campo obrigatório para ACERTOS_EXATOS' }],
+          `Categoria "${cat.nome}" do tipo ACERTOS_EXATOS exige acertosAlvo entre 0 e 10`,
+          [{ field: 'acertosAlvo', code: 'ACERTOS_ALVO_OBRIGATORIO', message: 'Campo obrigatório para ACERTOS_EXATOS (0–10)' }],
         );
       }
       if (cat.tipo === 'MAIOR_PONTUACAO_SORTEIO' && !cat.sorteioReferencia) {

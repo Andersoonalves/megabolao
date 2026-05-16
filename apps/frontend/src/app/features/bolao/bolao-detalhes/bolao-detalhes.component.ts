@@ -1,5 +1,5 @@
 import { Component, signal, input, OnInit, ChangeDetectionStrategy, inject, effect } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { DecimalPipe, CurrencyPipe, DatePipe } from '@angular/common';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
@@ -55,12 +55,14 @@ const TIPO_CHIP: Record<CategoriaTipo, string> = {
 })
 export class BolaoDetalhesComponent implements OnInit {
   readonly id  = input<string>('');
-  private readonly api = inject(ApiService);
+  private readonly api       = inject(ApiService);
+  private readonly router    = inject(Router);
   private readonly translate = inject(TranslateService);
 
-  loading = signal(true);
-  error   = signal('');
-  data    = signal<DashboardData | null>(null);
+  loading      = signal(true);
+  error        = signal('');
+  data         = signal<DashboardData | null>(null);
+  loadingClone = signal(false);
 
   readonly acertosRange = [0,1,2,3,4,5,6,7,8,9,10];
 
@@ -80,6 +82,21 @@ export class BolaoDetalhesComponent implements OnInit {
       this.error.set(this.translate.instant('errors.loadDetails'));
     } finally {
       this.loading.set(false);
+    }
+  }
+
+  async clonar(): Promise<void> {
+    this.loadingClone.set(true);
+    this.error.set('');
+    try {
+      const clonado = await firstValueFrom(
+        this.api.post<{ id: string }>(`/boloes/${this.id()}/clonar`, {}),
+      );
+      await this.router.navigate(['/bolao', clonado.id, 'detalhes']);
+    } catch {
+      this.error.set(this.translate.instant('errors.cloneFailed'));
+    } finally {
+      this.loadingClone.set(false);
     }
   }
 

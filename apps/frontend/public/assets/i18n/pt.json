@@ -289,7 +289,8 @@
     "createTenant": "Erro ao criar tenant",
     "queueWhatsapp": "Erro ao enfileirar mensagem",
     "xlsx": "Erro ao gerar XLSX. Verifique se o bolão existe e os prêmios foram calculados.",
-    "pdf": "Erro ao gerar PDF. Verifique se o bolão existe e os prêmios foram calculados."
+    "pdf": "Erro ao gerar PDF. Verifique se o bolão existe e os prêmios foram calculados.",
+    "cloneFailed": "Falha ao clonar o bolão. Tente novamente."
   },
   "participantes": {
     "pageTitle": "Participantes",
@@ -399,7 +400,15 @@
       "maisPontos": "Mais Pontos 1º Sorteio",
       "nove": "09 Pontos — Mais Pontos",
       "menos": "Menos Pontos"
-    }
+    },
+    "clonarSection": "Clonar de bolão existente",
+    "clonarHint": "Opcional — copia cotas e categorias de outro bolão",
+    "clonarSelectNone": "Criar do zero (padrão)",
+    "clonarCotas": "cotas",
+    "clonarInfo": "<strong>{{n}} cotas</strong> serão copiadas como pendentes. Categorias e valor da cota replicados do bolão fonte.",
+    "clonarCatHint": "Pré-preenchidas do bolão fonte — editáveis",
+    "clonarSubmit": "Clonar bolão",
+    "clonarCreating": "Clonando..."
   },
   "gestaoCotas": {
     "breadcrumbPools": "Bolões",
@@ -1391,6 +1400,8 @@
       "maiorGeral": "maior acumulado geral",
       "menorGeral": "menor acumulado geral",
       "taxa": "retida pela administração"
-    }
+    },
+    "cloneBtn": "Clonar",
+    "cloning": "Clonando..."
   }
 }

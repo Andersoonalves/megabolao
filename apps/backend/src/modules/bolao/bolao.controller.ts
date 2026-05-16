@@ -97,6 +97,13 @@ export class BolaoController {
     return this.bolaoService.updateCategorias(tenantId, id, dto);
   }
 
+  @Post(':id/clonar')
+  @RequerPermissoes('bolao.criar')
+  @ApiOperation({ summary: 'Clonar bolão: copia estrutura e cotas (→ PENDENTE), sem sorteios nem prêmios' })
+  clonar(@TenantId() tenantId: string | null, @Param('id', ParseUUIDPipe) id: string) {
+    return this.bolaoService.clonar(tenantId, id);
+  }
+
   @Patch(':id/iniciar')
   @RequerPermissoes('bolao.iniciar')
   @ApiOperation({ summary: 'Iniciar bolão (A_SER_INICIADO → EM_ANDAMENTO)' })
