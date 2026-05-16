@@ -52,6 +52,11 @@ export class ListaBolaoesComponent implements OnInit {
   editLoading    = signal(false);
   editError      = signal('');
 
+  // ── Delete state ──────────────────────────────────────────────────────────────
+  confirmandoExclusao = signal<BolaoResponse | null>(null);
+  deletandoId         = signal('');
+  deleteError         = signal('');
+
   ngOnInit(): void { this.load(); }
 
   // ── Filtros ───────────────────────────────────────────────────────────────────
@@ -142,6 +147,39 @@ export class ListaBolaoesComponent implements OnInit {
       );
     } finally {
       this.editLoading.set(false);
+    }
+  }
+
+  // ── Exclusão ─────────────────────────────────────────────────────────────────
+  podeDeletar(b: BolaoResponse): boolean {
+    return b.status === 'A_SER_INICIADO' || b.status === 'SUSPENSO';
+  }
+
+  abrirConfirmacaoExclusao(b: BolaoResponse): void {
+    this.confirmandoExclusao.set(b);
+    this.deleteError.set('');
+  }
+
+  fecharConfirmacaoExclusao(): void { this.confirmandoExclusao.set(null); }
+
+  async confirmarExclusao(): Promise<void> {
+    const b = this.confirmandoExclusao();
+    if (!b || this.deletandoId()) return;
+    this.deletandoId.set(b.id);
+    this.deleteError.set('');
+    try {
+      await firstValueFrom(this.api.delete(`/boloes/${b.id}`));
+      this.bolaoes.update(bs => bs.filter(x => x.id !== b.id));
+      this.total.update(t => t - 1);
+      this.fecharConfirmacaoExclusao();
+    } catch (err: unknown) {
+      type E = { error?: { message?: string }; status?: number };
+      const e = err as E;
+      this.deleteError.set(
+        e.error?.message ?? this.translate.instant('listaBoloes.deleteError'),
+      );
+    } finally {
+      this.deletandoId.set('');
     }
   }
 

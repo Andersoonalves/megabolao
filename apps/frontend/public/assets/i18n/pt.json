@@ -290,7 +290,8 @@
     "queueWhatsapp": "Erro ao enfileirar mensagem",
     "xlsx": "Erro ao gerar XLSX. Verifique se o bolão existe e os prêmios foram calculados.",
     "pdf": "Erro ao gerar PDF. Verifique se o bolão existe e os prêmios foram calculados.",
-    "cloneFailed": "Falha ao clonar o bolão. Tente novamente."
+    "cloneFailed": "Falha ao clonar o bolão. Tente novamente.",
+    "deleteFailed": "Erro ao excluir o bolão. Tente novamente."
   },
   "participantes": {
     "pageTitle": "Participantes",
@@ -341,7 +342,13 @@
     "quotaValueLabel": "Valor da cota (R$)",
     "startDate": "Data início",
     "endDate": "Data término",
-    "saveWithCheck": "✓ Salvar"
+    "saveWithCheck": "✓ Salvar",
+    "deleteTitle": "Excluir bolão",
+    "deleteConfirm": "Tem certeza que deseja excluir \"{{nome}}\"?",
+    "deleteWarning": "Esta ação remove todas as cotas e sorteios vinculados. Participantes não são excluídos. Esta ação não pode ser desfeita.",
+    "deleteConfirmBtn": "Sim, excluir",
+    "deleting": "Excluindo...",
+    "deleteError": "Erro ao excluir bolão"
   },
   "criarBolao": {
     "brand": "Bolão CG",
@@ -1402,6 +1409,10 @@
       "taxa": "retida pela administração"
     },
     "cloneBtn": "Clonar",
-    "cloning": "Clonando..."
+    "cloning": "Clonando...",
+    "deleteBtn": "Excluir",
+    "deleteTitle": "Excluir bolão",
+    "deleteConfirm": "Tem certeza que deseja excluir \"{{nome}}\"?",
+    "deleteWarning": "Esta ação remove todas as cotas e sorteios vinculados. Participantes não são excluídos. Esta ação não pode ser desfeita."
   }
 }

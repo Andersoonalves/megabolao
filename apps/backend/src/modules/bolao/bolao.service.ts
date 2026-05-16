@@ -340,10 +340,11 @@ export class BolaoService {
     this.assertTenantId(tenantId);
     const bolao = await this.findOrFail(tenantId, id);
 
-    if (bolao.status !== 'A_SER_INICIADO') {
+    const statusPermitidos = ['A_SER_INICIADO', 'SUSPENSO'];
+    if (!statusPermitidos.includes(bolao.status)) {
       throw new BusinessException(
         'STATUS_INVALIDO',
-        'Bolão só pode ser excluído quando está A_SER_INICIADO',
+        'Bolão só pode ser excluído quando está A_SER_INICIADO ou SUSPENSO',
       );
     }
 

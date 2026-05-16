@@ -64,6 +64,15 @@ export class BolaoDetalhesComponent implements OnInit {
   data         = signal<DashboardData | null>(null);
   loadingClone = signal(false);
 
+  confirmandoExclusao = signal(false);
+  deletando           = signal(false);
+  deleteError         = signal('');
+
+  podeDeletar(): boolean {
+    const s = this.data()?.bolao.status;
+    return s === 'A_SER_INICIADO' || s === 'SUSPENSO';
+  }
+
   readonly acertosRange = [0,1,2,3,4,5,6,7,8,9,10];
 
   constructor() {
@@ -97,6 +106,20 @@ export class BolaoDetalhesComponent implements OnInit {
       this.error.set(this.translate.instant('errors.cloneFailed'));
     } finally {
       this.loadingClone.set(false);
+    }
+  }
+
+  async excluir(): Promise<void> {
+    if (this.deletando()) return;
+    this.deletando.set(true);
+    this.deleteError.set('');
+    try {
+      await firstValueFrom(this.api.delete(`/boloes/${this.id()}`));
+      await this.router.navigate(['/boloes']);
+    } catch (err: unknown) {
+      const e = err as { error?: { message?: string } };
+      this.deleteError.set(e.error?.message ?? this.translate.instant('errors.deleteFailed'));
+      this.deletando.set(false);
     }
   }
 

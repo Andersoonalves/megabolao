@@ -30,12 +30,49 @@
                 class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-50 text-sm font-semibold rounded-[10px] text-slate-900 transition-colors min-h-9">
           ⎘ {{ loadingClone() ? ('bolaoDetalhes.cloning' | translate) : ('bolaoDetalhes.cloneBtn' | translate) }}
         </button>
+        @if (podeDeletar()) {
+          <button (click)="confirmandoExclusao.set(true)"
+                  class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-red-200 hover:bg-red-50 text-sm font-semibold rounded-[10px] text-red-600 transition-colors min-h-9">
+            🗑 {{ 'bolaoDetalhes.deleteBtn' | translate }}
+          </button>
+        }
         <a routerLink="/sorteios"
            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-800 text-white text-sm font-semibold rounded-[10px] no-underline transition-colors shadow-sm min-h-9">
           ✦ <span class="hidden sm:inline">{{ 'bolaoDetalhes.registerDraw' | translate }}</span><span class="sm:hidden">{{ 'bolaoDetalhes.registerDrawShort' | translate }}</span>
         </a>
       </div>
     </div>
+
+    <!-- ── Modal: Confirmar Exclusão ───────────────────────────────────────── -->
+    @if (confirmandoExclusao()) {
+      <div class="fixed inset-0 bg-black/50 z-40 flex items-center justify-center p-4" (click)="confirmandoExclusao.set(false)">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 flex flex-col gap-5" (click)="$event.stopPropagation()">
+          <div class="flex items-start gap-4">
+            <div class="w-11 h-11 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 text-xl">🗑</div>
+            <div>
+              <h3 class="font-display font-semibold text-[16px]">{{ 'bolaoDetalhes.deleteTitle' | translate }}</h3>
+              <p class="text-slate-500 text-[13px] mt-1">
+                {{ 'bolaoDetalhes.deleteConfirm' | translate: { nome: data()?.bolao.nome } }}
+              </p>
+              <p class="text-slate-400 text-[12px] mt-2">{{ 'bolaoDetalhes.deleteWarning' | translate }}</p>
+            </div>
+          </div>
+          @if (deleteError()) {
+            <div class="p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">⚠ {{ deleteError() }}</div>
+          }
+          <div class="flex gap-2.5">
+            <button (click)="confirmandoExclusao.set(false)"
+                    class="flex-1 py-2.5 bg-white border border-slate-200 font-semibold text-sm rounded-[10px] hover:bg-slate-50 transition-colors">
+              {{ 'common.cancel' | translate }}
+            </button>
+            <button (click)="excluir()" [disabled]="deletando()"
+                    class="flex-1 py-2.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-semibold text-sm rounded-[10px] shadow-sm transition-colors">
+              {{ deletando() ? ('listaBoloes.deleting' | translate) : ('listaBoloes.deleteConfirmBtn' | translate) }}
+            </button>
+          </div>
+        </div>
+      </div>
+    }
 
     @if (loading()) {
       <div class="p-4 lg:p-7">

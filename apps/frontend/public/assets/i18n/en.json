@@ -290,7 +290,8 @@
     "queueWhatsapp": "Could not queue message",
     "xlsx": "Could not generate XLSX. Check the pool and calculated prizes.",
     "pdf": "Could not generate PDF. Check the pool and calculated prizes.",
-    "cloneFailed": "Failed to clone pool. Please try again."
+    "cloneFailed": "Failed to clone pool. Please try again.",
+    "deleteFailed": "Error deleting pool. Please try again."
   },
   "participantes": {
     "pageTitle": "Participants",
@@ -341,7 +342,13 @@
     "quotaValueLabel": "Quota value (BRL)",
     "startDate": "Start date",
     "endDate": "End date",
-    "saveWithCheck": "✓ Save"
+    "saveWithCheck": "✓ Save",
+    "deleteTitle": "Delete pool",
+    "deleteConfirm": "Are you sure you want to delete \"{{nome}}\"?",
+    "deleteWarning": "This removes all linked quotas and draws. Participants are not deleted. This action cannot be undone.",
+    "deleteConfirmBtn": "Yes, delete",
+    "deleting": "Deleting...",
+    "deleteError": "Error deleting pool"
   },
   "criarBolao": {
     "brand": "Bolão CG",
@@ -1402,6 +1409,10 @@
       "taxa": "retained by administration"
     },
     "cloneBtn": "Clone",
-    "cloning": "Cloning..."
+    "cloning": "Cloning...",
+    "deleteBtn": "Delete",
+    "deleteTitle": "Delete pool",
+    "deleteConfirm": "Are you sure you want to delete \"{{nome}}\"?",
+    "deleteWarning": "This removes all linked quotas and draws. Participants are not deleted. This action cannot be undone."
   }
 }
