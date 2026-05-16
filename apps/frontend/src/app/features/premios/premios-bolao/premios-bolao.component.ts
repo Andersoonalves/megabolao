@@ -95,9 +95,11 @@ export class PremiosBolaoComponent implements OnInit {
 
     return cats.map(cat => {
       const catPremios = premiosList.filter(p => p.categoriaNome === cat.nome);
+      const estimativa = (this.bolao()!.valorBrutoArrecadado * cat.percentual / 100)
+        + (cat.valorAcumuladoAnterior ?? 0);
       const valorTotal = cat.tipo === 'TAXA_ADMINISTRATIVA'
         ? (this.bolao()!.valorBrutoArrecadado * cat.percentual / 100)
-        : (catPremios[0]?.valorTotalCategoria ?? this.bolao()!.valorBrutoArrecadado * cat.percentual / 100);
+        : (catPremios[0]?.valorTotalCategoria ?? estimativa);
       return {
         cat,
         premios: catPremios,
@@ -115,7 +117,12 @@ export class PremiosBolaoComponent implements OnInit {
   pctDistribuido     = computed(() => {
     const b = this.bolao();
     if (!b || b.valorBrutoArrecadado === 0) return 0;
-    return Math.round(this.totalDistribuido() / b.valorBrutoArrecadado * 100);
+    const taxaPct = b.categorias
+      .filter(c => c.tipo === 'TAXA_ADMINISTRATIVA')
+      .reduce((s, c) => s + c.percentual, 0);
+    const poolLiquido = b.valorBrutoArrecadado * (1 - taxaPct / 100);
+    if (poolLiquido === 0) return 0;
+    return Math.round(this.totalDistribuido() / poolLiquido * 100);
   });
 
   constructor() {
