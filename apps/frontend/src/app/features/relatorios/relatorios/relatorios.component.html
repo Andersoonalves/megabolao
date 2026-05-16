@@ -10,11 +10,11 @@
         <span class="font-display font-semibold text-[14px] sm:hidden truncate">{{ 'relatorios.title' | translate }}</span>
       </div>
       <div class="flex items-center gap-2 shrink-0 flex-wrap justify-end">
-        <button (click)="gerarXlsx()" [disabled]="gerandoXlsx()"
+        <button (click)="gerarXlsx()" [disabled]="gerandoXlsx() || !selectedBolaoId()"
                 class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-50 text-sm font-semibold rounded-[10px] text-slate-700 transition-colors min-h-9">
           {{ gerandoXlsx() ? ('relatorios.genXlsx' | translate) : ('relatorios.downloadXlsx' | translate) }}
         </button>
-        <button (click)="gerarPdf()" [disabled]="gerandoPdf()"
+        <button (click)="gerarPdf()" [disabled]="gerandoPdf() || !selectedBolaoId()"
                 class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-800 disabled:opacity-50 text-white text-sm font-semibold rounded-[10px] transition-colors shadow-sm min-h-9">
           {{ gerandoPdf() ? ('relatorios.genPdf' | translate) : ('relatorios.exportPdf' | translate) }}
         </button>
@@ -26,8 +26,23 @@
       <div class="mb-5 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 class="font-display text-2xl lg:text-[26px] font-semibold tracking-tight mb-1">{{ 'relatorios.title' | translate }}</h1>
-          <p class="text-slate-500 text-[13.5px]">{{ 'relatorios.subtitleDemo' | translate }}</p>
+          @if (dash(); as d) {
+            <p class="text-slate-500 text-[13.5px]">
+              {{ d.bolao.nome }} · {{ d.sorteios.length }} {{ 'relatorios.drawsCount' | translate }} · {{ d.bolao.status }}
+            </p>
+          } @else {
+            <p class="text-slate-500 text-[13.5px]">{{ 'relatorios.subtitleSelect' | translate }}</p>
+          }
         </div>
+        <!-- Bolão selector -->
+        @if (boloes().length > 0) {
+          <select [ngModel]="selectedBolaoId()" (ngModelChange)="onBolaoChange($event)"
+                  class="px-3 py-2 border border-slate-200 rounded-[10px] text-sm bg-white focus:outline-none focus:border-green-700 min-w-[220px]">
+            @for (b of boloes(); track b.id) {
+              <option [value]="b.id">{{ b.nome }}</option>
+            }
+          </select>
+        }
       </div>
 
       @if (urlXlsx() || urlPdf()) {
@@ -52,133 +67,180 @@
       @if (error()) {
         <div class="mb-5 p-3.5 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">⚠ {{ error() }}</div>
       }
+      @if (reportError()) {
+        <div class="mb-5 p-3.5 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">⚠ {{ reportError() }}</div>
+      }
 
-      <!-- KPIs -->
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
-        <div class="bg-white border border-slate-200 rounded-lg p-[18px]">
-          <div class="text-[11px] font-semibold text-slate-500 uppercase tracking-widest">{{ 'relatorios.kpiTotalRaised' | translate }}</div>
-          <div class="font-display text-[22px] font-semibold tracking-tight mt-1 tabular text-amber-600">{{ 184880 | rBrl }}</div>
-          <div class="text-[11.5px] text-slate-400 mt-0.5">{{ 'relatorios.kpiTotalRaisedHint' | translate }}</div>
+      @if (loading()) {
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
+          @for (i of [1,2,3,4]; track i) {
+            <div class="bg-white border border-slate-200 rounded-lg p-[18px] h-24 animate-pulse"></div>
+          }
         </div>
-        <div class="bg-white border border-slate-200 rounded-lg p-[18px]">
-          <div class="text-[11px] font-semibold text-slate-500 uppercase tracking-widest">{{ 'relatorios.kpiTotalPaid' | translate }}</div>
-          <div class="font-display text-[22px] font-semibold tracking-tight mt-1 tabular">{{ 174624 | rBrl }}</div>
-          <div class="text-[11.5px] text-green-700 mt-0.5">{{ 'relatorios.kpiTotalPaidHint' | translate }}</div>
-        </div>
-        <div class="bg-white border border-slate-200 rounded-lg p-[18px]">
-          <div class="text-[11px] font-semibold text-slate-500 uppercase tracking-widest">{{ 'relatorios.kpiPending' | translate }}</div>
-          <div class="font-display text-[22px] font-semibold tracking-tight mt-1 tabular text-amber-600">{{ 12380 | rBrl }}</div>
-          <div class="text-[11.5px] text-slate-400 mt-0.5">{{ 'relatorios.kpiPendingHint' | translate }}</div>
-        </div>
-        <div class="bg-white border border-slate-200 rounded-lg p-[18px]">
-          <div class="text-[11px] font-semibold text-slate-500 uppercase tracking-widest">{{ 'relatorios.kpiMargin' | translate }}</div>
-          <div class="font-display text-[22px] font-semibold tracking-tight mt-1 tabular text-blue-600">{{ 10256 | rBrl }}</div>
-          <div class="text-[11.5px] text-slate-400 mt-0.5">{{ 'relatorios.kpiMarginHint' | translate }}</div>
-        </div>
-      </div>
+      }
 
-      <!-- Charts row -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
-
-        <!-- Distribuição por categoria -->
-        <div class="bg-white border border-slate-200 rounded-lg">
-          <div class="px-5 py-4 border-b border-slate-200">
-            <h3 class="font-display font-semibold text-[15px]">{{ 'relatorios.chartByCategory' | translate }}</h3>
+      @if (dash(); as d) {
+        <!-- KPIs -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
+          <div class="bg-white border border-slate-200 rounded-lg p-[18px]">
+            <div class="text-[11px] font-semibold text-slate-500 uppercase tracking-widest">{{ 'relatorios.kpiTotalRaised' | translate }}</div>
+            <div class="font-display text-[22px] font-semibold tracking-tight mt-1 tabular text-amber-600">{{ fmtBrl(valorBruto()) }}</div>
+            <div class="text-[11.5px] text-slate-400 mt-0.5">{{ fmtBrl(valorCota()) }} × {{ totalPago() }} {{ 'relatorios.kpiTotalRaisedHint' | translate }}</div>
           </div>
-          <div class="p-5 flex flex-col gap-4">
-            @for (r of distribuicao; track r.cat) {
-              <div>
-                <div class="flex items-center justify-between mb-1.5">
-                  <span class="text-[12.5px] font-semibold">{{ r.cat }}</span>
-                  <span class="font-mono text-[12.5px] tabular">{{ r.v | rBrl }} <span class="text-slate-400 text-[11px]">· {{ r.p }}%</span></span>
-                </div>
-                <div class="flex items-center gap-3">
-                  <div class="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
-                    <div class="h-full rounded-full transition-all duration-500"
-                         [style.width]="r.p + '%'"
-                         [style.background]="r.color"></div>
+          <div class="bg-white border border-slate-200 rounded-lg p-[18px]">
+            <div class="text-[11px] font-semibold text-slate-500 uppercase tracking-widest">{{ 'relatorios.kpiPaid' | translate }}</div>
+            <div class="font-display text-[22px] font-semibold tracking-tight mt-1 tabular text-green-700">{{ totalPago() }}</div>
+            <div class="text-[11.5px] text-green-700 mt-0.5">{{ 'relatorios.kpiPaidHint' | translate }}</div>
+          </div>
+          <div class="bg-white border border-slate-200 rounded-lg p-[18px]">
+            <div class="text-[11px] font-semibold text-slate-500 uppercase tracking-widest">{{ 'relatorios.kpiPending' | translate }}</div>
+            <div class="font-display text-[22px] font-semibold tracking-tight mt-1 tabular text-amber-600">{{ totalPendente() }}</div>
+            <div class="text-[11.5px] text-slate-400 mt-0.5">{{ fmtBrl(valorPendente()) }} {{ 'relatorios.kpiPendingHint' | translate }}</div>
+          </div>
+          <div class="bg-white border border-slate-200 rounded-lg p-[18px]">
+            <div class="text-[11px] font-semibold text-slate-500 uppercase tracking-widest">{{ 'relatorios.kpiTax' | translate }}</div>
+            <div class="font-display text-[22px] font-semibold tracking-tight mt-1 tabular text-blue-600">{{ fmtBrl(taxaValor()) }}</div>
+            <div class="text-[11.5px] text-slate-400 mt-0.5">{{ taxaPercentual() }}% {{ 'relatorios.kpiTaxHint' | translate }}</div>
+          </div>
+        </div>
+
+        <!-- Charts row -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
+
+          <!-- Distribuição por acertos -->
+          <div class="bg-white border border-slate-200 rounded-lg">
+            <div class="px-5 py-4 border-b border-slate-200">
+              <h3 class="font-display font-semibold text-[15px]">{{ 'relatorios.chartByCategory' | translate }}</h3>
+            </div>
+            <div class="p-5 flex flex-col gap-3">
+              @for (r of distribuicao(); track r.acertos) {
+                <div>
+                  <div class="flex items-center justify-between mb-1">
+                    <span class="text-[12.5px] font-semibold">{{ r.acertos }} {{ 'relatorios.hits' | translate }}</span>
+                    <span class="font-mono text-[12px] tabular text-slate-500">{{ r.quantidade }} {{ 'relatorios.quotas' | translate }} · {{ r.percento }}%</span>
                   </div>
-                  <span class="font-mono text-[11px] text-slate-400 text-right w-16 tabular">{{ 'relatorios.winnersShort' | translate: { n: r.n } }}</span>
+                  <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                    <div class="h-full rounded-full transition-all duration-500"
+                         [style.width.%]="r.percento"
+                         [style.background]="r.acertos >= 9 ? '#f59e0b' : r.acertos >= 6 ? '#10b981' : '#94a3b8'"></div>
+                  </div>
                 </div>
-              </div>
-            }
+              }
+              @if (distribuicao().length === 0) {
+                <p class="text-sm text-slate-400 text-center py-6">{{ 'relatorios.noDistribution' | translate }}</p>
+              }
+            </div>
+          </div>
+
+          <!-- Sorteios -->
+          <div class="bg-white border border-slate-200 rounded-lg">
+            <div class="px-5 py-4 border-b border-slate-200">
+              <h3 class="font-display font-semibold text-[15px]">{{ 'relatorios.chartDraws' | translate }}</h3>
+            </div>
+            <div class="p-5">
+              @if (sorteiosBars().length > 0) {
+                <div class="flex flex-col gap-3">
+                  @for (s of sorteiosBars(); track s.concurso) {
+                    <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+                      <div class="shrink-0">
+                        <div class="font-display font-semibold text-[14px]">#{{ s.concurso }}</div>
+                        <div class="text-[11px] text-slate-400">{{ fmtDate(s.data) }}</div>
+                      </div>
+                      <div class="flex-1 flex flex-wrap gap-1.5">
+                        @for (b of s.bolas; track b) {
+                          <span class="w-8 h-8 rounded-full bg-green-700 text-white font-mono font-bold text-[12px] inline-flex items-center justify-center">
+                            {{ b < 10 ? '0' : '' }}{{ b }}
+                          </span>
+                        }
+                      </div>
+                      <span class="text-[11px] text-slate-400 shrink-0">{{ s.seq }}º {{ 'relatorios.draw' | translate }}</span>
+                    </div>
+                  }
+                </div>
+              } @else {
+                <p class="text-sm text-slate-400 text-center py-6">{{ 'relatorios.noDraws' | translate }}</p>
+              }
+            </div>
           </div>
         </div>
 
-        <!-- Acertos por sorteio (bar chart) -->
-        <div class="bg-white border border-slate-200 rounded-lg">
-          <div class="px-5 py-4 border-b border-slate-200">
-            <h3 class="font-display font-semibold text-[15px]">{{ 'relatorios.chartHits' | translate }}</h3>
-          </div>
-          <div class="p-5">
-            <div class="flex items-end gap-3 h-44">
-              @for (b of sorteiosBars; track b.c) {
-                <div class="flex-1 flex flex-col items-center gap-1.5">
-                  <span class="font-mono text-[10.5px] text-slate-400 tabular">{{ b.l }}</span>
-                  <div class="w-full rounded-t-[4px] transition-all duration-500"
-                       [style.height]="(b.h * 18) + 'px'"
-                       style="background: linear-gradient(180deg, #10b981, #047857)"></div>
-                  <span class="font-mono text-[10px] text-slate-400">{{ b.c }}</span>
+        <!-- Prêmios distribuídos -->
+        @if (premiosDistribuidos().length > 0) {
+          <div class="bg-white border border-slate-200 rounded-lg mb-5">
+            <div class="px-5 py-4 border-b border-slate-200">
+              <h3 class="font-display font-semibold text-[15px]">{{ 'relatorios.prizeDistribution' | translate }}</h3>
+            </div>
+            <div class="p-5 flex flex-col gap-3">
+              @for (p of premiosDistribuidos(); track p.nome) {
+                <div class="flex items-center justify-between">
+                  <span class="text-[12.5px] font-semibold">{{ p.nome }}</span>
+                  <span class="font-mono text-[12.5px] tabular">{{ fmtBrl(p.valor) }} <span class="text-slate-400 text-[11px]">· {{ p.percentual }}%</span></span>
+                </div>
+                <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                  <div class="h-full rounded-full" [style.width.%]="p.percentual" [style.background]="p.color"></div>
                 </div>
               }
             </div>
-            <p class="text-[11.5px] text-slate-400 text-center mt-3">{{ 'relatorios.chartHitsCaption' | translate }}</p>
           </div>
-        </div>
-      </div>
+        }
 
-      <!-- Ranking final -->
-      <div class="bg-white border border-slate-200 rounded-lg overflow-hidden">
-        <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between flex-wrap gap-2">
-          <h3 class="font-display font-semibold text-[15px]">{{ 'relatorios.rankingTitle' | translate }}</h3>
-          <button class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-[12.5px] font-semibold rounded-[10px] text-slate-700 transition-colors">
-            {{ 'relatorios.exportCsv' | translate }}
-          </button>
+        <!-- Ranking -->
+        <div class="bg-white border border-slate-200 rounded-lg overflow-hidden">
+          <div class="px-5 py-4 border-b border-slate-200">
+            <h3 class="font-display font-semibold text-[15px]">{{ 'relatorios.rankingTitle' | translate }}</h3>
+          </div>
+          @if (rankingRows().length > 0) {
+            <div class="overflow-x-auto">
+              <table class="w-full text-[13px]">
+                <thead class="bg-slate-50">
+                  <tr>
+                    <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5 w-12">#</th>
+                    <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">{{ 'relatorios.thParticipant' | translate }}</th>
+                    <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5 hidden sm:table-cell">{{ 'relatorios.thQuota' | translate }}</th>
+                    <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">{{ 'relatorios.thHits' | translate }}</th>
+                    <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5 hidden md:table-cell">{{ 'relatorios.thCategory' | translate }}</th>
+                    <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">{{ 'relatorios.thPrize' | translate }}</th>
+                    <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5 hidden lg:table-cell">{{ 'relatorios.thStatus' | translate }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (r of rankingRows(); track r.posicao) {
+                    <tr class="border-b border-slate-100 hover:bg-slate-50 last:border-0">
+                      <td class="px-4 py-3">
+                        <span class="w-7 h-7 rounded-full inline-flex items-center justify-center text-[11.5px] font-bold"
+                              [class]="r.posicao <= 3 ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-400'">
+                          {{ r.posicao }}
+                        </span>
+                      </td>
+                      <td class="px-4 py-3 font-semibold">{{ r.nome }}</td>
+                      <td class="px-4 py-3 font-mono text-slate-400 text-[12px] hidden sm:table-cell">#{{ r.cota }}</td>
+                      <td class="px-4 py-3 font-mono font-bold tabular"
+                          [class]="r.acertos >= 9 ? 'text-amber-600' : r.acertos >= 6 ? 'text-green-700' : ''">
+                        {{ r.acertos }}/10
+                      </td>
+                      <td class="px-4 py-3 hidden md:table-cell">
+                        <span class="inline-flex items-center px-1.5 py-0.5 bg-slate-100 text-slate-600 text-[10px] font-semibold rounded uppercase tracking-wide">
+                          {{ r.categoria }}
+                        </span>
+                      </td>
+                      <td class="px-4 py-3 font-mono font-semibold tabular text-amber-700">
+                        {{ r.premio > 0 ? fmtBrl(r.premio) : '—' }}
+                      </td>
+                      <td class="px-4 py-3 hidden lg:table-cell">
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-semibold border"
+                              [class]="r.resultado === 'PREMIADO' ? 'bg-green-50 text-green-800 border-green-200' : 'bg-slate-50 text-slate-500 border-slate-200'">
+                          <span class="w-1.5 h-1.5 rounded-full bg-current"></span>
+                          {{ r.resultado === 'PREMIADO' ? ('relatorios.badgePREMIADO' | translate) : ('relatorios.badgeEMANDAMENTO' | translate) }}
+                        </span>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          } @else {
+            <div class="p-8 text-center text-slate-400 text-sm">{{ 'relatorios.noRanking' | translate }}</div>
+          }
         </div>
-        <div class="overflow-x-auto">
-          <table class="w-full text-[13px]">
-            <thead class="bg-slate-50">
-              <tr>
-                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5 w-12">{{ 'relatorios.thNum' | translate }}</th>
-                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">{{ 'relatorios.thParticipant' | translate }}</th>
-                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5 hidden sm:table-cell">{{ 'relatorios.thQuota' | translate }}</th>
-                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">{{ 'relatorios.thHits' | translate }}</th>
-                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5 hidden md:table-cell">{{ 'relatorios.thCategory' | translate }}</th>
-                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">{{ 'relatorios.thPrize' | translate }}</th>
-                <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5 hidden lg:table-cell">{{ 'relatorios.thStatus' | translate }}</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (r of ranking; track r.p) {
-                <tr class="border-b border-slate-100 hover:bg-slate-50 last:border-0">
-                  <td class="px-4 py-3">
-                    <span class="w-7 h-7 rounded-full inline-flex items-center justify-center text-[11.5px] font-bold"
-                          [class]="r.p <= 3 ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-400'">
-                      {{ r.p }}
-                    </span>
-                  </td>
-                  <td class="px-4 py-3 font-semibold">{{ r.n }}</td>
-                  <td class="px-4 py-3 font-mono text-slate-400 text-[12px] hidden sm:table-cell">{{ r.c }}</td>
-                  <td class="px-4 py-3 font-mono font-bold tabular">{{ r.a }}</td>
-                  <td class="px-4 py-3 hidden md:table-cell">
-                    <span class="inline-flex items-center px-1.5 py-0.5 bg-slate-100 text-slate-600 text-[10px] font-semibold rounded uppercase tracking-wide">{{ r.cat }}</span>
-                  </td>
-                  <td class="px-4 py-3 font-mono font-semibold tabular text-amber-700">{{ r.v | rBrl }}</td>
-                  <td class="px-4 py-3 hidden lg:table-cell">
-                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-semibold border"
-                          [class]="r.s === 'PAGO' ? 'bg-green-50 text-green-800 border-green-200' : 'bg-amber-50 text-amber-700 border-amber-100'">
-                      <span class="w-1.5 h-1.5 rounded-full bg-current"></span>
-                      @switch (r.s) {
-                        @case ('PAGO') { {{ 'relatorios.badgePAGO' | translate }} }
-                        @case ('A_PAGAR') { {{ 'relatorios.badgeAPAGAR' | translate }} }
-                        @default { {{ r.s }} }
-                      }
-                    </span>
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-      </div>
+      }
     </div>
