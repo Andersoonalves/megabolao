@@ -268,8 +268,22 @@
                       }
                     </div>
                     <div class="bg-white p-4">
-                      <div class="text-[10.5px] font-semibold uppercase tracking-wide text-slate-500 mb-1">{{ 'listaBoloes.topScore' | translate }}</div>
-                      <p class="text-[13px] text-slate-400">{{ 'listaBoloes.topScoreHint' | translate }}</p>
+                      <div class="text-[10.5px] font-semibold uppercase tracking-wide text-slate-500 mb-1">
+                        {{ fin ? ('listaBoloes.topScoreWinner' | translate) : ('listaBoloes.topScore' | translate) }}
+                      </div>
+                      @if (maiorPontuacao(b) > 0) {
+                        <div class="flex items-baseline gap-1">
+                          <span class="font-display text-[22px] font-semibold tabular-nums leading-none"
+                                [class.text-amber-600]="maiorPontuacao(b) >= 10"
+                                [class.text-slate-900]="maiorPontuacao(b) < 10">{{ maiorPontuacao(b) }}</span>
+                          <span class="text-slate-500 text-[12px]">{{ 'listaBoloes.topScoreOf' | translate }}</span>
+                        </div>
+                        @if (maiorPontuacaoCotaLabel(b); as cotaLbl) {
+                          <p class="text-[11.5px] text-slate-500 mt-1 truncate" [title]="cotaLbl">{{ cotaLbl }}</p>
+                        }
+                      } @else {
+                        <p class="text-[13px] text-slate-400 italic">{{ 'listaBoloes.topScoreWaiting' | translate }}</p>
+                      }
                     </div>
                   </div>
                   <!-- quick actions -->

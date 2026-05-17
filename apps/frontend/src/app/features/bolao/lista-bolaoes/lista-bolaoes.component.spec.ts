@@ -43,8 +43,11 @@ describe('ListaBolaoesComponent', () => {
               valorBrutoArrecadado: 500,
               criadoEm: '2026-01-06T12:00:00.000Z',
               categorias: [],
-              sorteiosRegistrados: 0,
-              bolasJaSorteadas: [],
+              sorteiosRegistrados: 2,
+              bolasJaSorteadas: [1, 2],
+              maiorPontuacaoAtual: 9,
+              maiorPontuacaoCotaNumero: 4164,
+              maiorPontuacaoCotaNome: 'Maria L.',
             },
           ],
           total: 2,
@@ -110,6 +113,19 @@ describe('ListaBolaoesComponent', () => {
       valorBrutoArrecadado: 0,
       criadoEm: seg.toISOString(),
     })).toMatch(/ · 20h$/);
+  });
+
+  it('maiorPontuacao e label da cota líder vêm da API', async () => {
+    const fixture = TestBed.createComponent(ListaBolaoesComponent);
+    const cmp = fixture.componentInstance;
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const alpha = cmp.bolaoes().find((b) => b.id === 'b2');
+    expect(alpha).toBeDefined();
+    expect(cmp.maiorPontuacao(alpha!)).toBe(9);
+    expect(cmp.maiorPontuacaoCotaLabel(alpha!)).toBeTruthy();
+    expect(cmp.maiorPontuacao({ ...alpha!, maiorPontuacaoAtual: 0 })).toBe(0);
+    expect(cmp.maiorPontuacaoCotaLabel({ ...alpha!, maiorPontuacaoAtual: 0 })).toBeNull();
   });
 
   it('definirVisualizacao atualiza modo de visualização', () => {

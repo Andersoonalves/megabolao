@@ -85,6 +85,10 @@ const mockPrisma = {
     createMany: jest.fn(),
     deleteMany: jest.fn(),
   },
+  cota: {
+    groupBy: jest.fn(),
+    findMany: jest.fn(),
+  },
   $transaction: jest.fn(),
 };
 
@@ -131,6 +135,7 @@ describe('BolaoService', () => {
       expect(result.categorias).toHaveLength(2);
       expect(result.sorteiosRegistrados).toBe(0);
       expect(result.bolasJaSorteadas).toEqual([]);
+      expect(result.maiorPontuacaoAtual).toBe(0);
       expect(result.valorCota).toBe(30);
       expect(result.status).toBe('A_SER_INICIADO');
       expect(mockTenantService.assertTenantPermiteCadastros).toHaveBeenCalledWith(TENANT_ID);
@@ -213,6 +218,16 @@ describe('BolaoService', () => {
         ],
         1,
       ]);
+      mockPrisma.cota.groupBy.mockResolvedValue([
+        { bolaoId: 'bolao-uuid-1', _max: { totalAcertosAcumulados: 9 } },
+      ]);
+      mockPrisma.cota.findMany.mockResolvedValue([
+        {
+          bolaoId: 'bolao-uuid-1',
+          numeroSequencial: 4164,
+          nomeIdentificacao: 'Maria L.',
+        },
+      ]);
 
       // Act
       const result = await service.findAll(TENANT_ID, { page: 1, perPage: 20 });
@@ -228,6 +243,9 @@ describe('BolaoService', () => {
       expect(result.data[0].valorBrutoArrecadado).toBe(360);
       expect(result.data[0].sorteiosRegistrados).toBe(3);
       expect(result.data[0].bolasJaSorteadas).toEqual([4, 7, 12, 18, 23]);
+      expect(result.data[0].maiorPontuacaoAtual).toBe(9);
+      expect(result.data[0].maiorPontuacaoCotaNumero).toBe(4164);
+      expect(result.data[0].maiorPontuacaoCotaNome).toBe('Maria L.');
     });
   });
 

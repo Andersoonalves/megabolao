@@ -45,9 +45,19 @@ export interface BolaoResponse {
   categorias: CategoriaResponse[];
   sorteiosRegistrados: number;
   bolasJaSorteadas: number[];
+  /** Maior total de acertos entre cotas pagas no momento. */
+  maiorPontuacaoAtual: number;
+  maiorPontuacaoCotaNumero: number | null;
+  maiorPontuacaoCotaNome: string | null;
   criadoEm: string;
   atualizadoEm: string;
 }
+
+type MaiorPontuacaoResumo = {
+  acertos: number;
+  cotaNumero: number | null;
+  cotaNome: string | null;
+};
 
 export interface ClonarBolaoResponse extends BolaoResponse {
   cotasClonadas: number;
@@ -143,8 +153,15 @@ export class BolaoService {
       this.prisma.bolao.count({ where }),
     ]);
 
+    const maiores = await this.buscarMaiorPontuacaoPorBolao(
+      tenantId,
+      data.map((b) => b.id),
+    );
+
     return {
-      data: data.map((b) => this.toResponse(b as BolaoComTudo)),
+      data: data.map((b) =>
+        this.toResponse(b as BolaoComTudo, maiores.get(b.id) ?? BolaoService.pontuacaoPadrao()),
+      ),
       total,
       page,
       perPage,
@@ -576,7 +593,75 @@ export class BolaoService {
     return [...new Set(sorteios.flatMap((s) => s.bolasSorteadas))].sort((a, b) => a - b);
   }
 
-  private toResponse(b: BolaoComTudo): BolaoResponse {
+  private static pontuacaoPadrao(): MaiorPontuacaoResumo {
+    return { acertos: 0, cotaNumero: null, cotaNome: null };
+  }
+
+  /** Agrega maior pontuação (cotas pagas) para vários bolões em lote — usado na listagem. */
+  private async buscarMaiorPontuacaoPorBolao(
+    tenantId: string,
+    bolaoIds: string[],
+  ): Promise<Map<string, MaiorPontuacaoResumo>> {
+    const map = new Map<string, MaiorPontuacaoResumo>();
+    if (!bolaoIds.length) return map;
+
+    const maximos = await this.prisma.cota.groupBy({
+      by: ['bolaoId'],
+      where: {
+        tenantId,
+        bolaoId: { in: bolaoIds },
+        statusPagamento: PagamentoStatus.PAGO,
+      },
+      _max: { totalAcertosAcumulados: true },
+    });
+
+    for (const row of maximos) {
+      map.set(row.bolaoId, {
+        acertos: row._max.totalAcertosAcumulados ?? 0,
+        cotaNumero: null,
+        cotaNome: null,
+      });
+    }
+
+    const comPontos = maximos.filter((r) => (r._max.totalAcertosAcumulados ?? 0) > 0);
+    if (!comPontos.length) return map;
+
+    const lideres = await this.prisma.cota.findMany({
+      where: {
+        tenantId,
+        statusPagamento: PagamentoStatus.PAGO,
+        OR: comPontos.map((r) => ({
+          bolaoId: r.bolaoId,
+          totalAcertosAcumulados: r._max.totalAcertosAcumulados!,
+        })),
+      },
+      select: {
+        bolaoId: true,
+        numeroSequencial: true,
+        nomeIdentificacao: true,
+      },
+      orderBy: [{ totalAcertosAcumulados: 'desc' }, { numeroSequencial: 'asc' }],
+    });
+
+    const visto = new Set<string>();
+    for (const c of lideres) {
+      if (visto.has(c.bolaoId)) continue;
+      visto.add(c.bolaoId);
+      const base = map.get(c.bolaoId) ?? BolaoService.pontuacaoPadrao();
+      map.set(c.bolaoId, {
+        ...base,
+        cotaNumero: c.numeroSequencial,
+        cotaNome: c.nomeIdentificacao,
+      });
+    }
+
+    return map;
+  }
+
+  private toResponse(
+    b: BolaoComTudo,
+    pontuacao: MaiorPontuacaoResumo = BolaoService.pontuacaoPadrao(),
+  ): BolaoResponse {
     const valorCota = (b.valorCota as unknown as Prisma.Decimal).toNumber();
     return {
       id: b.id,
@@ -601,6 +686,9 @@ export class BolaoService {
       })),
       sorteiosRegistrados: b._count.sorteios,
       bolasJaSorteadas: BolaoService.extrairBolasJaSorteadas(b.sorteios),
+      maiorPontuacaoAtual: pontuacao.acertos,
+      maiorPontuacaoCotaNumero: pontuacao.cotaNumero,
+      maiorPontuacaoCotaNome: pontuacao.cotaNome,
       criadoEm: b.criadoEm.toISOString(),
       atualizadoEm: b.atualizadoEm.toISOString(),
     };

@@ -33,6 +33,9 @@ interface BolaoResponse {
   categorias?: CategoriaResumo[];
   sorteiosRegistrados?: number;
   bolasJaSorteadas?: number[];
+  maiorPontuacaoAtual?: number;
+  maiorPontuacaoCotaNumero?: number | null;
+  maiorPontuacaoCotaNome?: string | null;
 }
 
 interface Paginated<T> { data: T[]; total: number; page: number; totalPages: number; }
@@ -243,6 +246,9 @@ export class ListaBolaoesComponent implements OnInit {
         ...row,
         sorteiosRegistrados: row.sorteiosRegistrados ?? 0,
         bolasJaSorteadas: row.bolasJaSorteadas ?? [],
+        maiorPontuacaoAtual: row.maiorPontuacaoAtual ?? 0,
+        maiorPontuacaoCotaNumero: row.maiorPontuacaoCotaNumero ?? null,
+        maiorPontuacaoCotaNome: row.maiorPontuacaoCotaNome ?? null,
         categorias: row.categorias ?? [],
       })));
       this.total.set(res.total);
@@ -312,6 +318,21 @@ export class ListaBolaoesComponent implements OnInit {
     const n = this.megaProximo().numero;
     if (n == null) return null;
     return this.translate.instant('listaBoloes.nextDrawContest', { n });
+  }
+
+  maiorPontuacao(b: BolaoResponse): number {
+    return b.maiorPontuacaoAtual ?? 0;
+  }
+
+  maiorPontuacaoCotaLabel(b: BolaoResponse): string | null {
+    if (this.maiorPontuacao(b) <= 0) return null;
+    const n = b.maiorPontuacaoCotaNumero;
+    const nome = b.maiorPontuacaoCotaNome?.trim();
+    if (n != null && nome) {
+      return this.translate.instant('listaBoloes.topScoreCota', { n, nome });
+    }
+    if (nome) return nome;
+    return null;
   }
 
   numCategorias(b: BolaoResponse): number {
