@@ -113,10 +113,25 @@ export class BancoParticipanteService {
     this.assertTenantId(tenantId);
     const p = await this.findParticipanteOrFail(tenantId, id);
 
+    if (dto.numeroCelular !== undefined && dto.numeroCelular !== p.numeroCelular) {
+      const conflito = await this.prisma.participante.findUnique({
+        where: { tenantId_numeroCelular: { tenantId, numeroCelular: dto.numeroCelular } },
+      });
+      if (conflito) {
+        throw new ConflictException({
+          statusCode: 409,
+          error: 'CELULAR_JA_CADASTRADO',
+          message: `Celular ${dto.numeroCelular} já está cadastrado neste tenant`,
+          details: [{ field: 'numeroCelular', code: 'CELULAR_JA_CADASTRADO', message: 'Já existe participante com este celular' }],
+        });
+      }
+    }
+
     const updated = await this.prisma.participante.update({
       where: { id: p.id },
       data: {
         ...(dto.nome !== undefined && { nome: dto.nome.toUpperCase() }),
+        ...(dto.numeroCelular !== undefined && { numeroCelular: dto.numeroCelular }),
         ...(dto.email !== undefined && { email: dto.email }),
         ...(dto.observacoes !== undefined && { observacoes: dto.observacoes }),
       },

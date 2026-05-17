@@ -4,6 +4,12 @@ import {
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import {
+  formatarProximoSorteioDataCurta,
+  formatarProximoSorteioDiaHora,
+  parseDataMegaBr,
+  resolverProximoSorteioMega,
+} from '@nossobolao/shared-utils';
 import { ApiService } from '../../../core/services/api.service';
 import { BackButtonComponent } from '../../../shared/components/back-button/back-button.component';
 import { MegaSenaAlertComponent } from '../../../shared/components/mega-sena-alert/mega-sena-alert.component';
@@ -217,21 +223,17 @@ export class ResultadosMegaComponent implements OnInit {
 
   fmtProximoData(br: string | null): string {
     if (!br) return this.translate.instant('megaSenaPainel.proximoDiaUnknown');
-    const [d, m, y] = br.split('/').map((x) => Number(x));
-    if (!d || !m || !y) return br;
-    const dt = new Date(y, m - 1, d, 12, 0, 0, 0);
     const loc = this.translate.currentLang?.startsWith('en') ? 'en-US' : 'pt-BR';
-    return dt.toLocaleDateString(loc, { day: '2-digit', month: 'short' });
+    const instante = parseDataMegaBr(br) ?? resolverProximoSorteioMega({ dataOficialBr: br });
+    return formatarProximoSorteioDataCurta(instante, loc);
   }
 
   fmtProximoExtra(br: string | null): string {
-    if (!br) return '';
-    const [d, m, y] = br.split('/').map((x) => Number(x));
-    if (!d || !m || !y) return '';
-    const dt = new Date(y, m - 1, d, 12, 0, 0, 0);
     const loc = this.translate.currentLang?.startsWith('en') ? 'en-US' : 'pt-BR';
-    const wd = dt.toLocaleDateString(loc, { weekday: 'long' });
-    return `${wd} · 20h00`;
+    const instante = br
+      ? (parseDataMegaBr(br) ?? resolverProximoSorteioMega({ dataOficialBr: br }))
+      : resolverProximoSorteioMega();
+    return formatarProximoSorteioDiaHora(instante, loc);
   }
 
   fmtMoedaResumida(n: number | null): string {

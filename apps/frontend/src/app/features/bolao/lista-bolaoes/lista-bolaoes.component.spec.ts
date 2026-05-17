@@ -6,6 +6,7 @@ import {
   provideTranslateService,
   TranslateNoOpLoader,
 } from '@ngx-translate/core';
+import { formatarProximoSorteioCompacto, inferirProximoSorteioMega, instanteSorteioMegaBrt } from '@nossobolao/shared-utils';
 import { ListaBolaoesComponent } from './lista-bolaoes.component';
 import { ApiService } from '../../../core/services/api.service';
 
@@ -89,6 +90,26 @@ describe('ListaBolaoesComponent', () => {
     cmp.mudarOrdenacao('nome');
     expect(cmp.boloesOrdenados()[0].nome).toBe('Alpha Pool');
     expect(cmp.boloesOrdenados()[1].nome).toBe('Beta Pool');
+  });
+
+  it('linhaProximoSorteio formata data inferida no padrão do protótipo', () => {
+    const fixture = TestBed.createComponent(ListaBolaoesComponent);
+    const cmp = fixture.componentInstance;
+    const seg = new Date(Date.UTC(2026, 4, 11, 13, 0, 0, 0));
+    const prox = inferirProximoSorteioMega(seg);
+    expect(prox.getTime()).toBe(instanteSorteioMegaBrt(2026, 5, 12).getTime());
+    expect(formatarProximoSorteioCompacto(prox, 'pt-BR')).toMatch(/^12\/mai · \w{3} · 20h$/);
+    expect(cmp.linhaProximoSorteio({
+      id: 'x',
+      nome: 'T',
+      status: 'EM_ANDAMENTO',
+      valorCota: 10,
+      dataInicio: null,
+      dataTermino: null,
+      totalCotasAtivas: 0,
+      valorBrutoArrecadado: 0,
+      criadoEm: seg.toISOString(),
+    })).toMatch(/ · 20h$/);
   });
 
   it('definirVisualizacao atualiza modo de visualização', () => {

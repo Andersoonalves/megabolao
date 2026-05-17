@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../core/services/api.service';
+import { AuthService } from '../../core/services/auth.service';
 import { PhoneMaskDirective, PhonePipe } from '../../shared/phone';
 import { BackButtonComponent } from '../../shared/components/back-button/back-button.component';
 
@@ -36,6 +37,7 @@ interface Paginated<T> { data: T[]; total: number; page: number; perPage: number
 export class ParticipantesComponent implements OnInit {
   private readonly api = inject(ApiService);
   private readonly translate = inject(TranslateService);
+  private readonly auth = inject(AuthService);
 
   // ── List state ───────────────────────────────────────────────────────────────
   participantes = signal<Participante[]>([]);
@@ -60,9 +62,19 @@ export class ParticipantesComponent implements OnInit {
   fEmail       = signal('');
   fObservacoes = signal('');
 
+  readonly podeEditarCelular = computed(() => this.auth.isMaster() || this.auth.isAdmin());
+
   podeSubmit = computed(() => {
-    const nomeOk    = this.fNome().trim().length >= 2;
-    const celularOk = this.editando() !== null || /^\d{10,11}$/.test(this.fCelular().replace(/\D/g, ''));
+    const nomeOk = this.fNome().trim().length >= 2;
+    const editando = this.editando();
+    let celularOk: boolean;
+    if (!editando) {
+      celularOk = /^\d{10,11}$/.test(this.fCelular().replace(/\D/g, ''));
+    } else if (this.podeEditarCelular()) {
+      celularOk = /^\d{10,11}$/.test(this.fCelular().replace(/\D/g, ''));
+    } else {
+      celularOk = true;
+    }
     return nomeOk && celularOk;
   });
 
@@ -138,6 +150,7 @@ export class ParticipantesComponent implements OnInit {
             nome:        this.fNome().trim().toUpperCase(),
             email:       this.fEmail().trim() || undefined,
             observacoes: this.fObservacoes().trim() || undefined,
+            ...(this.podeEditarCelular() && { numeroCelular: this.fCelular().replace(/\D/g, '') }),
           }),
         );
       } else {

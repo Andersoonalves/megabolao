@@ -231,8 +231,11 @@
                       <div class="text-[10.5px] font-semibold uppercase tracking-wide text-slate-500 mb-1">
                         {{ fin ? ('listaBoloes.sorteiosDone' | translate) : ('listaBoloes.nextSorteioLbl' | translate) }}
                       </div>
-                      @if (!fin && atv) {
-                        <div class="text-[15px] font-display font-semibold">{{ 'listaBoloes.conferCaixaHint' | translate }}</div>
+                      @if (exibeProximoSorteio(b)) {
+                        <div class="text-[15px] font-display font-semibold">{{ linhaProximoSorteio(b) }}</div>
+                        @if (labelConcursoProximo(); as conc) {
+                          <div class="text-[11.5px] text-slate-500 mt-0.5">{{ conc }}</div>
+                        }
                         <div class="text-[11.5px] text-slate-500 mt-0.5">{{ 'listaBoloes.sorteiosCount' | translate:{ n: sorteiosReg(b) } }}</div>
                       } @else {
                         <div class="text-[15px] font-display font-semibold">{{ fin ? ('listaBoloes.closed' | translate) : ('listaBoloes.waiting' | translate) }}</div>
@@ -391,7 +394,7 @@
                     </div>
                     <div class="col-span-2">
                       <div class="text-[10px] font-semibold uppercase text-slate-500">{{ 'listaBoloes.compactNext' | translate }}</div>
-                      <div class="text-[13px] font-medium text-slate-800 mt-0.5 truncate">{{ fin ? ('listaBoloes.closed' | translate) : ('listaBoloes.conferCaixaHint' | translate) }}</div>
+                      <div class="text-[13px] font-medium text-slate-800 mt-0.5 truncate">{{ fin ? ('listaBoloes.closed' | translate) : linhaProximoSorteio(b) }}</div>
                       <div class="text-[11px] text-slate-500">{{ 'listaBoloes.sortProg' | translate:{ a: sorteiosReg(b), b: numCategorias(b) || '—' } }}</div>
                     </div>
                   </div>

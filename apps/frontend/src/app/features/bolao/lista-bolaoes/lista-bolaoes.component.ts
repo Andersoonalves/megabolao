@@ -6,6 +6,10 @@ import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
+import {
+  formatarProximoSorteioCompacto,
+  resolverProximoSorteioMega,
+} from '@nossobolao/shared-utils';
 import { ApiService } from '../../../core/services/api.service';
 import { BackButtonComponent } from '../../../shared/components/back-button/back-button.component';
 import { BolasGridComponent } from '../../../shared/components/bolas-grid/bolas-grid.component';
@@ -32,6 +36,10 @@ interface BolaoResponse {
 }
 
 interface Paginated<T> { data: T[]; total: number; page: number; totalPages: number; }
+
+interface MegaPainelProximoResponse {
+  proximo: { numero: number | null; data: string | null };
+}
 
 export type ListaBoloesVisualizacao = 'list' | 'table' | 'compact';
 
@@ -118,6 +126,9 @@ export class ListaBolaoesComponent implements OnInit {
   deletandoId         = signal('');
   deleteError         = signal('');
 
+  /** Próximo concurso oficial (cache Mega-Sena do tenant). */
+  megaProximo = signal<{ data: string | null; numero: number | null }>({ data: null, numero: null });
+
   ngOnInit(): void {
     try {
       const v = sessionStorage.getItem(VIEW_STORAGE_KEY) as ListaBoloesVisualizacao | null;
@@ -126,6 +137,21 @@ export class ListaBolaoesComponent implements OnInit {
       /* sessionStorage bloqueado */
     }
     this.load();
+    void this.carregarMegaProximo();
+  }
+
+  private async carregarMegaProximo(): Promise<void> {
+    try {
+      const res = await firstValueFrom(
+        this.api.get<MegaPainelProximoResponse>('/sorteios/mega-sena?painel=1&ultimos=1'),
+      );
+      this.megaProximo.set({
+        data: res.proximo.data,
+        numero: res.proximo.numero,
+      });
+    } catch {
+      /* usa inferência ter/qui/sáb */
+    }
   }
 
   definirVisualizacao(m: ListaBoloesVisualizacao): void {
@@ -266,6 +292,26 @@ export class ListaBolaoesComponent implements OnInit {
 
   bolasSorteadas(b: BolaoResponse): number[] {
     return b.bolasJaSorteadas ?? [];
+  }
+
+  exibeProximoSorteio(b: BolaoResponse): boolean {
+    return b.status === 'EM_ANDAMENTO' || b.status === 'A_SER_INICIADO' || b.status === 'SUSPENSO';
+  }
+
+  linhaProximoSorteio(b: BolaoResponse): string {
+    const instante = resolverProximoSorteioMega({
+      referencia: new Date(),
+      dataOficialBr: this.megaProximo().data,
+      naoAntesIso: b.dataInicio,
+    });
+    const loc = this.translate.currentLang?.startsWith('en') ? 'en-US' : 'pt-BR';
+    return formatarProximoSorteioCompacto(instante, loc);
+  }
+
+  labelConcursoProximo(): string | null {
+    const n = this.megaProximo().numero;
+    if (n == null) return null;
+    return this.translate.instant('listaBoloes.nextDrawContest', { n });
   }
 
   numCategorias(b: BolaoResponse): number {

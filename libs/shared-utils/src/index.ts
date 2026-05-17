@@ -38,6 +38,20 @@ export function validarBolasSorteadas(bolas: number[]): boolean {
 
 // ── Slug ──────────────────────────────────────────────────────────────────────
 
+export {
+  MEGA_SENA_DIAS_SORTEIO,
+  MEGA_SENA_HORA_SORTEIO_BRT,
+  formatarProximoSorteioCompacto,
+  formatarProximoSorteioDataCurta,
+  formatarProximoSorteioDiaHora,
+  inferirProximoSorteioMega,
+  instanteSorteioMegaBrt,
+  parseDataMegaBr,
+  parseIsoDataInicio,
+  resolverProximoSorteioMega,
+} from './mega-sena-calendario';
+export type { ResolverProximoSorteioMegaOpts } from './mega-sena-calendario';
+
 export function gerarSlug(texto: string): string {
   return texto
     .toLowerCase()
