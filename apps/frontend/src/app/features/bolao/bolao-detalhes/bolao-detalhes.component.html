@@ -26,9 +26,9 @@
            class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-sm font-semibold rounded-[10px] no-underline text-slate-900 transition-colors min-h-9">
           ✎ {{ 'bolaoDetalhes.editBtn' | translate }}
         </a>
-        <button (click)="clonar()" [disabled]="loadingClone()"
-                class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-50 text-sm font-semibold rounded-[10px] text-slate-900 transition-colors min-h-9">
-          ⎘ {{ loadingClone() ? ('bolaoDetalhes.cloning' | translate) : ('bolaoDetalhes.cloneBtn' | translate) }}
+        <button (click)="clonar()"
+                class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-sm font-semibold rounded-[10px] text-slate-900 transition-colors min-h-9">
+          ⎘ {{ 'bolaoDetalhes.cloneBtn' | translate }}
         </button>
         @if (podeDeletar()) {
           <button (click)="confirmandoExclusao.set(true)"
@@ -52,7 +52,7 @@
             <div>
               <h3 class="font-display font-semibold text-[16px]">{{ 'bolaoDetalhes.deleteTitle' | translate }}</h3>
               <p class="text-slate-500 text-[13px] mt-1">
-                {{ 'bolaoDetalhes.deleteConfirm' | translate: { nome: data()?.bolao.nome } }}
+                {{ 'bolaoDetalhes.deleteConfirm' | translate: { nome: data()?.bolao?.nome } }}
               </p>
               <p class="text-slate-400 text-[12px] mt-2">{{ 'bolaoDetalhes.deleteWarning' | translate }}</p>
             </div>

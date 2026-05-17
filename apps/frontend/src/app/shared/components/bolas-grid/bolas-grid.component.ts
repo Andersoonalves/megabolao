@@ -6,7 +6,7 @@ import { BolaComponent, BolaVariant, BolaSize } from '../bola/bola.component';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [BolaComponent],
   template: `
-    <div class="grid gap-2" [style.grid-template-columns]="'repeat(' + cols() + ', 1fr)'">
+    <div class="grid place-items-center" [class]="gapClass()" [style.grid-template-columns]="'repeat(' + cols() + ', 1fr)'">
       @for (n of numbers; track n) {
         <nb-bola
           [number]="n"
@@ -21,6 +21,8 @@ export class BolasGridComponent {
   readonly hit    = input<number[]>([]);
   readonly size   = input<BolaSize>('sm');
   readonly cols   = input<number>(10);
+  /** Classes Tailwind de gap, ex.: \`gap-2\`, \`gap-0.5\`. */
+  readonly gapClass = input<string>('gap-2');
 
   readonly numbers = Array.from({ length: 60 }, (_, i) => i + 1);
 

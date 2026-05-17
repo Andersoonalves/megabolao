@@ -1,12 +1,20 @@
 import {
-  Component, signal, OnInit, ChangeDetectionStrategy, inject,
+  ChangeDetectionStrategy, Component, computed, inject, OnInit, signal,
 } from '@angular/core';
+import { DecimalPipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../../core/services/api.service';
 import { BackButtonComponent } from '../../../shared/components/back-button/back-button.component';
+import { BolasGridComponent } from '../../../shared/components/bolas-grid/bolas-grid.component';
+
+interface CategoriaResumo {
+  id: string;
+  nome: string;
+  tipo: string;
+}
 
 interface BolaoResponse {
   id: string;
@@ -18,14 +26,34 @@ interface BolaoResponse {
   totalCotasAtivas: number;
   valorBrutoArrecadado: number;
   criadoEm: string;
+  categorias?: CategoriaResumo[];
+  sorteiosRegistrados?: number;
+  bolasJaSorteadas?: number[];
 }
 
 interface Paginated<T> { data: T[]; total: number; page: number; totalPages: number; }
 
+export type ListaBoloesVisualizacao = 'list' | 'table' | 'compact';
+
+export type ListaBoloesOrdenacao = 'recent' | 'nome' | 'arrecada' | 'cotas' | 'status';
+
+const VIEW_STORAGE_KEY = 'nb_lista_boloes_view';
+
+/** Aba inicial da listagem (protótipo: foco em bolões ativos). */
+const DEFAULT_STATUS_FILTRO = 'EM_ANDAMENTO';
+
 @Component({
   selector: 'nb-lista-bolaoes',
+  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [BackButtonComponent, RouterLink, FormsModule, TranslatePipe],
+  imports: [
+    DecimalPipe,
+    BolasGridComponent,
+    BackButtonComponent,
+    RouterLink,
+    FormsModule,
+    TranslatePipe,
+  ],
   templateUrl: './lista-bolaoes.component.html',
 })
 export class ListaBolaoesComponent implements OnInit {
@@ -40,8 +68,41 @@ export class ListaBolaoesComponent implements OnInit {
   totalPages   = signal(1);
   page         = signal(1);
   busca        = signal('');
-  statusFiltro = signal('');
+  statusFiltro = signal(DEFAULT_STATUS_FILTRO);
   private debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /** Lista | Tabela | Compacto — igual ao protótipo. */
+  visualizacao = signal<ListaBoloesVisualizacao>('list');
+
+  ordenacao = signal<ListaBoloesOrdenacao>('recent');
+
+  boloesOrdenados = computed(() =>
+    ListaBolaoesComponent.sortBoloes([...this.bolaoes()], this.ordenacao()),
+  );
+
+  /** KPIs só da página atual (API paginada). */
+  kpiAtivosPagina = computed(() => this.bolaoes().filter((b) => b.status === 'EM_ANDAMENTO').length);
+
+  kpiCotasPagina = computed(() => this.bolaoes()
+    .filter((b) => b.status === 'EM_ANDAMENTO')
+    .reduce((s, b) => s + b.totalCotasAtivas, 0));
+
+  kpiArrecPagina = computed(() => this.bolaoes()
+    .filter((b) => b.status === 'EM_ANDAMENTO')
+    .reduce((s, b) => s + b.valorBrutoArrecadado, 0));
+
+  readonly statusTabs = [
+    { status: '',            key: 'tabAll' },
+    { status: 'EM_ANDAMENTO', key: 'tabRunning' },
+    { status: 'A_SER_INICIADO', key: 'tabPending' },
+    { status: 'FINALIZADO',   key: 'tabFinished' },
+  ] as const;
+
+  readonly viewOptions = [
+    { mode: 'list' as const, icon: '☰', titleKey: 'viewListHint' },
+    { mode: 'compact' as const, icon: '▦', titleKey: 'viewCompactHint' },
+    { mode: 'table' as const, icon: '▤', titleKey: 'viewTableHint' },
+  ];
 
   // ── Edit state ────────────────────────────────────────────────────────────────
   editando       = signal<BolaoResponse | null>(null);
@@ -57,7 +118,67 @@ export class ListaBolaoesComponent implements OnInit {
   deletandoId         = signal('');
   deleteError         = signal('');
 
-  ngOnInit(): void { this.load(); }
+  ngOnInit(): void {
+    try {
+      const v = sessionStorage.getItem(VIEW_STORAGE_KEY) as ListaBoloesVisualizacao | null;
+      if (v === 'list' || v === 'table' || v === 'compact') this.visualizacao.set(v);
+    } catch {
+      /* sessionStorage bloqueado */
+    }
+    this.load();
+  }
+
+  definirVisualizacao(m: ListaBoloesVisualizacao): void {
+    this.visualizacao.set(m);
+    try {
+      sessionStorage.setItem(VIEW_STORAGE_KEY, m);
+    } catch {
+      /* ignora */
+    }
+  }
+
+  private static readonly statusRank: Record<string, number> = {
+    EM_ANDAMENTO: 0,
+    A_SER_INICIADO: 1,
+    FINALIZADO: 2,
+  };
+
+  private static sortBoloes(rows: BolaoResponse[], ord: ListaBoloesOrdenacao): BolaoResponse[] {
+    switch (ord) {
+      case 'nome':
+        return rows.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+      case 'arrecada':
+        return rows.sort((a, b) => b.valorBrutoArrecadado - a.valorBrutoArrecadado);
+      case 'cotas':
+        return rows.sort((a, b) => b.totalCotasAtivas - a.totalCotasAtivas);
+      case 'status': {
+        return rows.sort((a, b) => {
+          const ra = ListaBolaoesComponent.statusRank[a.status] ?? 9;
+          const rb = ListaBolaoesComponent.statusRank[b.status] ?? 9;
+          if (ra !== rb) return ra - rb;
+          return new Date(b.criadoEm).getTime() - new Date(a.criadoEm).getTime();
+        });
+      }
+      case 'recent':
+      default:
+        return rows.sort((a, b) => new Date(b.criadoEm).getTime() - new Date(a.criadoEm).getTime());
+    }
+  }
+
+  tabLabelKey(tabKey: (typeof ListaBolaoesComponent.prototype.statusTabs)[number]['key']): string {
+    return `listaBoloes.${tabKey}`;
+  }
+
+  definirTabStatus(status: string): void {
+    this.statusFiltro.set(status);
+    this.page.set(1);
+    this.load();
+  }
+
+  mudarOrdenacao(v: string): void {
+    const allowed: ListaBoloesOrdenacao[] = ['recent', 'nome', 'arrecada', 'cotas', 'status'];
+    if ((allowed as string[]).includes(v)) this.ordenacao.set(v as ListaBoloesOrdenacao);
+  }
 
   // ── Filtros ───────────────────────────────────────────────────────────────────
   onBuscaChange(v: string): void {
@@ -67,17 +188,15 @@ export class ListaBolaoesComponent implements OnInit {
     this.debounceTimer = setTimeout(() => this.load(), 350);
   }
 
-  onStatusChange(v: string): void {
-    this.statusFiltro.set(v);
+  limparFiltros(): void {
+    this.busca.set('');
+    this.statusFiltro.set(DEFAULT_STATUS_FILTRO);
     this.page.set(1);
     this.load();
   }
 
-  limparFiltros(): void {
-    this.busca.set('');
-    this.statusFiltro.set('');
-    this.page.set(1);
-    this.load();
+  temFiltrosExtras(): boolean {
+    return !!this.busca() || this.statusFiltro() !== DEFAULT_STATUS_FILTRO;
   }
 
   // ── Load ──────────────────────────────────────────────────────────────────────
@@ -94,7 +213,12 @@ export class ListaBolaoesComponent implements OnInit {
       const res = await firstValueFrom(
         this.api.get<Paginated<BolaoResponse>>(`/boloes?${params}`),
       );
-      this.bolaoes.set(res.data);
+      this.bolaoes.set(res.data.map((row) => ({
+        ...row,
+        sorteiosRegistrados: row.sorteiosRegistrados ?? 0,
+        bolasJaSorteadas: row.bolasJaSorteadas ?? [],
+        categorias: row.categorias ?? [],
+      })));
       this.total.set(res.total);
       this.totalPages.set(res.totalPages);
     } catch (err: unknown) {
@@ -110,6 +234,43 @@ export class ListaBolaoesComponent implements OnInit {
 
   prevPage(): void { if (this.page() > 1) { this.page.update(p => p - 1); this.load(); } }
   nextPage(): void { if (this.page() < this.totalPages()) { this.page.update(p => p + 1); this.load(); } }
+
+  exportarCsv(): void {
+    const linhas = this.boloesOrdenados();
+    if (!linhas.length) return;
+    const sep = ';';
+    const h = ['Bolão', 'Status', 'Cotas pagas', 'Arrecadação', 'Valor cota', 'Sorteios', 'Categorias'].join(sep);
+    const body = linhas.map((b) =>
+      [
+        b.nome,
+        b.status,
+        String(b.totalCotasAtivas),
+        b.valorBrutoArrecadado.toFixed(2),
+        String(b.valorCota),
+        String(b.sorteiosRegistrados ?? 0),
+        String(b.categorias?.length ?? 0),
+      ].join(sep),
+    ).join('\n');
+    const blob = new Blob([`${h}\n${body}`], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'boloes.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  sorteiosReg(b: BolaoResponse): number {
+    return b.sorteiosRegistrados ?? 0;
+  }
+
+  bolasSorteadas(b: BolaoResponse): number[] {
+    return b.bolasJaSorteadas ?? [];
+  }
+
+  numCategorias(b: BolaoResponse): number {
+    return b.categorias?.length ?? 0;
+  }
 
   // ── Edição ────────────────────────────────────────────────────────────────────
   abrirEdicao(b: BolaoResponse): void {
@@ -137,7 +298,8 @@ export class ListaBolaoesComponent implements OnInit {
           ...(this.editDataTermino() && { dataTermino: this.editDataTermino() }),
         }),
       );
-      this.bolaoes.update(bs => bs.map(x => x.id === b.id ? updated : x));
+      const merged = { ...updated, sorteiosRegistrados: updated.sorteiosRegistrados ?? 0 };
+      this.bolaoes.update(bs => bs.map(x => x.id === b.id ? merged : x));
       this.fecharEdicao();
     } catch (err: unknown) {
       type E = { error?: { message?: string }; status?: number };
@@ -152,7 +314,7 @@ export class ListaBolaoesComponent implements OnInit {
 
   // ── Exclusão ─────────────────────────────────────────────────────────────────
   podeDeletar(b: BolaoResponse): boolean {
-    return b.status === 'A_SER_INICIADO' || b.status === 'SUSPENSO';
+    return b.status === 'A_SER_INICIADO';
   }
 
   abrirConfirmacaoExclusao(b: BolaoResponse): void {
@@ -183,6 +345,12 @@ export class ListaBolaoesComponent implements OnInit {
     }
   }
 
+  progressoSorteios(b: BolaoResponse): number {
+    const cats = Math.max(this.numCategorias(b), 1);
+    const feitos = this.sorteiosReg(b);
+    return Math.min(100, (feitos / Math.max(cats, feitos || 1)) * 100);
+  }
+
   // ── Helpers ───────────────────────────────────────────────────────────────────
   statusClass(s: string): string {
     if (s === 'EM_ANDAMENTO')   return 'bg-green-50 text-green-800 border-green-200';
@@ -191,22 +359,19 @@ export class ListaBolaoesComponent implements OnInit {
     return 'bg-amber-50 text-amber-700 border-amber-100';
   }
 
-  statusLabel(s: string): string {
-    const m: Record<string, string> = {
-      EM_ANDAMENTO:   'Em andamento',
-      A_SER_INICIADO: 'A iniciar',
-      FINALIZADO:     'Finalizado',
-      SUSPENSO:       'Suspenso',
-    };
-    return m[s] ?? s;
-  }
-
-  fmtDate(iso: string): string {
-    try { return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: '2-digit' }); }
+  fmtDate(iso: string | null): string {
+    if (!iso) return '—';
+    try { return new Date(iso + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: '2-digit' }); }
     catch { return '—'; }
   }
 
   brl(n: number): string {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(n);
+  }
+
+  brlShort(n: number): string {
+    if (n >= 1_000_000) return `R$ ${(n / 1_000_000).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} mi`;
+    if (n >= 1_000) return `R$ ${(n / 1_000).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} mil`;
+    return this.brl(n);
   }
 }

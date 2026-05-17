@@ -35,7 +35,7 @@ const makePrismaBolao = (overrides: Record<string, unknown> = {}) => ({
   dataTermino: null,
   criadoEm: new Date('2026-01-01T00:00:00Z'),
   atualizadoEm: new Date('2026-01-01T00:00:00Z'),
-  _count: { cotas: 0 },
+  _count: { cotas: 0, sorteios: 0 },
   categoriasPremiacao: [
     {
       id: 'cat-1',
@@ -129,6 +129,8 @@ describe('BolaoService', () => {
 
       // Assert
       expect(result.categorias).toHaveLength(2);
+      expect(result.sorteiosRegistrados).toBe(0);
+      expect(result.bolasJaSorteadas).toEqual([]);
       expect(result.valorCota).toBe(30);
       expect(result.status).toBe('A_SER_INICIADO');
       expect(mockTenantService.assertTenantPermiteCadastros).toHaveBeenCalledWith(TENANT_ID);
@@ -197,16 +199,35 @@ describe('BolaoService', () => {
   // ── findAll ────────────────────────────────────────────────────────────────
 
   describe('findAll', () => {
-    it('filtra por tenantId e retorna paginado', async () => {
+    it('filtra por tenantId e retorna paginado com categorias e sorteiosRegistrados', async () => {
       // Arrange
-      mockPrisma.$transaction.mockResolvedValue([[makePrismaBolao()], 1]);
+      mockPrisma.$transaction.mockResolvedValue([
+        [
+          makePrismaBolao({
+            _count: { cotas: 12, sorteios: 3 },
+            sorteios: [
+              { bolasSorteadas: [4, 7, 12] },
+              { bolasSorteadas: [7, 18, 23] },
+            ],
+          }),
+        ],
+        1,
+      ]);
 
       // Act
       const result = await service.findAll(TENANT_ID, { page: 1, perPage: 20 });
 
       // Assert
       expect(result.total).toBe(1);
+      expect(result.page).toBe(1);
+      expect(result.perPage).toBe(20);
       expect(result.data[0].tenantId).toBe(TENANT_ID);
+      expect(result.data[0].categorias).toHaveLength(2);
+      expect(result.data[0].categorias[0].nome).toBe('Taxa Admin');
+      expect(result.data[0].totalCotasAtivas).toBe(12);
+      expect(result.data[0].valorBrutoArrecadado).toBe(360);
+      expect(result.data[0].sorteiosRegistrados).toBe(3);
+      expect(result.data[0].bolasJaSorteadas).toEqual([4, 7, 12, 18, 23]);
     });
   });
 
@@ -223,6 +244,22 @@ describe('BolaoService', () => {
       // Assert
       expect(result.id).toBe('bolao-uuid-1');
       expect(result.categorias).toHaveLength(2);
+      expect(result.sorteiosRegistrados).toBe(0);
+      expect(result.bolasJaSorteadas).toEqual([]);
+    });
+
+    it('mapeia sorteiosRegistrados a partir de _count.sorteios', async () => {
+      // Arrange
+      mockPrisma.bolao.findFirst.mockResolvedValue(
+        makePrismaBolao({ _count: { cotas: 5, sorteios: 7 } }),
+      );
+
+      // Act
+      const result = await service.findById(TENANT_ID, 'bolao-uuid-1');
+
+      // Assert
+      expect(result.sorteiosRegistrados).toBe(7);
+      expect(result.totalCotasAtivas).toBe(5);
     });
 
     it('lança NotFoundException quando bolão não pertence ao tenant', async () => {

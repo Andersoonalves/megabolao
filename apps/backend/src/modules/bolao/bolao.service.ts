@@ -12,9 +12,12 @@ import { UpdateCategoriasDto } from './dto/update-categorias.dto';
 import { CreateCategoriaDto } from './dto/create-categoria.dto';
 import { WhatsAppClientManager } from '../whatsapp/whatsapp-client-manager.service';
 
+type SorteioBolasResumo = { bolasSorteadas: number[] };
+
 type BolaoComTudo = Bolao & {
   categoriasPremiacao: CategoriaPremiacao[];
-  _count: { cotas: number };
+  _count: { cotas: number; sorteios: number };
+  sorteios?: SorteioBolasResumo[];
 };
 
 export interface CategoriaResponse {
@@ -40,6 +43,8 @@ export interface BolaoResponse {
   totalCotasAtivas: number;
   valorBrutoArrecadado: number;
   categorias: CategoriaResponse[];
+  sorteiosRegistrados: number;
+  bolasJaSorteadas: number[];
   criadoEm: string;
   atualizadoEm: string;
 }
@@ -90,7 +95,12 @@ export class BolaoService {
         where: { id: created.id },
         include: {
           categoriasPremiacao: { orderBy: { ordem: 'asc' } },
-          _count: { select: { cotas: { where: { statusPagamento: PagamentoStatus.PAGO } } } },
+          _count: {
+            select: {
+              cotas: { where: { statusPagamento: PagamentoStatus.PAGO } },
+              sorteios: true,
+            },
+          },
         },
       });
     });
@@ -115,7 +125,16 @@ export class BolaoService {
         where,
         include: {
           categoriasPremiacao: { orderBy: { ordem: 'asc' } },
-          _count: { select: { cotas: { where: { statusPagamento: PagamentoStatus.PAGO } } } },
+          sorteios: {
+            orderBy: { sequenciaNoBolao: 'asc' },
+            select: { bolasSorteadas: true },
+          },
+          _count: {
+            select: {
+              cotas: { where: { statusPagamento: PagamentoStatus.PAGO } },
+              sorteios: true,
+            },
+          },
         },
         skip,
         take: perPage,
@@ -160,7 +179,12 @@ export class BolaoService {
       },
       include: {
           categoriasPremiacao: { orderBy: { ordem: 'asc' } },
-          _count: { select: { cotas: { where: { statusPagamento: PagamentoStatus.PAGO } } } },
+          _count: {
+            select: {
+              cotas: { where: { statusPagamento: PagamentoStatus.PAGO } },
+              sorteios: true,
+            },
+          },
         },
     });
 
@@ -201,7 +225,12 @@ export class BolaoService {
         where: { id: bolaoId },
         include: {
           categoriasPremiacao: { orderBy: { ordem: 'asc' } },
-          _count: { select: { cotas: { where: { statusPagamento: PagamentoStatus.PAGO } } } },
+          _count: {
+            select: {
+              cotas: { where: { statusPagamento: PagamentoStatus.PAGO } },
+              sorteios: true,
+            },
+          },
         },
       });
     });
@@ -225,7 +254,12 @@ export class BolaoService {
       data: { status: 'EM_ANDAMENTO' },
       include: {
           categoriasPremiacao: { orderBy: { ordem: 'asc' } },
-          _count: { select: { cotas: { where: { statusPagamento: PagamentoStatus.PAGO } } } },
+          _count: {
+            select: {
+              cotas: { where: { statusPagamento: PagamentoStatus.PAGO } },
+              sorteios: true,
+            },
+          },
         },
     });
 
@@ -248,7 +282,12 @@ export class BolaoService {
       data: { status: 'FINALIZADO' },
       include: {
           categoriasPremiacao: { orderBy: { ordem: 'asc' } },
-          _count: { select: { cotas: { where: { statusPagamento: PagamentoStatus.PAGO } } } },
+          _count: {
+            select: {
+              cotas: { where: { statusPagamento: PagamentoStatus.PAGO } },
+              sorteios: true,
+            },
+          },
         },
     });
 
@@ -325,7 +364,12 @@ export class BolaoService {
         where: { id: novo.id },
         include: {
           categoriasPremiacao: { orderBy: { ordem: 'asc' } },
-          _count: { select: { cotas: { where: { statusPagamento: PagamentoStatus.PAGO } } } },
+          _count: {
+            select: {
+              cotas: { where: { statusPagamento: PagamentoStatus.PAGO } },
+              sorteios: true,
+            },
+          },
         },
       });
     });
@@ -340,11 +384,10 @@ export class BolaoService {
     this.assertTenantId(tenantId);
     const bolao = await this.findOrFail(tenantId, id);
 
-    const statusPermitidos = ['A_SER_INICIADO', 'SUSPENSO'];
-    if (!statusPermitidos.includes(bolao.status)) {
+    if (bolao.status !== 'A_SER_INICIADO') {
       throw new BusinessException(
         'STATUS_INVALIDO',
-        'Bolão só pode ser excluído quando está A_SER_INICIADO ou SUSPENSO',
+        'Bolão só pode ser excluído quando está A_SER_INICIADO',
       );
     }
 
@@ -358,7 +401,12 @@ export class BolaoService {
       where: { id, tenantId },
       include: {
           categoriasPremiacao: { orderBy: { ordem: 'asc' } },
-          _count: { select: { cotas: { where: { statusPagamento: PagamentoStatus.PAGO } } } },
+          _count: {
+            select: {
+              cotas: { where: { statusPagamento: PagamentoStatus.PAGO } },
+              sorteios: true,
+            },
+          },
         },
     });
 
@@ -523,6 +571,11 @@ export class BolaoService {
     if (!tenantId) throw new ForbiddenException('TENANT_ID_OBRIGATORIO');
   }
 
+  private static extrairBolasJaSorteadas(sorteios?: SorteioBolasResumo[]): number[] {
+    if (!sorteios?.length) return [];
+    return [...new Set(sorteios.flatMap((s) => s.bolasSorteadas))].sort((a, b) => a - b);
+  }
+
   private toResponse(b: BolaoComTudo): BolaoResponse {
     const valorCota = (b.valorCota as unknown as Prisma.Decimal).toNumber();
     return {
@@ -546,6 +599,8 @@ export class BolaoService {
         valorAcumuladoAnterior: (c.valorAcumuladoAnterior as unknown as Prisma.Decimal).toNumber(),
         ordem: c.ordem,
       })),
+      sorteiosRegistrados: b._count.sorteios,
+      bolasJaSorteadas: BolaoService.extrairBolasJaSorteadas(b.sorteios),
       criadoEm: b.criadoEm.toISOString(),
       atualizadoEm: b.atualizadoEm.toISOString(),
     };

@@ -2,7 +2,7 @@ import {
   Component, signal, computed, ChangeDetectionStrategy, inject, input, effect, OnInit,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../../core/services/api.service';
@@ -74,8 +74,9 @@ let _nextId = 10;
 export class CriarBolaoComponent implements OnInit {
   readonly id = input<string>('');
 
-  private readonly api = inject(ApiService);
+  private readonly api    = inject(ApiService);
   private readonly router = inject(Router);
+  private readonly route  = inject(ActivatedRoute);
   private readonly translate = inject(TranslateService);
 
   // ── Form state ───────────────────────────────────────────────────────────────
@@ -99,7 +100,12 @@ export class CriarBolaoComponent implements OnInit {
   get modoEditar(): boolean { return !!this.id(); }
 
   ngOnInit(): void {
-    if (!this.id()) void this.loadBoloes();
+    if (!this.id()) {
+      void this.loadBoloes().then(() => {
+        const clonarDe = this.route.snapshot.queryParamMap.get('clonarDe');
+        if (clonarDe) void this.onFonteChange(clonarDe);
+      });
+    }
   }
 
   constructor() {
