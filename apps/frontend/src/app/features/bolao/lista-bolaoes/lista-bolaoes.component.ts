@@ -412,12 +412,6 @@ export class ListaBolaoesComponent implements OnInit {
     }
   }
 
-  progressoSorteios(b: BolaoResponse): number {
-    const cats = Math.max(this.numCategorias(b), 1);
-    const feitos = this.sorteiosReg(b);
-    return Math.min(100, (feitos / Math.max(cats, feitos || 1)) * 100);
-  }
-
   // ── Helpers ───────────────────────────────────────────────────────────────────
   statusClass(s: string): string {
     if (s === 'EM_ANDAMENTO')   return 'bg-green-50 text-green-800 border-green-200';

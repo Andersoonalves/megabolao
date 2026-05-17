@@ -87,36 +87,42 @@
           }
         </div>
 
-        <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-          <div class="relative flex-1 min-w-0 sm:min-w-[200px] sm:max-w-xs">
-            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[13px]">⌕</span>
+        <div class="flex flex-col gap-2 w-full min-w-0 lg:flex-1 lg:max-w-3xl">
+          <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2">
+          <div class="relative flex-1 min-w-0 w-full">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[13px] pointer-events-none">⌕</span>
             <input [ngModel]="busca()" (ngModelChange)="onBuscaChange($event)"
                    class="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-[10px] text-[13px] focus:outline-none focus:border-green-700 min-h-10"
                    [placeholder]="'listaBoloes.searchPlaceholder' | translate" />
           </div>
+          <div class="flex items-center gap-2 w-full sm:w-auto shrink-0">
           <select [ngModel]="ordenacao()" (ngModelChange)="mudarOrdenacao($event)"
-                  class="min-h-10 px-3 py-2 border border-slate-200 rounded-[10px] text-[13px] bg-white focus:outline-none focus:border-green-700 sm:w-44 shrink-0">
+                  class="flex-1 min-w-0 min-h-10 px-3 py-2 border border-slate-200 rounded-[10px] text-[13px] bg-white focus:outline-none focus:border-green-700 sm:flex-none sm:w-40 md:w-44">
             <option value="recent">{{ 'listaBoloes.sortRecent' | translate }}</option>
             <option value="arrecada">{{ 'listaBoloes.sortRevenue' | translate }}</option>
             <option value="cotas">{{ 'listaBoloes.sortQuotas' | translate }}</option>
             <option value="nome">{{ 'listaBoloes.sortName' | translate }}</option>
             <option value="status">{{ 'listaBoloes.sortStatus' | translate }}</option>
           </select>
-          <div class="inline-flex p-0.5 gap-0.5 rounded-lg border border-slate-200 bg-slate-50 shrink-0 self-start sm:self-auto" role="group"
+          <div class="inline-flex p-0.5 gap-0.5 rounded-lg border border-slate-200 bg-slate-50 shrink-0" role="group"
                [attr.aria-label]="'listaBoloes.viewToggleLabel' | translate">
             @for (opt of viewOptions; track opt.mode) {
               <button type="button"
                       (click)="definirVisualizacao(opt.mode)"
                       [attr.title]="(('listaBoloes.' + opt.titleKey) | translate)"
-                      class="px-3 py-2 rounded-md text-[15px] min-h-10 min-w-10 transition-colors"
-                      [class.bg-slate-900]="visualizacao() === opt.mode"
+                      class="px-3 py-2 rounded-md text-[15px] min-h-10 min-w-10 transition-colors touch-manipulation"
+                      [class.bg-green-700]="visualizacao() === opt.mode"
                       [class.text-white]="visualizacao() === opt.mode"
-                      [class.text-slate-500]="visualizacao() !== opt.mode">{{ opt.icon }}</button>
+                      [class.shadow-sm]="visualizacao() === opt.mode"
+                      [class.text-slate-500]="visualizacao() !== opt.mode"
+                      [class.hover:bg-slate-100]="visualizacao() !== opt.mode">{{ opt.icon }}</button>
             }
+          </div>
+          </div>
           </div>
           @if (temFiltrosExtras()) {
             <button type="button" (click)="limparFiltros()"
-                    class="text-[13px] font-semibold text-slate-500 hover:text-green-700 min-h-10 px-2">
+                    class="self-start text-[13px] font-semibold text-slate-500 hover:text-green-700 min-h-10 px-2 touch-manipulation">
               {{ 'listaBoloes.clearFilters' | translate }}
             </button>
           }
@@ -241,18 +247,6 @@
                         <div class="text-[15px] font-display font-semibold">{{ fin ? ('listaBoloes.closed' | translate) : ('listaBoloes.waiting' | translate) }}</div>
                         <div class="text-[11.5px] text-slate-500 mt-0.5">{{ 'listaBoloes.sorteiosCount' | translate:{ n: sorteiosReg(b) } }}</div>
                       }
-                      <div class="mt-3">
-                        <div class="flex justify-between text-[10px] font-semibold text-slate-500 uppercase mb-1">
-                          <span>{{ 'listaBoloes.progress' | translate }}</span>
-                          <span class="font-mono">{{ sorteiosReg(b) }}/{{ numCategorias(b) || '—' }}</span>
-                        </div>
-                        <div class="h-1.5 rounded-full bg-slate-100 overflow-hidden">
-                          <div class="h-full rounded-full transition-all"
-                               [class.bg-green-600]="!fin"
-                               [class.bg-slate-400]="fin"
-                               [style.width.%]="progressoSorteios(b)"></div>
-                        </div>
-                      </div>
                     </div>
                     <div class="bg-white p-4 sm:border-r border-slate-100 xl:col-span-1">
                       <div class="flex justify-between items-center gap-2 mb-2">
@@ -337,12 +331,7 @@
                       <td class="px-3 py-3 text-right font-mono font-semibold tabular">{{ b.totalCotasAtivas | number }}</td>
                       <td class="px-3 py-3 text-right font-mono text-slate-600 tabular">{{ brl(b.valorBrutoArrecadado) }}</td>
                       <td class="px-3 py-3">
-                        <div class="flex flex-col items-center gap-1 min-w-[72px]">
-                          <span class="font-mono text-[12px] font-semibold">{{ sorteiosReg(b) }}/{{ numCategorias(b) || '—' }}</span>
-                          <div class="w-16 h-1 rounded-full bg-slate-100 overflow-hidden">
-                            <div class="h-full bg-green-600 rounded-full" [style.width.%]="progressoSorteios(b)"></div>
-                          </div>
-                        </div>
+                        <span class="font-mono text-[12px] font-semibold tabular text-slate-800">{{ sorteiosReg(b) }}</span>
                       </td>
                       <td class="px-3 py-3 text-slate-600 tabular">{{ numCategorias(b) }}</td>
                       <td class="px-3 py-3 text-right">
@@ -353,21 +342,60 @@
                 </tbody>
               </table>
             </div>
-            <div class="md:hidden flex flex-col gap-3">
+            <div class="md:hidden flex flex-col gap-2.5">
               @for (b of boloesOrdenados(); track b.id) {
-                <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                  <div class="flex justify-between gap-2 mb-2">
-                    <span class="font-semibold text-slate-900 line-clamp-2">{{ b.nome }}</span>
-                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border shrink-0" [class]="statusClass(b.status)">{{ ('listaBoloes.status.' + b.status) | translate }}</span>
+                @let fin = b.status === 'FINALIZADO';
+                @let atv = b.status === 'EM_ANDAMENTO';
+                @let ini = b.status === 'A_SER_INICIADO';
+                <a [routerLink]="['/bolao', b.id, 'detalhes']"
+                   class="group relative flex rounded-xl border border-slate-200 bg-white shadow-sm no-underline overflow-hidden active:bg-slate-50/90 transition-colors touch-manipulation">
+                  <div class="absolute left-0 top-0 bottom-0 w-0.5"
+                       [class.bg-green-600]="atv"
+                       [class.bg-blue-500]="ini"
+                       [class.bg-slate-300]="fin"
+                       [class.bg-amber-400]="b.status === 'SUSPENSO'"></div>
+                  <div class="flex flex-1 min-w-0 pl-3 pr-2.5 py-2.5 gap-2.5">
+                    <div class="w-10 h-10 shrink-0 rounded-lg flex flex-col items-center justify-center leading-tight border text-[9px]"
+                         [class.bg-slate-100]="fin"
+                         [class.border-slate-200]="fin"
+                         [class.text-slate-500]="fin"
+                         [class.bg-green-50]="!fin"
+                         [class.border-green-100]="!fin"
+                         [class.text-green-800]="!fin">
+                      <span class="font-semibold opacity-70 uppercase tracking-wide">{{ 'listaBoloes.drawsShort' | translate }}</span>
+                      <span class="font-display font-bold text-[13px] tabular leading-none">{{ sorteiosReg(b) }}</span>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                      <div class="flex items-start justify-between gap-2">
+                        <h3 class="font-semibold text-[14px] text-slate-900 line-clamp-2 leading-snug group-hover:text-green-800 transition-colors">
+                          {{ b.nome }}
+                        </h3>
+                        <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold border shrink-0 max-w-[42%] truncate"
+                              [class]="statusClass(b.status)">
+                          {{ ('listaBoloes.status.' + b.status) | translate }}
+                        </span>
+                      </div>
+                      <p class="text-[11px] text-slate-500 mt-0.5 truncate">
+                        {{ fmtDate(b.dataInicio) }} · {{ brl(b.valorCota) }}
+                      </p>
+                      <div class="mt-2 grid grid-cols-3 gap-1 rounded-lg bg-slate-50 border border-slate-100 px-1.5 py-1.5">
+                        <div class="text-center min-w-0">
+                          <div class="text-[9px] font-semibold uppercase tracking-wide text-slate-400 truncate">{{ 'listaBoloes.thQuotas' | translate }}</div>
+                          <div class="font-mono text-[12px] font-semibold text-slate-800 tabular leading-tight">{{ b.totalCotasAtivas | number }}</div>
+                        </div>
+                        <div class="text-center min-w-0 border-x border-slate-200/80 px-0.5">
+                          <div class="text-[9px] font-semibold uppercase tracking-wide text-slate-400 truncate">{{ 'listaBoloes.colRevenue' | translate }}</div>
+                          <div class="font-mono text-[12px] font-semibold text-slate-800 tabular leading-tight truncate">{{ brlShort(b.valorBrutoArrecadado) }}</div>
+                        </div>
+                        <div class="text-center min-w-0">
+                          <div class="text-[9px] font-semibold uppercase tracking-wide text-slate-400 truncate">{{ 'listaBoloes.thSorteios' | translate }}</div>
+                          <div class="font-mono text-[12px] font-semibold text-slate-800 tabular leading-tight">{{ sorteiosReg(b) }}</div>
+                        </div>
+                      </div>
+                    </div>
+                    <span class="shrink-0 self-center text-slate-300 text-lg font-light group-hover:text-green-600 transition-colors" aria-hidden="true">›</span>
                   </div>
-                  <div class="grid grid-cols-2 gap-2 text-[12px] text-slate-600">
-                    <div><span class="text-slate-400">{{ 'listaBoloes.thQuotas' | translate }}</span> {{ b.totalCotasAtivas | number }}</div>
-                    <div><span class="text-slate-400">{{ 'listaBoloes.thRevenue' | translate }}</span> {{ brl(b.valorBrutoArrecadado) }}</div>
-                    <div class="col-span-2"><span class="text-slate-400">{{ 'listaBoloes.thSorteios' | translate }}</span> {{ sorteiosReg(b) }}</div>
-                  </div>
-                  <a [routerLink]="['/bolao', b.id, 'detalhes']"
-                     class="mt-3 block text-center py-3 rounded-lg bg-green-700 text-white text-sm font-semibold no-underline min-h-12">{{ 'listaBoloes.btnOpen' | translate }}</a>
-                </div>
+                </a>
               }
             </div>
           }
@@ -409,7 +437,7 @@
                     <div class="col-span-2">
                       <div class="text-[10px] font-semibold uppercase text-slate-500">{{ 'listaBoloes.compactNext' | translate }}</div>
                       <div class="text-[13px] font-medium text-slate-800 mt-0.5 truncate">{{ fin ? ('listaBoloes.closed' | translate) : linhaProximoSorteio(b) }}</div>
-                      <div class="text-[11px] text-slate-500">{{ 'listaBoloes.sortProg' | translate:{ a: sorteiosReg(b), b: numCategorias(b) || '—' } }}</div>
+                      <div class="text-[11px] text-slate-500">{{ 'listaBoloes.sorteiosCount' | translate:{ n: sorteiosReg(b) } }}</div>
                     </div>
                   </div>
                   <div class="mt-auto px-3 pb-3">

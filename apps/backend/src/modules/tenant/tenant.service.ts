@@ -85,6 +85,7 @@ export class TenantService {
     });
 
     try {
+      await this.provisionarModulos(tenant.id);
       await this.provisionarAdmin(tenant.id, dto.adminEmail, dto.adminSenha, dto.adminNome, dto.adminCelular);
     } catch (err) {
       await this.prisma.tenant.delete({ where: { id: tenant.id } });
@@ -94,6 +95,14 @@ export class TenantService {
     return this.toResponse(tenant);
   }
 
+  private async provisionarModulos(tenantId: string): Promise<void> {
+    const modulos = await this.prisma.modulo.findMany({ where: { apenasMaster: false } });
+    await this.prisma.moduloTenant.createMany({
+      data: modulos.map((m) => ({ tenantId, moduloCodigo: m.codigo })),
+      skipDuplicates: true,
+    });
+  }
+
   private async provisionarAdmin(
     tenantId: string,
     email: string,
@@ -101,6 +110,27 @@ export class TenantService {
     nome?: string,
     celular?: string,
   ): Promise<void> {
+    // 1. Perfil "Administrador" do tenant (cria se não existir)
+    const perfil = await this.prisma.perfil.upsert({
+      where: { tenantId_nome: { tenantId, nome: 'Administrador' } },
+      update: {},
+      create: {
+        tenantId,
+        nome: 'Administrador',
+        descricao: 'Acesso completo ao tenant — perfil do sistema',
+        prioridade: 1000,
+        sistema: true,
+      },
+    });
+
+    // 2. Garante que todas as permissões não-MASTER estão no perfil
+    const todasPermissoes = await this.prisma.permissao.findMany({ where: { apenasMaster: false } });
+    await this.prisma.perfilPermissao.createMany({
+      data: todasPermissoes.map((p) => ({ perfilId: perfil.id, permissaoCodigo: p.codigo })),
+      skipDuplicates: true,
+    });
+
+    // 3. Cria usuário no Supabase Auth
     const { data, error } = await this.supabase.admin.auth.admin.createUser({
       email,
       password: senha,
@@ -123,12 +153,31 @@ export class TenantService {
       );
     }
 
+    // 4. Cria UserProfile
     await this.prisma.userProfile.create({
       data: {
         id: data.user.id,
         tenantId,
         papel: 'ADMIN',
         celular: celular ?? null,
+      },
+    });
+
+    // 5. Vincula ao perfil "Administrador"
+    await this.prisma.usuarioPerfil.create({
+      data: { userId: data.user.id, perfilId: perfil.id },
+    });
+
+    // 6. Pré-popula permissoes no JWT (evita lazy-sync no primeiro login)
+    const codigos = todasPermissoes.map((p) => p.codigo).sort();
+    await this.supabase.admin.auth.admin.updateUserById(data.user.id, {
+      user_metadata: {
+        papel: 'ADMIN',
+        tenant_id: tenantId,
+        ...(nome && { nome }),
+        ...(celular && { celular }),
+        permissoes: codigos,
+        permissoes_rev: new Date().toISOString(),
       },
     });
   }
