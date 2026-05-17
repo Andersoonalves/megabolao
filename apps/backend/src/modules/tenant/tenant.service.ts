@@ -9,6 +9,13 @@ import { PaginationDto } from '../../common/dto/pagination.dto';
 import { CreateTenantDto } from './dto/create-tenant.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
 import { UpdateOwnTenantDto } from './dto/update-own-tenant.dto';
+import { UpdateAdminInfoDto } from './dto/update-admin-info.dto';
+
+export interface AdminInfoResponse {
+  nome?: string;
+  email: string;
+  celular?: string;
+}
 
 export interface TenantResponse {
   id: string;
@@ -215,6 +222,68 @@ export class TenantService {
         `Erro ao redefinir senha: ${error.message}`,
         [],
       );
+    }
+  }
+
+  async getAdminInfo(tenantId: string): Promise<AdminInfoResponse> {
+    const perfil = await this.prisma.userProfile.findFirst({
+      where: { tenantId, papel: 'ADMIN' },
+    });
+
+    if (!perfil) {
+      throw new BusinessException('ADMIN_NAO_ENCONTRADO', 'Nenhum usuário ADMIN encontrado para este tenant', []);
+    }
+
+    const { data, error } = await this.supabase.admin.auth.admin.getUserById(perfil.id);
+    if (error) {
+      throw new BusinessException('ERRO_BUSCAR_ADMIN', `Erro ao buscar admin: ${error.message}`, []);
+    }
+
+    return {
+      nome: data.user.user_metadata?.['nome'] as string | undefined,
+      email: data.user.email ?? '',
+      celular: perfil.celular ?? undefined,
+    };
+  }
+
+  async atualizarInfoAdmin(tenantId: string, dto: UpdateAdminInfoDto): Promise<void> {
+    const perfil = await this.prisma.userProfile.findFirst({
+      where: { tenantId, papel: 'ADMIN' },
+    });
+
+    if (!perfil) {
+      throw new BusinessException('ADMIN_NAO_ENCONTRADO', 'Nenhum usuário ADMIN encontrado para este tenant', []);
+    }
+
+    const payload: Record<string, unknown> = {};
+    if (dto.adminEmail) {
+      payload['email'] = dto.adminEmail;
+      payload['email_confirm'] = true;
+    }
+    if (dto.adminNome !== undefined || dto.adminCelular !== undefined) {
+      payload['user_metadata'] = {
+        papel: 'ADMIN',
+        tenant_id: tenantId,
+        ...(dto.adminNome !== undefined && { nome: dto.adminNome }),
+        ...(dto.adminCelular !== undefined && { celular: dto.adminCelular }),
+      };
+    }
+
+    if (Object.keys(payload).length > 0) {
+      const { error } = await this.supabase.admin.auth.admin.updateUserById(
+        perfil.id,
+        payload as Parameters<typeof this.supabase.admin.auth.admin.updateUserById>[1],
+      );
+      if (error) {
+        throw new BusinessException('ERRO_ATUALIZAR_ADMIN', `Erro ao atualizar admin: ${error.message}`, []);
+      }
+    }
+
+    if (dto.adminCelular !== undefined) {
+      await this.prisma.userProfile.update({
+        where: { id: perfil.id },
+        data: { celular: dto.adminCelular || null },
+      });
     }
   }
 

@@ -20,6 +20,7 @@ import { CreateTenantDto } from './dto/create-tenant.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
 import { UpdateOwnTenantDto } from './dto/update-own-tenant.dto';
 import { ResetAdminSenhaDto } from './dto/reset-admin-senha.dto';
+import { UpdateAdminInfoDto } from './dto/update-admin-info.dto';
 import { TenantService } from './tenant.service';
 
 @ApiTags('tenants')
@@ -73,6 +74,23 @@ export class TenantController {
   @ApiOperation({ summary: 'Atualizar tenant (MASTER)' })
   update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateTenantDto) {
     return this.tenantService.update(id, dto);
+  }
+
+  @Get(':id/admin-info')
+  @Roles('MASTER')
+  @RequerPermissoes('tenant.ler')
+  @ApiOperation({ summary: 'Obter informações do admin do tenant (MASTER)' })
+  getAdminInfo(@Param('id', ParseUUIDPipe) id: string) {
+    return this.tenantService.getAdminInfo(id);
+  }
+
+  @Patch(':id/admin-info')
+  @Roles('MASTER')
+  @RequerPermissoes('tenant.editar')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Atualizar informações do admin do tenant (MASTER)' })
+  updateAdminInfo(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateAdminInfoDto) {
+    return this.tenantService.atualizarInfoAdmin(id, dto);
   }
 
   @Patch(':id/admin-senha')

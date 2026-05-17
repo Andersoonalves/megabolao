@@ -233,6 +233,40 @@
                    [attr.placeholder]="'tenants.nomeCustomPh' | translate" />
           </div>
 
+          <!-- Informações do admin -->
+          <div class="border-t border-slate-100 pt-4">
+            <p class="text-xs font-semibold text-slate-500 mb-3 tracking-wide uppercase">{{ 'tenants.adminSection' | translate }}</p>
+            @if (editAdminInfoLoading()) {
+              <div class="flex flex-col gap-2">
+                <div class="h-9 bg-slate-100 rounded-[10px] animate-pulse"></div>
+                <div class="h-9 bg-slate-100 rounded-[10px] animate-pulse"></div>
+                <div class="h-9 bg-slate-100 rounded-[10px] animate-pulse"></div>
+              </div>
+            } @else {
+              <div class="flex flex-col gap-3">
+                <div>
+                  <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">{{ 'tenants.labelAdminNome' | translate }}</label>
+                  <input [ngModel]="editAdminNome()" (ngModelChange)="editAdminNome.set($event)" name="editAdminNome"
+                         class="w-full px-3 py-2.5 border border-slate-200 rounded-[10px] text-sm focus:outline-none focus:border-green-700"
+                         [attr.placeholder]="'tenants.adminNomePh' | translate" />
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">{{ 'tenants.labelAdminEmail' | translate }}</label>
+                  <input [ngModel]="editAdminEmail()" (ngModelChange)="editAdminEmail.set($event)" name="editAdminEmail"
+                         type="email"
+                         class="w-full px-3 py-2.5 border border-slate-200 rounded-[10px] text-sm focus:outline-none focus:border-green-700" />
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-slate-500 mb-1.5 tracking-wide">{{ 'tenants.labelAdminCelular' | translate }}</label>
+                  <input [ngModel]="editAdminCelular()" (ngModelChange)="editAdminCelular.set($event)" name="editAdminCelular"
+                         inputmode="numeric"
+                         class="w-full px-3 py-2.5 border border-slate-200 rounded-[10px] text-sm focus:outline-none focus:border-green-700"
+                         [attr.placeholder]="'tenants.adminCelularPh' | translate" />
+                </div>
+              </div>
+            }
+          </div>
+
           <!-- Redefinir senha do admin -->
           <div class="border-t border-slate-100 pt-4">
             <button type="button" (click)="mostrarSenha.set(!mostrarSenha())"

@@ -59,6 +59,10 @@ export class TenantsComponent implements OnInit {
   editAdminSenha  = signal('');
   editConfirmarSenha = signal('');
   editSenhaError  = signal('');
+  editAdminNome   = signal('');
+  editAdminEmail  = signal('');
+  editAdminCelular = signal('');
+  editAdminInfoLoading = signal(false);
 
   ngOnInit(): void { this.load(); }
 
@@ -96,6 +100,23 @@ export class TenantsComponent implements OnInit {
     this.editAdminSenha.set('');
     this.editConfirmarSenha.set('');
     this.editSenhaError.set('');
+    this.editAdminNome.set('');
+    this.editAdminEmail.set('');
+    this.editAdminCelular.set('');
+    this.carregarAdminInfo(t.id);
+  }
+
+  private async carregarAdminInfo(tenantId: string): Promise<void> {
+    this.editAdminInfoLoading.set(true);
+    try {
+      const info = await firstValueFrom(
+        this.api.get<{ nome?: string; email: string; celular?: string }>(`/tenants/${tenantId}/admin-info`),
+      );
+      this.editAdminNome.set(info.nome ?? '');
+      this.editAdminEmail.set(info.email);
+      this.editAdminCelular.set(info.celular ?? '');
+    } catch { /* silencia — campos ficam vazios */ }
+    finally { this.editAdminInfoLoading.set(false); }
   }
 
   fecharEdicao(): void { this.editando.set(null); }
@@ -136,6 +157,14 @@ export class TenantsComponent implements OnInit {
         await firstValueFrom(
           this.api.patch(`/tenants/${t.id}/admin-senha`, { novaSenha: this.editAdminSenha() }),
         );
+      }
+
+      const adminPayload: Record<string, string> = {};
+      if (this.editAdminNome()) adminPayload['adminNome'] = this.editAdminNome();
+      if (this.editAdminEmail()) adminPayload['adminEmail'] = this.editAdminEmail();
+      if (this.editAdminCelular()) adminPayload['adminCelular'] = this.editAdminCelular();
+      if (Object.keys(adminPayload).length > 0) {
+        await firstValueFrom(this.api.patch(`/tenants/${t.id}/admin-info`, adminPayload));
       }
 
       // Atualização otimista da lista
