@@ -93,8 +93,8 @@ export class WhatsAppClientManager {
       webhook: {
         enabled:         true,
         url:             this.webhookUrl(),
-        webhookByEvents: true,
-        webhookBase64:   true,
+        byEvents: false,
+        base64:   true,
         events:          ['QRCODE_UPDATED', 'CONNECTION_UPDATE', 'MESSAGES_UPSERT'],
       },
     });
@@ -104,11 +104,11 @@ export class WhatsAppClientManager {
   async setWebhook(tenantId: string): Promise<void> {
     await this.post(`/webhook/set/${tenantId}`, {
       webhook: {
-        enabled:        true,
-        url:            this.webhookUrl(),
-        webhookByEvents: true,
-        webhookBase64:   true,
-        events:         ['QRCODE_UPDATED', 'CONNECTION_UPDATE', 'MESSAGES_UPSERT'],
+        enabled:         true,
+        url:             this.webhookUrl(),
+        byEvents: false,
+        base64:   true,
+        events:          ['QRCODE_UPDATED', 'CONNECTION_UPDATE', 'MESSAGES_UPSERT'],
       },
     });
     this.logger.log(`Webhook configurado para tenant ${tenantId}: ${this.webhookUrl()}`);

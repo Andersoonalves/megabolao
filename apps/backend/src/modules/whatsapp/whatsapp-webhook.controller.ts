@@ -1,4 +1,4 @@
-import { Body, Controller, Headers, HttpCode, HttpStatus, Logger, Post, UnauthorizedException } from '@nestjs/common';
+import { Body, Controller, Headers, HttpCode, HttpStatus, Logger, Param, Post, UnauthorizedException } from '@nestjs/common';
 import { ApiExcludeController } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { Public } from '../auth/decorators/public.decorator';
@@ -22,13 +22,22 @@ export class WhatsAppWebhookController {
     private readonly config: ConfigService,
   ) {}
 
+  // Evolution API v2 envia para /webhook OU /webhook/:event (quando byEvents=true)
+  // Aceitar ambos os formatos
   @Post()
+  @Post(':event')
   @Public()
   @HttpCode(HttpStatus.OK)
   async handle(
     @Body() payload: EvolutionWebhookPayload,
     @Headers('apikey') apikey: string,
+    @Param('event') eventParam?: string,
   ): Promise<{ ok: boolean }> {
+    // Normalizar event: pode vir no body (byEvents=false) ou na URL (byEvents=true)
+    if (!payload.event && eventParam) {
+      // /webhook/connection-update → connection.update
+      payload.event = eventParam.replace(/-/g, '.');
+    }
     const expectedKey = this.config.get<string>('EVOLUTION_API_KEY', '');
     if (expectedKey && apikey !== expectedKey) {
       throw new UnauthorizedException('Webhook apikey inválida');
@@ -38,7 +47,9 @@ export class WhatsAppWebhookController {
     if (!tenantId) return { ok: true };
 
     try {
-      switch (payload.event) {
+      // Normalizar event para lowercase com pontos
+      const event = (payload.event ?? '').toLowerCase().replace(/_/g, '.');
+      switch (event) {
         case 'connection.update':
           await this.handleConnectionUpdate(tenantId, payload.data);
           break;
