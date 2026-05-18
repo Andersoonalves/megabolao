@@ -1,0 +1,61 @@
+    <div class="bg-white border-b border-slate-200 px-4 lg:px-7 py-3 flex items-center gap-3 sticky top-14 lg:top-0 z-10">
+      <nb-back-button />
+      <span class="font-display font-semibold text-[15px] flex-1">{{ 'crm.analyticsTitle' | translate }}</span>
+      <a routerLink="/crm" class="inline-flex items-center gap-1 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-sm font-semibold rounded-[10px] no-underline text-slate-700">
+        ← Kanban
+      </a>
+    </div>
+
+    <div class="p-4 lg:p-7">
+      @if (loading()) {
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          @for (i of [1,2,3,4]; track i) { <div class="h-24 bg-slate-100 rounded-xl animate-pulse"></div> }
+        </div>
+      } @else if (stats(); as s) {
+        <!-- KPIs -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div class="bg-white border border-slate-200 rounded-lg p-[18px]">
+            <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-1">{{ 'crm.kpiContacts' | translate }}</div>
+            <div class="font-display text-[28px] font-semibold tabular">{{ s.total }}</div>
+          </div>
+          <div class="bg-white border border-slate-200 rounded-lg p-[18px]">
+            <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-1">{{ 'crm.kpiCotas' | translate }}</div>
+            <div class="font-display text-[28px] font-semibold tabular">{{ s.totalCotas }}</div>
+          </div>
+          <div class="bg-white border border-slate-200 rounded-lg p-[18px]">
+            <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-1">{{ 'crm.kpiPaid' | translate }}</div>
+            <div class="font-display text-[28px] font-semibold tabular text-green-700">{{ s.cotasPagas }}</div>
+            <div class="text-[11.5px] text-slate-400 mt-0.5">
+              {{ s.totalCotas > 0 ? (s.cotasPagas / s.totalCotas * 100 | number:'1.0-0') : 0 }}%
+            </div>
+          </div>
+          <div class="bg-white border border-slate-200 rounded-lg p-[18px]">
+            <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-1">{{ 'crm.kpiNoStage' | translate }}</div>
+            <div class="font-display text-[28px] font-semibold tabular text-amber-600">{{ s.semEtapa }}</div>
+          </div>
+        </div>
+
+        <!-- Funil -->
+        <div class="bg-white border border-slate-200 rounded-xl p-6 mb-6">
+          <h3 class="font-display font-semibold text-[15px] mb-6">{{ 'crm.funnelTitle' | translate }}</h3>
+          <div class="flex flex-col gap-3">
+            @for (e of s.porEtapa; track e.id) {
+              <div class="flex items-center gap-4">
+                <div class="w-36 text-[12.5px] font-semibold text-slate-600 truncate flex-shrink-0">{{ e.nome }}</div>
+                <div class="flex-1 bg-slate-100 rounded-full h-5 overflow-hidden">
+                  <div class="h-full rounded-full transition-all duration-500 flex items-center justify-end pr-2"
+                       [style.width]="(e.pct || 0) + '%'"
+                       [style.background]="e.cor"
+                       [style.minWidth]="e.count > 0 ? '32px' : '0'">
+                    @if (e.count > 0) {
+                      <span class="text-white text-[10px] font-bold">{{ e.count }}</span>
+                    }
+                  </div>
+                </div>
+                <div class="w-12 text-right text-[12px] text-slate-400 font-mono flex-shrink-0">{{ e.pct }}%</div>
+              </div>
+            }
+          </div>
+        </div>
+      }
+    </div>

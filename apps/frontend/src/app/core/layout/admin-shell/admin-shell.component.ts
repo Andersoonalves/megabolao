@@ -38,6 +38,17 @@ const ADMIN_NAV: NavItem[] = [
   // { id: 'premios',       labelKey: 'nav.prizes',      icon: '🏆', route: '/bolao/0/premios', permissoes: ['premio.ler'] },
   { sectionKey: 'nav.section.communication' },
   {
+    id: 'crm',
+    labelKey: 'nav.crm',
+    icon: '📋',
+    route: '/crm',
+    permissoes: ['crm.ler'],
+    children: [
+      { id: 'crm-analytics', labelKey: 'nav.crmAnalytics', route: '/crm/analytics', permissoes: ['crm.ler'] },
+      { id: 'crm-config',    labelKey: 'nav.crmConfig',    route: '/crm/configurar', permissoes: ['crm.editar'] },
+    ],
+  },
+  {
     id: 'whatsapp',
     labelKey: 'nav.whatsapp',
     icon: '💬',

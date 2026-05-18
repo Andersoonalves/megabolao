@@ -111,6 +111,9 @@ model Tenant {
   modulosTenant       ModuloTenant[]
   auditorias          Auditoria[]
   whatsappTemplates   WhatsappTemplate[]
+  crmEtapas           CrmEtapa[]
+  crmContatos         CrmContato[]
+  crmMensagens        CrmMensagem[]
 
   @@map("tenants")
 }
@@ -187,8 +190,9 @@ model Participante {
   criadoEm     DateTime @default(now()) @db.Timestamptz() @map("criado_em")
   atualizadoEm DateTime @default(now()) @db.Timestamptz() @map("atualizado_em")
 
-  tenant Tenant @relation(fields: [tenantId], references: [id])
-  cotas  Cota[]
+  tenant      Tenant       @relation(fields: [tenantId], references: [id])
+  cotas       Cota[]
+  crmContatos CrmContato[]
 
   @@unique([tenantId, numeroCelular])
   @@map("participantes")
@@ -427,6 +431,65 @@ model Auditoria {
   @@index([acao])
   @@index([recurso, recursoId])
   @@map("auditoria")
+}
+
+// ── CRM ────────────────────────────────────────────────────────
+
+model CrmEtapa {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId  String   @db.Uuid @map("tenant_id")
+  nome      String
+  cor       String   @default("#64748b")
+  ordem     Int      @default(0)
+  isSistema Boolean  @default(false) @map("is_sistema")
+  criadoEm  DateTime @default(now()) @db.Timestamptz() @map("criado_em")
+
+  tenant   Tenant       @relation(fields: [tenantId], references: [id])
+  contatos CrmContato[]
+
+  @@unique([tenantId, nome])
+  @@index([tenantId, ordem])
+  @@map("crm_etapas")
+}
+
+model CrmContato {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId       String   @db.Uuid @map("tenant_id")
+  celular        String
+  nome           String?
+  etapaId        String?  @db.Uuid @map("etapa_id")
+  tags           String[] @default([])
+  notas          String?
+  participanteId String?  @db.Uuid @map("participante_id")
+  criadoEm       DateTime @default(now()) @db.Timestamptz() @map("criado_em")
+  atualizadoEm   DateTime @default(now()) @db.Timestamptz() @map("atualizado_em")
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id])
+  etapa        CrmEtapa?     @relation(fields: [etapaId], references: [id])
+  participante Participante? @relation(fields: [participanteId], references: [id])
+
+  @@unique([tenantId, celular])
+  @@index([tenantId])
+  @@index([etapaId])
+  @@map("crm_contatos")
+}
+
+model CrmMensagem {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId    String   @db.Uuid @map("tenant_id")
+  celular     String
+  direcao     String   @default("OUT")
+  conteudo    String
+  tipo        String   @default("text")
+  lida        Boolean  @default(false)
+  waMessageId String?  @map("wa_message_id")
+  enviadaPor  String?  @db.Uuid @map("enviada_por")
+  criadoEm    DateTime @default(now()) @db.Timestamptz() @map("criado_em")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, celular, criadoEm(sort: Desc)])
+  @@map("crm_mensagens")
 }
 
 model MegaResultado {

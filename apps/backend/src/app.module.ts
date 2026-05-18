@@ -24,6 +24,7 @@ import { PerfilModule } from './modules/perfil/perfil.module';
 import { UsuarioModule } from './modules/usuario/usuario.module';
 import { AuditoriaModule } from './modules/auditoria/auditoria.module';
 import { PortalModule } from './modules/portal/portal.module';
+import { CrmModule } from './modules/crm/crm.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { PortalModule } from './modules/portal/portal.module';
     UsuarioModule,
     AuditoriaModule,
     PortalModule,
+    CrmModule,
   ],
   providers: [
     // Ordem: throttle → autenticação → 2FA → role → permissões

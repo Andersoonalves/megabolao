@@ -11,6 +11,11 @@ interface ResultadoCaixa {
   bolasSorteadas: number[];
 }
 
+const CACHE_KEY = 'nb_mega_sena_v1';
+const CACHE_TTL_MS = 5 * 60 * 1000;
+
+interface CacheEntry { ts: number; data: ResultadoCaixa[]; }
+
 @Component({
   selector: 'nb-portal-sorteios',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -101,17 +106,49 @@ export class PortalSorteiosComponent implements OnInit {
 
   readonly skeleton = Array.from({ length: 5 }, (_, i) => i);
 
-  ngOnInit(): void { void this.atualizar(); }
+  ngOnInit(): void { void this.carregar(); }
+
+  private lerCache(): ResultadoCaixa[] | null {
+    try {
+      const raw = sessionStorage.getItem(CACHE_KEY);
+      if (!raw) return null;
+      const entry = JSON.parse(raw) as CacheEntry;
+      if (Date.now() - entry.ts > CACHE_TTL_MS) return null;
+      return entry.data;
+    } catch { return null; }
+  }
+
+  private gravarCache(data: ResultadoCaixa[]): void {
+    try { sessionStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data })); }
+    catch { /* storage cheio — ignora */ }
+  }
+
+  private async carregar(): Promise<void> {
+    const cached = this.lerCache();
+    if (cached) {
+      this.resultados.set(cached);
+      this.loading.set(false);
+      return;
+    }
+    await this.buscarApi();
+  }
 
   async atualizar(): Promise<void> {
     if (this.loading()) return;
+    sessionStorage.removeItem(CACHE_KEY);
+    await this.buscarApi();
+  }
+
+  private async buscarApi(): Promise<void> {
     this.loading.set(true);
     this.error.set('');
     try {
       const res = await firstValueFrom(
         this.api.get<ResultadoCaixa[]>('/portal/mega-sena?ultimos=20'),
       );
-      this.resultados.set(Array.isArray(res) ? res : [res]);
+      const data = Array.isArray(res) ? res : [res];
+      this.resultados.set(data);
+      this.gravarCache(data);
     } catch {
       this.error.set('Não foi possível carregar os resultados. Tente novamente.');
     } finally {

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Header, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { Public } from '../auth/decorators/public.decorator';
@@ -18,6 +18,7 @@ export class PortalController {
 
   @Public()
   @Get('mega-sena')
+  @Header('Cache-Control', 'public, max-age=300, stale-while-revalidate=60')
   @ApiOperation({ summary: 'Últimos resultados Mega-Sena (público, proxy Caixa)' })
   @ApiQuery({ name: 'ultimos', required: false, type: Number })
   buscarMegaSena(@Query('ultimos') ultimos?: string) {

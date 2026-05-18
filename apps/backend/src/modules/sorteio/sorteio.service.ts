@@ -251,6 +251,25 @@ export class SorteioService {
   async buscarMegaSena(numeroConcurso?: number, ultimos?: number): Promise<
     MegaSenaResultadoCaixaDto | MegaSenaResultadoCaixaDto[]
   > {
+    // Para busca de "últimos N" sem concurso específico, tenta o cache local primeiro
+    if (!numeroConcurso && ultimos && ultimos > 1) {
+      const qtd = Math.min(ultimos, 20);
+      const cached = await this.prisma.megaResultado.findMany({
+        orderBy: { numeroConcurso: 'desc' },
+        take: qtd,
+        select: { numeroConcurso: true, dataSorteio: true, bolasSorteadas: true },
+      });
+
+      if (cached.length > 0) {
+        return cached.map((c) => ({
+          numeroConcurso: c.numeroConcurso,
+          dataSorteio: c.dataSorteio.toISOString().split('T')[0],
+          bolasSorteadas: c.bolasSorteadas,
+        }));
+      }
+      // Cache vazio: fallback para API Caixa abaixo
+    }
+
     const ultimo = await this.fetchCaixa(numeroConcurso);
 
     if (!ultimos || ultimos <= 1) return ultimo;

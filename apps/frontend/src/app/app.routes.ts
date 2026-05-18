@@ -133,6 +133,26 @@ export const appRoutes: Route[] = [
         canActivate: [permissaoGuard('auditoria.ler')],
         loadComponent: () => import('./features/rbac/auditoria/auditoria.component').then(m => m.AuditoriaComponent),
       },
+      {
+        path: 'crm',
+        canActivate: [permissaoGuard('crm.ler')],
+        loadComponent: () => import('./features/crm/crm-kanban/crm-kanban.component').then(m => m.CrmKanbanComponent),
+      },
+      {
+        path: 'crm/configurar',
+        canActivate: [permissaoGuard('crm.editar')],
+        loadComponent: () => import('./features/crm/crm-configurar/crm-configurar.component').then(m => m.CrmConfigurarComponent),
+      },
+      {
+        path: 'crm/analytics',
+        canActivate: [permissaoGuard('crm.ler')],
+        loadComponent: () => import('./features/crm/crm-analytics/crm-analytics.component').then(m => m.CrmAnalyticsComponent),
+      },
+      {
+        path: 'crm/conversa/:celular',
+        canActivate: [permissaoGuard('crm.ler')],
+        loadComponent: () => import('./features/crm/crm-conversa/crm-conversa.component').then(m => m.CrmConversaComponent),
+      },
     ],
   },
   {

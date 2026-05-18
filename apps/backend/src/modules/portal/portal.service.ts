@@ -68,6 +68,7 @@ export interface PortalRankingItem {
   numeroSequencial: number;
   totalAcertosAcumulados: number;
   statusPagamento: string;
+  maxPalpites: number;
 }
 
 @Injectable()
@@ -217,17 +218,32 @@ export class PortalService {
         numeroSequencial: true,
         totalAcertosAcumulados: true,
         statusPagamento: true,
+        palpites: true,
       },
     });
 
-    return cotas.map((c, idx) => ({
-      posicao: idx + 1,
-      cotaId: c.id,
-      nomeIdentificacao: c.nomeIdentificacao,
-      numeroSequencial: c.numeroSequencial,
-      totalAcertosAcumulados: c.totalAcertosAcumulados,
-      statusPagamento: c.statusPagamento,
-    }));
+    const maxPalpites = cotas[0]?.palpites.length ?? 10;
+
+    // Posição com tie-breaking: cotas empatadas recebem a mesma posição (competition ranking)
+    const result: PortalRankingItem[] = [];
+    for (let i = 0; i < cotas.length; i++) {
+      const c = cotas[i];
+      const posicao = i === 0
+        ? 1
+        : c.totalAcertosAcumulados === cotas[i - 1].totalAcertosAcumulados
+          ? result[i - 1].posicao
+          : i + 1;
+      result.push({
+        posicao,
+        cotaId: c.id,
+        nomeIdentificacao: c.nomeIdentificacao,
+        numeroSequencial: c.numeroSequencial,
+        totalAcertosAcumulados: c.totalAcertosAcumulados,
+        statusPagamento: c.statusPagamento,
+        maxPalpites,
+      });
+    }
+    return result;
   }
 
   private async resolvePortalContext(user: AuthenticatedUser): Promise<{ tenantId: string; celular: string }> {

@@ -64,6 +64,7 @@ export interface PortalRankingItem {
   numeroSequencial: number;
   totalAcertosAcumulados: number;
   statusPagamento: string;
+  maxPalpites: number;
 }
 
 @Injectable({ providedIn: 'root' })

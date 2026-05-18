@@ -314,6 +314,16 @@ export class WhatsAppClientManager implements OnModuleInit, OnModuleDestroy {
     await entry.client.sendMessage(grupoId, mensagem);
   }
 
+  async enviarParaNumero(tenantId: string, celular: string, mensagem: string): Promise<void> {
+    const entry = this.sessions.get(tenantId);
+    if (!entry || entry.status !== 'CONECTADO') {
+      throw new BusinessException('WA_DESCONECTADO', 'WhatsApp não está conectado para este tenant');
+    }
+    // Normaliza: remove não-dígitos, adiciona @c.us
+    const numero = celular.replace(/\D/g, '');
+    await entry.client.sendMessage(`${numero}@c.us`, mensagem);
+  }
+
   private sessionPath(tenantId: string): string {
     return join(process.cwd(), '.wa-sessions', `session-${tenantId}`);
   }

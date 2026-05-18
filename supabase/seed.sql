@@ -169,3 +169,31 @@ Em breve divulgamos ranking e premiações. *{{totalCotas}}* cotas seguem no bol
     true
   )
 ON CONFLICT (id) DO NOTHING;
+
+-- Calcula acertos para todos os sorteios seeded com processado=true
+-- Necessário porque o CalcAcertosJob pula sorteios já marcados como processados
+WITH missing AS (
+  SELECT
+    s.tenant_id,
+    s.bolao_id,
+    s.id AS sorteio_id,
+    c.id AS cota_id,
+    (SELECT COUNT(*)::int FROM unnest(c.palpites) p WHERE p = ANY(s.bolas_sorteadas)) AS acertos
+  FROM sorteios s
+  JOIN cotas c ON c.bolao_id = s.bolao_id
+              AND c.tenant_id = s.tenant_id
+              AND c.status_pagamento = 'PAGO'
+  WHERE s.processado = TRUE
+)
+INSERT INTO acertos_sorteio (tenant_id, bolao_id, sorteio_id, cota_id, acertos)
+SELECT tenant_id, bolao_id, sorteio_id, cota_id, acertos FROM missing
+ON CONFLICT DO NOTHING;
+
+UPDATE cotas
+SET total_acertos_acumulados = (
+  SELECT COALESCE(SUM(a.acertos), 0)
+  FROM acertos_sorteio a
+  WHERE a.cota_id = cotas.id
+),
+atualizado_em = NOW()
+WHERE status_pagamento = 'PAGO';
