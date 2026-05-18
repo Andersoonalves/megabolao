@@ -15,7 +15,11 @@
     "lint": "nx run-many --target=lint",
     "generate:types": "openapi-typescript http://localhost:3000/docs-json -o libs/shared-types/src/generated.ts",
     "supabase:start": "supabase start",
-    "supabase:reset": "supabase db reset"
+    "supabase:reset": "supabase db reset",
+    "dev": "./dev-start.sh",
+    "dev:stop": "./dev-stop.sh",
+    "dev:no-frontend": "./dev-start.sh --no-frontend",
+    "dev:reset": "./dev-start.sh --reset-db"
   },
   "dependencies": {
     "@angular/animations": "^21.0.0",
