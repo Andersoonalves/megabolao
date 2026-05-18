@@ -80,10 +80,21 @@ export class WhatsAppClientManager {
   }
 
   private async createInstance(tenantId: string): Promise<void> {
+    const webhookUrl = this.config.get<string>('APP_BASE_URL', 'http://localhost:3000');
     await this.post('/instance/create', {
       instanceName: tenantId,
       integration:  'WHATSAPP-BAILEYS',
       qrcode:       true,
+      webhook: {
+        url:     `${webhookUrl}/whatsapp/webhook`,
+        byEvents: true,
+        base64:  true,
+        events: [
+          'QRCODE_UPDATED',
+          'CONNECTION_UPDATE',
+          'MESSAGES_UPSERT',
+        ],
+      },
     });
     this.logger.log(`Instância Evolution criada para tenant ${tenantId}`);
   }
