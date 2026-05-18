@@ -70,41 +70,57 @@ export class WhatsAppClientManager {
 
   private async instanceExists(tenantId: string): Promise<boolean> {
     try {
-      const list = await this.get<{ instance: { instanceName: string } }[]>(
+      // Evolution API v2: retorna array flat [{ name, connectionStatus, ... }]
+      const list = await this.get<{ name: string }[]>(
         `/instance/fetchInstances?instanceName=${tenantId}`,
       );
-      return Array.isArray(list) && list.some(i => i.instance?.instanceName === tenantId);
+      return Array.isArray(list) && list.some(i => i.name === tenantId);
     } catch {
       return false;
     }
   }
 
+  private webhookUrl(): string {
+    const base = this.config.get<string>('APP_BASE_URL', 'http://localhost:3000');
+    return `${base}/api/v1/whatsapp/webhook`;
+  }
+
   private async createInstance(tenantId: string): Promise<void> {
-    const webhookUrl = this.config.get<string>('APP_BASE_URL', 'http://localhost:3000');
     await this.post('/instance/create', {
       instanceName: tenantId,
       integration:  'WHATSAPP-BAILEYS',
       qrcode:       true,
       webhook: {
-        url:     `${webhookUrl}/whatsapp/webhook`,
-        byEvents: true,
-        base64:  true,
-        events: [
-          'QRCODE_UPDATED',
-          'CONNECTION_UPDATE',
-          'MESSAGES_UPSERT',
-        ],
+        enabled:         true,
+        url:             this.webhookUrl(),
+        webhookByEvents: true,
+        webhookBase64:   true,
+        events:          ['QRCODE_UPDATED', 'CONNECTION_UPDATE', 'MESSAGES_UPSERT'],
       },
     });
     this.logger.log(`Instância Evolution criada para tenant ${tenantId}`);
   }
 
+  async setWebhook(tenantId: string): Promise<void> {
+    await this.post(`/webhook/set/${tenantId}`, {
+      webhook: {
+        enabled:        true,
+        url:            this.webhookUrl(),
+        webhookByEvents: true,
+        webhookBase64:   true,
+        events:         ['QRCODE_UPDATED', 'CONNECTION_UPDATE', 'MESSAGES_UPSERT'],
+      },
+    });
+    this.logger.log(`Webhook configurado para tenant ${tenantId}: ${this.webhookUrl()}`);
+  }
+
   private async fetchConnectionState(tenantId: string): Promise<string> {
     try {
-      const r = await this.get<{ instance: { state: string } }>(
+      // Evolution API v2: { instance: { instanceName, state } }
+      const r = await this.get<{ instance?: { state?: string }; state?: string }>(
         `/instance/connectionState/${tenantId}`,
       );
-      return r?.instance?.state ?? 'close';
+      return r?.instance?.state ?? r?.state ?? 'close';
     } catch {
       return 'close';
     }
@@ -119,9 +135,13 @@ export class WhatsAppClientManager {
       return { status: 'AGUARDANDO_QR', qrCode: cached.qrCode };
     if (cached?.status === 'CARREGANDO')   return { status: 'CARREGANDO' };
 
-    // Criar instância se não existe
-    if (!(await this.instanceExists(tenantId))) {
+    const exists = await this.instanceExists(tenantId);
+    if (!exists) {
+      // createInstance já configura o webhook
       await this.createInstance(tenantId);
+    } else {
+      // Garantir webhook correto em instâncias já existentes
+      void this.setWebhook(tenantId).catch(() => undefined);
     }
 
     const state = await this.fetchConnectionState(tenantId);
@@ -133,19 +153,18 @@ export class WhatsAppClientManager {
       return { status: 'CONECTADO', numero: info.numero };
     }
 
-    // Solicitar conexão (retorna QR ou pairing code)
+    // Disparar conexão — QR chega via webhook QRCODE_UPDATED
+    // (Evolution API v2 não retorna QR no body, apenas via evento)
     try {
-      const conn = await this.get<{ base64?: string; code?: string }>(
-        `/instance/connect/${tenantId}`,
-      );
-      const qrCode = conn?.base64;  // "data:image/png;base64,..."
-      const entry: SessionCache = { status: qrCode ? 'AGUARDANDO_QR' : 'CARREGANDO', qrCode };
-      this.cache.set(tenantId, entry);
-      return { status: entry.status, qrCode };
-    } catch {
-      this.cache.set(tenantId, { status: 'CARREGANDO' });
-      return { status: 'CARREGANDO' };
+      await this.get(`/instance/connect/${tenantId}`);
+    } catch { /* ignora — já pode estar connecting */ }
+
+    const cur = this.cache.get(tenantId);
+    if (cur?.status === 'AGUARDANDO_QR' && cur.qrCode) {
+      return { status: 'AGUARDANDO_QR', qrCode: cur.qrCode };
     }
+    this.cache.set(tenantId, { status: 'CARREGANDO' });
+    return { status: 'CARREGANDO' };
   }
 
   getStatus(tenantId: string): WaSessionInfo {
@@ -235,12 +254,13 @@ export class WhatsAppClientManager {
 
   private async fetchInstanceInfo(tenantId: string): Promise<{ numero?: string }> {
     try {
-      const list = await this.get<{ instance: { instanceName: string; owner?: string } }[]>(
+      // Evolution API v2: flat { name, ownerJid, ... }
+      const list = await this.get<{ name: string; ownerJid?: string }[]>(
         `/instance/fetchInstances?instanceName=${tenantId}`,
       );
-      const inst = list?.find(i => i.instance?.instanceName === tenantId);
-      const raw = inst?.instance?.owner ?? '';
-      const numero = raw.replace(/\D/g, '').replace(/:.*$/, '') || undefined;
+      const inst = list?.find(i => i.name === tenantId);
+      const raw = inst?.ownerJid ?? '';
+      const numero = raw.replace(/[^0-9]/g, '').replace(/:.*$/, '') || undefined;
       return { numero };
     } catch {
       return {};

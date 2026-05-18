@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Queue } from 'bullmq';
-import { PrismaModule } from '../prisma/prisma.module';
 import { WhatsAppClientManager } from './whatsapp-client-manager.service';
 import { WhatsAppMensagemService } from './whatsapp-mensagem.service';
 import { WhatsAppSessionController } from './whatsapp-session.controller';
@@ -13,7 +12,6 @@ import { EnviarMensagemProcessor } from './jobs/enviar-mensagem.processor';
 import { ENVIAR_MENSAGEM_WA_QUEUE, ENVIAR_MENSAGEM_WA_QUEUE_NAME } from './jobs/enviar-mensagem.types';
 
 @Module({
-  imports: [PrismaModule],
   controllers: [
     WhatsAppSessionController,
     WhatsAppMensagemController,
