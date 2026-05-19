@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { WhatsAppClientManager } from '../whatsapp/whatsapp-client-manager.service';
 import { BusinessException } from '../../common/exceptions/business.exception';
 import { CreateMensagemDto, DirecaoMensagem } from './dto/create-mensagem.dto';
+import { normalizarCelularCrm, prismaCelularWhere } from '../../common/utils/celular-crm.util';
 
 @Injectable()
 export class CrmMensagensService {
@@ -12,26 +13,32 @@ export class CrmMensagensService {
   ) {}
 
   async findAll(tenantId: string, celular: string, limit = 50) {
-    return this.prisma.crmMensagem.findMany({
-      where: { tenantId, celular },
-      orderBy: { criadoEm: 'asc' },
+    const rows = await this.prisma.crmMensagem.findMany({
+      where: prismaCelularWhere(tenantId, celular),
+      orderBy: { criadoEm: 'desc' },
       take: limit,
     });
+    return rows.reverse();
   }
 
   async marcarLidas(tenantId: string, celular: string) {
     await this.prisma.crmMensagem.updateMany({
-      where: { tenantId, celular, direcao: 'IN', lida: false },
+      where: { ...prismaCelularWhere(tenantId, celular), direcao: 'IN', lida: false },
       data: { lida: true },
     });
   }
 
   async create(tenantId: string, celular: string, dto: CreateMensagemDto, userId: string) {
     const direcao = dto.direcao ?? DirecaoMensagem.NOTE;
+    const contato = await this.prisma.crmContato.findFirst({
+      where: prismaCelularWhere(tenantId, celular),
+      select: { celular: true },
+    });
+    const celularNorm = contato?.celular ?? normalizarCelularCrm(celular);
 
     if (direcao === DirecaoMensagem.OUT) {
       try {
-        await this.waClient.enviarParaNumero(tenantId, celular, dto.conteudo);
+        await this.waClient.enviarParaNumero(tenantId, celularNorm, dto.conteudo);
       } catch {
         throw new BusinessException('WA_ERRO', 'WhatsApp não conectado ou erro ao enviar mensagem');
       }
@@ -40,7 +47,7 @@ export class CrmMensagensService {
     return this.prisma.crmMensagem.create({
       data: {
         tenantId,
-        celular,
+        celular: celularNorm,
         direcao,
         conteudo:   dto.conteudo,
         tipo:       direcao === DirecaoMensagem.NOTE ? 'note' : 'text',

@@ -1,6 +1,6 @@
 import {
   Component, signal, input, effect, ChangeDetectionStrategy, inject,
-  ViewChild, ElementRef, AfterViewChecked,
+  ViewChild, ElementRef, AfterViewChecked, OnDestroy,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -52,7 +52,7 @@ interface Mensagem {
   imports: [BackButtonComponent, RouterLink, FormsModule, DatePipe, TranslatePipe],
   templateUrl: './crm-conversa.component.html',
 })
-export class CrmConversaComponent implements AfterViewChecked {
+export class CrmConversaComponent implements AfterViewChecked, OnDestroy {
   readonly celular = input<string>('');
 
   @ViewChild('msgContainer') msgContainer!: ElementRef<HTMLDivElement>;
@@ -71,9 +71,29 @@ export class CrmConversaComponent implements AfterViewChecked {
   pagandoId  = signal('');
 
   private shouldScroll = false;
+  private pollMensagens: ReturnType<typeof setInterval> | null = null;
+
+  /** Celular canônico do contato (URL pode diferir do valor no banco). */
+  private celularApi(): string {
+    const raw = this.contato()?.celular ?? this.celular();
+    return encodeURIComponent(raw);
+  }
 
   constructor() {
-    effect(() => { if (this.celular()) this.load(); });
+    effect(() => {
+      const cel = this.celular();
+      if (this.pollMensagens) {
+        clearInterval(this.pollMensagens);
+        this.pollMensagens = null;
+      }
+      if (!cel) return;
+      void this.load();
+      this.pollMensagens = setInterval(() => void this.pollNovasMensagens(), 4000);
+    });
+  }
+
+  ngOnDestroy(): void {
+    if (this.pollMensagens) clearInterval(this.pollMensagens);
   }
 
   ngAfterViewChecked(): void {
@@ -87,21 +107,47 @@ export class CrmConversaComponent implements AfterViewChecked {
     this.loading.set(true);
     this.error.set('');
     try {
-      const [contato, msgs, etapas] = await Promise.all([
-        firstValueFrom(this.api.get<Contato>(`/crm/contatos/${this.celular()}`)),
-        firstValueFrom(this.api.get<Mensagem[]>(`/crm/contatos/${this.celular()}/mensagens`)),
+      const celPath = encodeURIComponent(this.celular());
+      const [contato, etapas] = await Promise.all([
+        firstValueFrom(this.api.get<Contato>(`/crm/contatos/${celPath}`)),
         firstValueFrom(this.api.get<Etapa[]>('/crm/etapas')),
       ]);
       this.contato.set(contato);
+      const msgs = await firstValueFrom(
+        this.api.get<Mensagem[]>(
+          `/crm/contatos/${encodeURIComponent(contato.celular)}/mensagens`,
+        ),
+      );
       this.mensagens.set(msgs);
       this.etapas.set(etapas);
       this.shouldScroll = true;
-      // Marcar como lidas
-      this.api.patch(`/crm/contatos/${this.celular()}/mensagens/marcar-lidas`, {}).subscribe();
+      this.api.patch(`/crm/contatos/${this.celularApi()}/mensagens/marcar-lidas`, {}).subscribe();
     } catch {
       this.error.set(this.translate.instant('crm.errLoad'));
     } finally {
       this.loading.set(false);
+    }
+  }
+
+  /** Atualiza thread sem spinner (mensagens recebidas via webhook). */
+  private async pollNovasMensagens(): Promise<void> {
+    if (!this.celular() || this.loading() || this.sending()) return;
+    try {
+      const msgs = await firstValueFrom(
+        this.api.get<Mensagem[]>(`/crm/contatos/${this.celularApi()}/mensagens`),
+      );
+      const prev = this.mensagens();
+      const prevIds = new Set(prev.map(m => m.id));
+      const hasNew = msgs.some(m => !prevIds.has(m.id));
+      if (hasNew || msgs.length !== prev.length) {
+        this.mensagens.set(msgs);
+        this.shouldScroll = true;
+        if (msgs.some(m => m.direcao === 'IN' && !m.lida)) {
+          this.api.patch(`/crm/contatos/${this.celularApi()}/mensagens/marcar-lidas`, {}).subscribe();
+        }
+      }
+    } catch {
+      /* silencioso no poll */
     }
   }
 
@@ -111,7 +157,7 @@ export class CrmConversaComponent implements AfterViewChecked {
     this.sending.set(true);
     try {
       const m = await firstValueFrom(
-        this.api.post<Mensagem>(`/crm/contatos/${this.celular()}/mensagens`, {
+        this.api.post<Mensagem>(`/crm/contatos/${this.celularApi()}/mensagens`, {
           conteudo: t,
           direcao: this.modoEnvio(),
         }),
@@ -130,7 +176,7 @@ export class CrmConversaComponent implements AfterViewChecked {
   async moverEtapa(etapaId: string): Promise<void> {
     try {
       const c = await firstValueFrom(
-        this.api.patch<Contato>(`/crm/contatos/${this.celular()}`, { etapaId }),
+        this.api.patch<Contato>(`/crm/contatos/${this.celularApi()}`, { etapaId }),
       );
       this.contato.set(c);
     } catch { /* silencioso */ }
@@ -142,7 +188,7 @@ export class CrmConversaComponent implements AfterViewChecked {
     try {
       const updated = await firstValueFrom(
         this.api.patch<{ id: string; statusPagamento: string }>
-          (`/crm/contatos/${this.celular()}/mensagens/cotas/${cotaId}/pagar`, {}),
+          (`/crm/contatos/${this.celularApi()}/mensagens/cotas/${cotaId}/pagar`, {}),
       );
       this.contato.update(c => {
         if (!c?.participante) return c;

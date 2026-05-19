@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateContatoDto } from './dto/create-contato.dto';
 import { UpdateContatoDto } from './dto/update-contato.dto';
+import { prismaCelularWhere } from '../../common/utils/celular-crm.util';
 
 @Injectable()
 export class CrmContatosService {
@@ -56,7 +57,7 @@ export class CrmContatosService {
 
   async findOne(tenantId: string, celular: string) {
     const c = await this.prisma.crmContato.findFirst({
-      where: { tenantId, celular },
+      where: prismaCelularWhere(tenantId, celular),
       include: {
         etapa: true,
         participante: {
@@ -146,7 +147,7 @@ export class CrmContatosService {
   }
 
   private async findOrFail(tenantId: string, celular: string) {
-    const c = await this.prisma.crmContato.findFirst({ where: { tenantId, celular } });
+    const c = await this.prisma.crmContato.findFirst({ where: prismaCelularWhere(tenantId, celular) });
     if (!c) throw new NotFoundException('Contato não encontrado');
     return c;
   }

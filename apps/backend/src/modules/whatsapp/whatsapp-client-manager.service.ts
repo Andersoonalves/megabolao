@@ -433,9 +433,15 @@ export class WhatsAppClientManager {
   }
 
   async enviarParaNumero(tenantId: string, celular: string, mensagem: string): Promise<void> {
-    // Evolution API aceita número puro (normaliza internamente)
-    const numero = celular.replace(/\D/g, '');
+    const numero = this.normalizarNumero(celular);
     await this.enviarMensagem(tenantId, numero, mensagem);
+  }
+
+  /** Garante código de país brasileiro (+55) para Evolution API. */
+  private normalizarNumero(celular: string): string {
+    const digits = celular.replace(/\D/g, '');
+    if (digits.startsWith('55') && digits.length >= 12) return digits;
+    return `55${digits}`;
   }
 
   private async enviarMensagem(tenantId: string, number: string, text: string): Promise<void> {
