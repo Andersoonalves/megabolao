@@ -13,7 +13,7 @@ import { QrCodeComponent } from '../../../shared/components/qr-code/qr-code.comp
 type WaStatus = 'DESCONECTADO' | 'CARREGANDO' | 'AGUARDANDO_QR' | 'CONECTADO';
 
 interface SessionInfo { status: WaStatus; qrCode?: string; numero?: string; }
-interface Grupo        { id: string; nome: string; qtdParticipantes?: number; }
+interface Grupo        { id: string; nome: string; qtdParticipantes?: number; vinculadoBolao?: boolean; }
 interface MensagemWa {
   id: string; tipo: string; grupo: string; conteudo: string;
   status: 'PENDENTE' | 'ENVIADO' | 'FALHA'; criadoEm: string;
@@ -46,13 +46,19 @@ export class WhatsAppComponent implements OnInit, OnDestroy {
   loadingGrupos = signal(false);
   loadingMsgs   = signal(false);
 
-  // QR countdown — ~60s antes do QR expirar e novo ser emitido
-  qrCountdown = signal(20);
+  /** WhatsApp renova o QR a cada ~60s; renovamos antes via API. */
+  private static readonly QR_COUNTDOWN_SEC = 60;
+
+  qrCountdown = signal(WhatsAppComponent.QR_COUNTDOWN_SEC);
+
+  /** Evolution envia PNG em base64; pairing code usa nb-qr-code. */
+  readonly qrIsImage = computed(() => (this.session()?.qrCode ?? '').startsWith('data:image'));
   qrExpired   = computed(() => this.qrCountdown() === 0);
 
   private pollInterval:      ReturnType<typeof setInterval> | null = null;
   private countdownInterval: ReturnType<typeof setInterval> | null = null;
   private lastQrCode = '';
+  private qrAutoRefreshInFlight = false;
   /** Evita chamar `loadGrupos` em loop quando a lista filtrada fica vazia (ex.: nenhum vínculo em bolões). */
   private gruposFetchDone = false;
 
@@ -89,13 +95,16 @@ export class WhatsAppComponent implements OnInit, OnDestroy {
 
       const currentQr = this.session()?.qrCode ?? '';
       if (currentQr && currentQr !== this.lastQrCode) {
-        // Novo QR recebido — reinicia o contador
         this.lastQrCode = currentQr;
-        this.qrCountdown.set(20);
+        this.qrCountdown.set(WhatsAppComponent.QR_COUNTDOWN_SEC);
         return;
       }
 
-      this.qrCountdown.update(v => Math.max(0, v - 1));
+      const next = Math.max(0, this.qrCountdown() - 1);
+      this.qrCountdown.set(next);
+      if (next === 0 && currentQr && !this.qrAutoRefreshInFlight && !this.acao()) {
+        void this.atualizarQrAutomatico();
+      }
     }, 1000);
   }
 
@@ -159,9 +168,15 @@ export class WhatsAppComponent implements OnInit, OnDestroy {
         firstValueFrom(this.api.get<Grupo[]>('/whatsapp/sessao/grupos')),
         this.loadIdsGruposVinculadosBoloes(),
       ]);
-      const filtrados = sessaoTodos.filter(g => vinculados.has(g.id));
-      filtrados.sort((a, b) => a.nome.localeCompare(b.nome, 'pt', { sensitivity: 'base' }));
-      this.grupos.set(filtrados);
+      const lista = sessaoTodos.map(g => ({
+        ...g,
+        vinculadoBolao: vinculados.has(g.id),
+      }));
+      lista.sort((a, b) => {
+        if (a.vinculadoBolao !== b.vinculadoBolao) return a.vinculadoBolao ? -1 : 1;
+        return a.nome.localeCompare(b.nome, 'pt', { sensitivity: 'base' });
+      });
+      this.grupos.set(lista);
     } catch {
       this.grupos.set([]);
     } finally {
@@ -189,12 +204,38 @@ export class WhatsAppComponent implements OnInit, OnDestroy {
     finally { this.acao.set(false); }
   }
 
-  /** Encerra a sessão em espera de QR e sobe outra para emitir QR novo (evita QR expirado). */
+  /** Renova QR via /connect (não apaga a instância). */
+  private async atualizarQrAutomatico(): Promise<void> {
+    this.qrAutoRefreshInFlight = true;
+    try {
+      const next = await firstValueFrom(
+        this.api.post<SessionInfo>('/whatsapp/sessao/qr/atualizar', {}),
+      );
+      this.session.set(next);
+      if (next.qrCode) {
+        this.lastQrCode = next.qrCode;
+        this.qrCountdown.set(WhatsAppComponent.QR_COUNTDOWN_SEC);
+      }
+    } catch {
+      await this.loadSession();
+    } finally {
+      this.qrAutoRefreshInFlight = false;
+    }
+  }
+
+  /** Apaga e recria a instância na Evolution (último recurso). */
   async renovarQr(): Promise<void> {
     if (this.session()?.status !== 'AGUARDANDO_QR' || this.acao()) return;
     this.acao.set(true);
     try {
-      this.session.set(await firstValueFrom(this.api.post<SessionInfo>('/whatsapp/sessao/qr/renovar', {})));
+      const next = await firstValueFrom(
+        this.api.post<SessionInfo>('/whatsapp/sessao/qr/renovar', {}),
+      );
+      this.session.set(next);
+      if (next.qrCode) {
+        this.lastQrCode = next.qrCode;
+        this.qrCountdown.set(WhatsAppComponent.QR_COUNTDOWN_SEC);
+      }
     } catch {
       await this.loadSession();
     } finally {

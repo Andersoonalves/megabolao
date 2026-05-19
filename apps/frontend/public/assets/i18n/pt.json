@@ -863,6 +863,8 @@
     "connectToSee": "Conecte o WhatsApp para ver os grupos.",
     "noGroups": "Nenhum grupo encontrado.",
     "noLinkedGroups": "Nenhum grupo da sessão está vinculado a bolões deste tenant. Abra cada bolão na página WhatsApp do bolão e marque os grupos desejados.",
+    "noGroupsInSession": "Nenhum grupo encontrado na sessão WhatsApp conectada.",
+    "groupLinkedBadge": "Em bolão",
     "kpiSent": "Enviadas (mês)",
     "kpiSuccess": "{{p}}% sucesso",
     "kpiFails": "Falhas",

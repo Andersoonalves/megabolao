@@ -863,6 +863,8 @@
     "connectToSee": "Connect WhatsApp to see groups.",
     "noGroups": "No groups found.",
     "noLinkedGroups": "No session groups are linked to this tenant's pools yet. Open each pool's WhatsApp page and link the groups you need.",
+    "noGroupsInSession": "No groups found on the connected WhatsApp session.",
+    "groupLinkedBadge": "In pool",
     "kpiSent": "Sent (month)",
     "kpiSuccess": "{{p}}% success",
     "kpiFails": "Failures",

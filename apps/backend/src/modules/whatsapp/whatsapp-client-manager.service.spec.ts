@@ -1,213 +1,220 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { BusinessException } from '../../common/exceptions/business.exception';
 import { WhatsAppClientManager } from './whatsapp-client-manager.service';
 
-// Mock whatsapp-web.js — evita Puppeteer nos testes
-jest.mock('whatsapp-web.js', () => ({
-  Client: jest.fn(),
-  LocalAuth: jest.fn(),
-}));
+const TENANT_ID = '90f87ebf-5c73-43e0-b917-50224742be0e';
 
-import { Client, LocalAuth } from 'whatsapp-web.js';
+type FetchHandler = (url: string, init?: RequestInit) => Promise<Response>;
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+function jsonResponse(body: unknown, status = 200): Response {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    text: async () => JSON.stringify(body),
+    json: async () => body,
+  } as Response;
+}
 
-const TENANT_ID = 'tenant-uuid-1';
+function errorResponse(status: number, body: string): Response {
+  return {
+    ok: false,
+    status,
+    text: async () => body,
+    json: async () => JSON.parse(body),
+  } as Response;
+}
 
-const makeMockClient = () => ({
-  initialize: jest.fn().mockResolvedValue(undefined),
-  on: jest.fn(),
-  removeAllListeners: jest.fn(),
-  destroy: jest.fn().mockResolvedValue(undefined),
-  getChats: jest.fn().mockResolvedValue([
-    {
-      isGroup: true,
-      id: { _serialized: 'grupo1@g.us' },
-      name: 'Grupo Bolão',
-      groupMetadata: { participants: [{}, {}, {}] },
-    },
-    { isGroup: false, id: { _serialized: 'contato@c.us' }, name: 'Contato' },
-  ]),
-  sendMessage: jest.fn().mockResolvedValue({}),
-});
-
-// ── Suite ─────────────────────────────────────────────────────────────────────
-
-describe('WhatsAppClientManager', () => {
+describe('WhatsAppClientManager (Evolution API)', () => {
   let manager: WhatsAppClientManager;
-  let mockClient: ReturnType<typeof makeMockClient>;
+  let fetchMock: jest.MockedFunction<FetchHandler>;
 
   beforeEach(async () => {
-    jest.resetAllMocks();
-    mockClient = makeMockClient();
-
-    (Client as unknown as jest.Mock).mockImplementation(() => mockClient);
-    (LocalAuth as unknown as jest.Mock).mockImplementation(() => ({}));
+    fetchMock = jest.fn();
+    global.fetch = fetchMock as unknown as typeof fetch;
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [WhatsAppClientManager],
+      providers: [
+        WhatsAppClientManager,
+        {
+          provide: ConfigService,
+          useValue: {
+            get: (key: string, def?: string) => {
+              if (key === 'EVOLUTION_API_URL') return 'http://localhost:8080';
+              if (key === 'EVOLUTION_API_KEY') return 'test-key';
+              if (key === 'APP_BASE_URL') return 'http://host.docker.internal:3000';
+              return def;
+            },
+          },
+        },
+      ],
     }).compile();
 
-    manager = module.get<WhatsAppClientManager>(WhatsAppClientManager);
+    manager = module.get(WhatsAppClientManager);
   });
 
-  afterEach(async () => {
-    jest.clearAllTimers();
-    await manager.encerrar(TENANT_ID);
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
-  // ── iniciar ────────────────────────────────────────────────────────────────
-
-  describe('iniciar', () => {
-    it('cria novo cliente e retorna status CARREGANDO', async () => {
-      jest.useFakeTimers();
-      try {
-        // Act
-        const result = await manager.iniciar(TENANT_ID);
-
-        // Assert — retorno imediato; initialize entra na fila (+2s)
-        expect(result.status).toBe('CARREGANDO');
-        expect(Client).toHaveBeenCalledTimes(1);
-        await jest.advanceTimersByTimeAsync(2500);
-        expect(mockClient.initialize).toHaveBeenCalledTimes(1);
-      } finally {
-        jest.useRealTimers();
+  it('reutiliza instância existente (connectionState) e retorna QR do connect', async () => {
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+      const m = init?.method ?? 'GET';
+      if (url.includes('/connectionState/')) {
+        return jsonResponse({ instance: { state: 'close' } });
       }
+      if (url.includes('/instance/connect/')) {
+        return jsonResponse({ code: '2@pairing-token-example' });
+      }
+      if (url.includes('/webhook/set/') && m === 'POST') {
+        const body = JSON.parse(String(init?.body)) as { webhook: { webhookByEvents: boolean } };
+        expect(body.webhook.webhookByEvents).toBe(false);
+        return jsonResponse({ ok: true });
+      }
+      if (url.includes('/instance/create')) {
+        return jsonResponse({});
+      }
+      return jsonResponse({});
     });
 
-    it('retorna status AGUARDANDO_QR quando QR já foi emitido', async () => {
-      // Arrange — inicia e simula evento QR
-      await manager.iniciar(TENANT_ID);
+    const result = await manager.iniciar(TENANT_ID);
 
-      // Simulate QR event
-      const onCalls = mockClient.on.mock.calls;
-      const qrHandler = onCalls.find(([event]: [string]) => event === 'qr')?.[1] as (qr: string) => void;
-      qrHandler?.('qr-code-string');
-
-      // Act — second call should return QR code
-      const result = await manager.iniciar(TENANT_ID);
-
-      // Assert
-      expect(result.status).toBe('AGUARDANDO_QR');
-      expect(result.qrCode).toBe('qr-code-string');
-      expect(Client).toHaveBeenCalledTimes(1); // não cria novo cliente
-    });
-
-    it('retorna CONECTADO quando sessão já está pronta', async () => {
-      // Arrange — inicia e simula evento ready
-      await manager.iniciar(TENANT_ID);
-
-      const onCalls = mockClient.on.mock.calls;
-      const readyHandler = onCalls.find(([event]: [string]) => event === 'ready')?.[1] as () => void;
-      readyHandler?.();
-
-      // Act
-      const result = await manager.iniciar(TENANT_ID);
-
-      // Assert
-      expect(result.status).toBe('CONECTADO');
-      expect(Client).toHaveBeenCalledTimes(1);
-    });
+    expect(result.status).toBe('AGUARDANDO_QR');
+    expect(result.qrCode).toBe('2@pairing-token-example');
+    const createCalls = fetchMock.mock.calls.filter(([u]) => u.includes('/instance/create'));
+    expect(createCalls).toHaveLength(0);
   });
 
-  // ── getStatus ──────────────────────────────────────────────────────────────
-
-  describe('getStatus', () => {
-    it('retorna DESCONECTADO quando não há sessão', () => {
-      // Act
-      const result = manager.getStatus('tenant-sem-sessao');
-
-      // Assert
-      expect(result.status).toBe('DESCONECTADO');
+  it('prossegue com connect quando create retorna 403 already in use', async () => {
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+      const m = init?.method ?? 'GET';
+      if (url.includes('/connectionState/')) {
+        return jsonResponse({ instance: { state: 'connecting' } });
+      }
+      if (url.includes('/instance/fetchInstances')) {
+        return jsonResponse([]);
+      }
+      if (url.includes('/instance/create') && m === 'POST') {
+        return errorResponse(
+          403,
+          JSON.stringify({
+            status: 403,
+            response: { message: [`This name "${TENANT_ID}" is already in use.`] },
+          }),
+        );
+      }
+      if (url.includes('/instance/connect/')) {
+        return jsonResponse({ code: 'qr-wa-string' });
+      }
+      if (url.includes('/webhook/set/')) {
+        return jsonResponse({ ok: true });
+      }
+      return jsonResponse({});
     });
 
-    it('limpa sessão quando evento disconnected é emitido', async () => {
-      // Arrange
-      await manager.iniciar(TENANT_ID);
-      const onCalls = mockClient.on.mock.calls;
-      const disconnHandler = onCalls.find(([event]: [string]) => event === 'disconnected')?.[1] as () => void;
+    const result = await manager.iniciar(TENANT_ID);
 
-      // Act
-      disconnHandler?.();
-
-      // Assert
-      expect(manager.getStatus(TENANT_ID).status).toBe('DESCONECTADO');
-    });
+    expect(result.status).toBe('AGUARDANDO_QR');
+    expect(result.qrCode).toBe('qr-wa-string');
   });
 
-  // ── encerrar ───────────────────────────────────────────────────────────────
+  it('refreshStatus não chama setWebhook e preserva QR do cache', async () => {
+    manager.onQrUpdated(TENANT_ID, 'cached-qr-payload');
 
-  describe('encerrar', () => {
-    it('chama destroy no cliente e remove sessão', async () => {
-      // Arrange
-      await manager.iniciar(TENANT_ID);
-
-      // Act
-      await manager.encerrar(TENANT_ID);
-
-      // Assert
-      expect(mockClient.destroy).toHaveBeenCalledTimes(1);
-      expect(manager.getStatus(TENANT_ID).status).toBe('DESCONECTADO');
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url.includes('/connectionState/')) {
+        return jsonResponse({ instance: { state: 'connecting' } });
+      }
+      if (url.includes('/webhook/set/')) {
+        throw new Error('setWebhook não deveria ser chamado no poll');
+      }
+      return jsonResponse({});
     });
 
-    it('não lança erro ao encerrar sessão inexistente', async () => {
-      // Act / Assert — não deve lançar
-      await expect(manager.encerrar('tenant-sem-sessao')).resolves.not.toThrow();
-    });
+    const result = await manager.refreshStatus(TENANT_ID);
+
+    expect(result.status).toBe('AGUARDANDO_QR');
+    expect(result.qrCode).toBe('cached-qr-payload');
+    expect(fetchMock.mock.calls.some(([u]) => String(u).includes('/webhook/set/'))).toBe(false);
   });
 
-  // ── getGrupos ──────────────────────────────────────────────────────────────
-
-  describe('getGrupos', () => {
-    it('retorna apenas grupos (isGroup=true)', async () => {
-      // Arrange — simula sessão CONECTADA
-      await manager.iniciar(TENANT_ID);
-      const onCalls = mockClient.on.mock.calls;
-      const readyHandler = onCalls.find(([event]: [string]) => event === 'ready')?.[1] as () => void;
-      readyHandler?.();
-
-      // Act
-      const result = await manager.getGrupos(TENANT_ID);
-
-      // Assert
-      expect(result).toHaveLength(1);
-      expect(result[0]).toEqual({ id: 'grupo1@g.us', nome: 'Grupo Bolão', qtdParticipantes: 3 });
+  it('syncConnection com connecting sem QR retorna AGUARDANDO_QR', async () => {
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url.includes('/connectionState/')) {
+        return jsonResponse({ instance: { state: 'connecting' } });
+      }
+      return jsonResponse({ count: 0 });
     });
 
-    it('lança BusinessException quando não está CONECTADO', async () => {
-      // Act / Assert — sessão não iniciada
-      await expect(manager.getGrupos(TENANT_ID)).rejects.toBeInstanceOf(BusinessException);
-    });
+    const result = await manager.refreshStatus(TENANT_ID);
+
+    expect(result.status).toBe('AGUARDANDO_QR');
+    expect(result.qrCode).toBeUndefined();
   });
 
-  // ── enviarParaGrupo ────────────────────────────────────────────────────────
+  it('onQrUpdated preserva data URL e normaliza base64 longo', () => {
+    manager.onQrUpdated(TENANT_ID, 'data:image/png;base64,abc');
+    expect(manager.getStatus(TENANT_ID).qrCode).toBe('data:image/png;base64,abc');
 
-  describe('enviarParaGrupo', () => {
-    it('chama sendMessage com grupoId e conteúdo', async () => {
-      // Arrange
-      await manager.iniciar(TENANT_ID);
-      const readyHandler = mockClient.on.mock.calls.find(([e]: [string]) => e === 'ready')?.[1] as () => void;
-      readyHandler?.();
-
-      // Act
-      await manager.enviarParaGrupo(TENANT_ID, 'grupo1@g.us', 'Olá!');
-
-      // Assert
-      expect(mockClient.sendMessage).toHaveBeenCalledWith('grupo1@g.us', 'Olá!');
-    });
-
-    it('lança BusinessException quando não está CONECTADO', async () => {
-      // Act / Assert
-      await expect(manager.enviarParaGrupo(TENANT_ID, 'g@g.us', 'msg')).rejects.toBeInstanceOf(BusinessException);
-    });
+    const longB64 = 'A'.repeat(220);
+    manager.onQrUpdated(TENANT_ID, longB64);
+    expect(manager.getStatus(TENANT_ID).qrCode).toMatch(/^data:image\/png;base64,/);
   });
 
-  describe('renovarQr', () => {
-    it('rejeita quando a sessão já está CONECTADA', async () => {
-      await manager.iniciar(TENANT_ID);
-      const readyHandler = mockClient.on.mock.calls.find(([e]: [string]) => e === 'ready')?.[1] as () => void;
-      readyHandler?.();
-      await expect(manager.renovarQr(TENANT_ID)).rejects.toBeInstanceOf(BusinessException);
+  it('renovarQr rejeita quando já está CONECTADO', async () => {
+    manager.onConnectionUpdate(TENANT_ID, 'open', '5511999999999');
+    await expect(manager.renovarQr(TENANT_ID)).rejects.toBeInstanceOf(BusinessException);
+  });
+
+  it('getGrupos consulta Evolution quando cache está vazio mas sessão está open', async () => {
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url.includes('/connectionState/')) {
+        return jsonResponse({ instance: { state: 'open' } });
+      }
+      if (url.includes('/fetchAllGroups/')) {
+        return jsonResponse([
+          { id: '120363@g.us', subject: 'Grupo Teste', size: 3 },
+        ]);
+      }
+      if (url.includes('/fetchInstances')) {
+        return jsonResponse([{ instance: { instanceName: TENANT_ID, ownerJid: '5511999999999@s.whatsapp.net' } }]);
+      }
+      return jsonResponse({});
     });
+
+    const grupos = await manager.getGrupos(TENANT_ID);
+
+    expect(grupos).toHaveLength(1);
+    expect(grupos[0]?.nome).toBe('Grupo Teste');
+    expect(manager.getStatus(TENANT_ID).status).toBe('CONECTADO');
+  });
+
+  it('renovarQr apaga e recria instância quando connectionState retorna absent', async () => {
+    jest.useFakeTimers();
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+      const m = init?.method ?? 'GET';
+      if (url.includes('/instance/delete/') && m === 'DELETE') {
+        return jsonResponse({}, 200);
+      }
+      if (url.includes('/connectionState/')) {
+        return errorResponse(404, JSON.stringify({ status: 404, response: { message: ['does not exist'] } }));
+      }
+      if (url.includes('/instance/create') && m === 'POST') {
+        return jsonResponse({
+          qrcode: { code: '2@novo-qr', base64: 'data:image/png;base64,abc' },
+        });
+      }
+      return jsonResponse({});
+    });
+
+    const promise = manager.renovarQr(TENANT_ID);
+    await jest.advanceTimersByTimeAsync(500);
+    const result = await promise;
+    jest.useRealTimers();
+
+    expect(result.status).toBe('AGUARDANDO_QR');
+    expect(result.qrCode).toBe('data:image/png;base64,abc');
+    const creates = fetchMock.mock.calls.filter(([u]) => String(u).includes('/instance/create'));
+    expect(creates.length).toBeGreaterThanOrEqual(1);
   });
 });

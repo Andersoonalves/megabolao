@@ -73,41 +73,60 @@ else
 fi
 
 # ── 4. Evolution API (WhatsApp) ──────────────────────────────────────────────
+# v2.3.7+ corrige loop connecting + /connect retornando count=0 (issues #2365, #2430)
+EVOLUTION_IMAGE="${EVOLUTION_IMAGE:-evoapicloud/evolution-api:v2.3.7}"
+
 log "Verificando Evolution API..."
-if ! curl -s http://localhost:8080/ &>/dev/null; then
-  # Tentar iniciar container existente
-  if docker ps -a --format '{{.Names}}' | grep -q "^evolution-api$"; then
+source .env 2>/dev/null || true
+
+evolution_run() {
+  docker run -d \
+    --name evolution-api \
+    -p 8080:8080 \
+    -e AUTHENTICATION_API_KEY="${EVOLUTION_API_KEY:-changeme}" \
+    -e SERVER_URL=http://localhost:8080 \
+    -e DATABASE_PROVIDER=postgresql \
+    -e DATABASE_CONNECTION_URI="postgresql://postgres:postgres@host.docker.internal:54322/postgres?schema=evolution" \
+    -e CACHE_REDIS_ENABLED=false \
+    -e CACHE_LOCAL_ENABLED=true \
+    -e QRCODE_LIMIT=40 \
+    -e CONFIG_SESSION_PHONE_CLIENT=Chrome \
+    -e CONFIG_SESSION_PHONE_NAME=Chrome \
+    -e CONFIG_SESSION_PHONE_VERSION=2.3000.1030831524 \
+    -e DEL_INSTANCE=false \
+    -e NODE_OPTIONS=--network-family-autoselection-attempt-timeout=1000 \
+    -v evolution_instances:/evolution/instances \
+    "$EVOLUTION_IMAGE"
+}
+
+if docker ps -a --format '{{.Names}}' | grep -q "^evolution-api$"; then
+  CURRENT_IMAGE="$(docker inspect evolution-api --format '{{.Config.Image}}' 2>/dev/null || true)"
+  if [ "$CURRENT_IMAGE" != "$EVOLUTION_IMAGE" ]; then
+    warn "Recriando evolution-api ($CURRENT_IMAGE → $EVOLUTION_IMAGE)"
+    docker rm -f evolution-api >/dev/null 2>&1 || true
+    evolution_run
+  elif ! curl -s http://localhost:8080/ &>/dev/null; then
     log "Iniciando container evolution-api..."
     docker start evolution-api
   else
-    warn "Container evolution-api não existe. Criando..."
-    source .env 2>/dev/null || true
-    docker run -d \
-      --name evolution-api \
-      -p 8080:8080 \
-      -e AUTHENTICATION_API_KEY="${EVOLUTION_API_KEY:-changeme}" \
-      -e DATABASE_PROVIDER=postgresql \
-      -e DATABASE_CONNECTION_URI="postgresql://postgres:postgres@host.docker.internal:54322/postgres?schema=evolution" \
-      -e CACHE_REDIS_ENABLED=true \
-      -e CACHE_REDIS_URI=redis://host.docker.internal:6379 \
-      -e QRCODE_LIMIT=40 \
-      -e DEL_INSTANCE=false \
-      -v evolution_instances:/evolution/instances \
-      atendai/evolution-api:latest
+    log "Evolution API já está rodando ($EVOLUTION_IMAGE)"
   fi
+elif ! curl -s http://localhost:8080/ &>/dev/null; then
+  warn "Container evolution-api não existe. Criando ($EVOLUTION_IMAGE)..."
+  evolution_run
+fi
 
+if ! curl -s http://localhost:8080/ &>/dev/null; then
   echo -n "Aguardando Evolution API"
   for i in $(seq 1 15); do
     sleep 2
     if curl -s http://localhost:8080/ &>/dev/null; then echo; break; fi
     echo -n "."
-    if [ $i -eq 15 ]; then
+    if [ "$i" -eq 15 ]; then
       echo
       warn "Evolution API não respondeu em 30s — WhatsApp pode não funcionar"
     fi
   done
-else
-  log "Evolution API já está rodando"
 fi
 
 # ── 5. Backend NestJS ────────────────────────────────────────────────────────

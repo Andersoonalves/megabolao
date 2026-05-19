@@ -73,7 +73,15 @@
               <div class="flex flex-col items-center p-4 bg-white">
                 <div class="relative">
                   @if (session()?.qrCode) {
-                    <nb-qr-code [data]="session()!.qrCode!" [size]="220" />
+                    @if (qrIsImage()) {
+                      <img [src]="session()!.qrCode!"
+                           alt=""
+                           class="w-[220px] h-[220px] rounded-xl object-contain bg-white"
+                           width="220"
+                           height="220" />
+                    } @else {
+                      <nb-qr-code [data]="session()!.qrCode!" [size]="220" />
+                    }
                     <!-- Overlay quando expirado -->
                     @if (qrExpired()) {
                       <div class="absolute inset-0 flex flex-col items-center justify-center rounded-lg"
@@ -103,8 +111,8 @@
                     <!-- Barra de progresso -->
                     <div class="h-1 w-full bg-slate-100 rounded-full overflow-hidden">
                       <div class="h-full rounded-full transition-all duration-1000"
-                           [class]="qrCountdown() > 30 ? 'bg-green-500' : qrCountdown() > 20 ? 'bg-amber-400' : 'bg-red-400'"
-                           [style.width.%]="qrCountdown() / 20 * 100"></div>
+                           [class]="qrCountdown() > 40 ? 'bg-green-500' : qrCountdown() > 15 ? 'bg-amber-400' : 'bg-red-400'"
+                           [style.width.%]="qrCountdown() / 60 * 100"></div>
                     </div>
                     <!-- Label -->
                     <div class="mt-1.5 flex items-center justify-between text-[11px]">
@@ -115,7 +123,7 @@
                       </div>
                       @if (!qrExpired()) {
                         <span class="font-mono font-semibold tabular-nums"
-                              [class]="qrCountdown() > 8 ? 'text-slate-400' : qrCountdown() > 4 ? 'text-amber-500' : 'text-red-500'">
+                              [class]="qrCountdown() > 25 ? 'text-slate-400' : qrCountdown() > 10 ? 'text-amber-500' : 'text-red-500'">
                               {{ qrCountdown() }}s
                             </span>
                       }
@@ -165,7 +173,7 @@
             </div>
           } @else if (grupos().length === 0) {
             <div class="px-4 py-6 text-center text-slate-400 text-[12.5px] leading-relaxed">
-              {{ 'whatsapp.noLinkedGroups' | translate }}
+              {{ 'whatsapp.noGroupsInSession' | translate }}
             </div>
           } @else {
             @for (g of grupos(); track g.id; let last = $last) {
@@ -174,7 +182,12 @@
                   👥
                 </div>
                 <div class="flex-1 min-w-0">
-                  <div class="text-[13px] font-semibold truncate">{{ g.nome }}</div>
+                  <div class="flex items-center gap-2 min-w-0">
+                    <span class="text-[13px] font-semibold truncate">{{ g.nome }}</span>
+                    @if (g.vinculadoBolao) {
+                      <span class="shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-green-100 text-green-800">{{ 'whatsapp.groupLinkedBadge' | translate }}</span>
+                    }
+                  </div>
                   @if (g.qtdParticipantes != null) {
                     <div class="text-[11px] text-slate-500 truncate">{{ 'whatsapp.groupMembers' | translate: { n: g.qtdParticipantes } }}</div>
                   }

@@ -80,7 +80,7 @@ async function bootstrap(): Promise<void> {
 
   app.useGlobalFilters(new AllExceptionsFilter());
 
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0');
 
   console.log(`NossoBolão API porta ${port} [${env}]`);
   if (env !== 'production') {

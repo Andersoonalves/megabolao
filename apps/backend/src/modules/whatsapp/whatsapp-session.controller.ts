@@ -21,9 +21,17 @@ export class WhatsAppSessionController {
     return this.clientManager.iniciar(tenantId);
   }
 
+  @Post('qr/atualizar')
+  @RequerPermissoes('whatsapp.conectar')
+  @ApiOperation({ summary: 'Atualizar QR code sem recriar a instância (renovação automática ao expirar)' })
+  async atualizarQr(@TenantId() tenantId: string | null) {
+    if (!tenantId) throw new BusinessException('TENANT_ID_OBRIGATORIO', 'tenantId obrigatório');
+    return this.clientManager.atualizarQr(tenantId);
+  }
+
   @Post('qr/renovar')
   @RequerPermissoes('whatsapp.conectar')
-  @ApiOperation({ summary: 'Encerrar sessão atual e gerar novo QR code (útil se o QR demorou ou expirou)' })
+  @ApiOperation({ summary: 'Apagar e recriar instância Evolution (último recurso se o QR não atualizar)' })
   async renovarQr(@TenantId() tenantId: string | null) {
     if (!tenantId) throw new BusinessException('TENANT_ID_OBRIGATORIO', 'tenantId obrigatório');
     return this.clientManager.renovarQr(tenantId);
@@ -32,9 +40,9 @@ export class WhatsAppSessionController {
   @Get('status')
   @RequerPermissoes('whatsapp.ler')
   @ApiOperation({ summary: 'Status da sessão WhatsApp (polling para acompanhar QR → CONECTADO)' })
-  getStatus(@TenantId() tenantId: string | null) {
+  async getStatus(@TenantId() tenantId: string | null) {
     if (!tenantId) throw new BusinessException('TENANT_ID_OBRIGATORIO', 'tenantId obrigatório');
-    return this.clientManager.getStatus(tenantId);
+    return this.clientManager.refreshStatus(tenantId);
   }
 
   @Delete()

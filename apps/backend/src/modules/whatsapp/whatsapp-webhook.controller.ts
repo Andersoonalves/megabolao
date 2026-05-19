@@ -64,6 +64,7 @@ export class WhatsAppWebhookController {
           await this.handleConnectionUpdate(tenantId, payload.data);
           break;
         case 'qrcode.updated':
+          this.logger.log(`[WEBHOOK] QRCODE_UPDATED recebido para ${tenantId.slice(0, 8)}…`);
           this.handleQrUpdated(tenantId, payload.data);
           break;
         case 'messages.upsert':
@@ -93,9 +94,19 @@ export class WhatsAppWebhookController {
   }
 
   private handleQrUpdated(tenantId: string, data: Record<string, unknown>): void {
-    const qrcode = data['qrcode'] as { base64?: string } | undefined;
-    const base64 = qrcode?.base64;
-    if (base64) this.clientManager.onQrUpdated(tenantId, base64);
+    const qrcode = data['qrcode'] as { base64?: string; code?: string } | Record<string, unknown> | undefined;
+    const nested = qrcode && typeof qrcode === 'object' ? qrcode : undefined;
+    const payload =
+      (typeof nested?.['base64'] === 'string' && nested['base64']) ||
+      (typeof data['base64'] === 'string' && data['base64']) ||
+      (typeof nested?.['code'] === 'string' && nested['code']) ||
+      (typeof data['code'] === 'string' && data['code']) ||
+      undefined;
+    if (payload) {
+      this.clientManager.onQrUpdated(tenantId, payload);
+    } else {
+      this.logger.warn(`[WEBHOOK] QRCODE_UPDATED sem payload utilizável: ${JSON.stringify(data).slice(0, 200)}`);
+    }
   }
 
   private async handleMessages(tenantId: string, data: Record<string, unknown>): Promise<void> {
