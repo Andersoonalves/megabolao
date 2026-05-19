@@ -129,6 +129,7 @@ export class WhatsAppClientManager {
   // ── Public API (mantém mesma interface do whatsapp-web.js adapter) ──
 
   async iniciar(tenantId: string): Promise<WaSessionInfo> {
+    this.logger.log(`[INICIAR] tenant=${tenantId.slice(0,8)}... cache=${this.cache.get(tenantId)?.status ?? 'vazio'}`);
     const cached = this.cache.get(tenantId);
     if (cached?.status === 'CONECTADO')    return { status: 'CONECTADO', numero: cached.numero };
     if (cached?.status === 'AGUARDANDO_QR' && cached.qrCode)
@@ -169,6 +170,7 @@ export class WhatsAppClientManager {
 
   getStatus(tenantId: string): WaSessionInfo {
     const cached = this.cache.get(tenantId);
+    this.logger.debug(`[STATUS] tenant=${tenantId.slice(0,8)}... → ${cached?.status ?? 'DESCONECTADO'}`);
     if (!cached) return { status: 'DESCONECTADO' };
     return { status: cached.status, qrCode: cached.qrCode, numero: cached.numero };
   }
@@ -231,23 +233,26 @@ export class WhatsAppClientManager {
   // ── Webhook callbacks (chamados pelo WhatsAppWebhookController) ──
 
   onConnectionUpdate(tenantId: string, state: string, numero?: string): void {
+    this.logger.log(`[CACHE] onConnectionUpdate tenant=${tenantId.slice(0,8)}... state="${state}" numero=${numero ?? '-'}`);
     if (state === 'open') {
       this.cache.set(tenantId, { status: 'CONECTADO', numero });
-      this.logger.log(`WhatsApp conectado para tenant ${tenantId} (${numero ?? '?'})`);
+      this.logger.log(`[CACHE] → CONECTADO (${numero ?? '?'})`);
     } else if (state === 'close') {
       this.cache.set(tenantId, { status: 'DESCONECTADO' });
-      this.logger.warn(`WhatsApp desconectado para tenant ${tenantId}`);
+      this.logger.warn(`[CACHE] → DESCONECTADO`);
     } else {
       const cur = this.cache.get(tenantId);
       if (cur?.status !== 'CONECTADO') {
         this.cache.set(tenantId, { status: 'CARREGANDO', qrCode: cur?.qrCode });
+        this.logger.log(`[CACHE] → CARREGANDO (state=${state})`);
       }
     }
   }
 
   onQrUpdated(tenantId: string, qrBase64: string): void {
+    this.logger.log(`[CACHE] onQrUpdated tenant=${tenantId.slice(0,8)}... qrLen=${qrBase64.length}`);
     this.cache.set(tenantId, { status: 'AGUARDANDO_QR', qrCode: qrBase64 });
-    this.logger.debug(`QR atualizado para tenant ${tenantId}`);
+    this.logger.log(`[CACHE] → AGUARDANDO_QR`);
   }
 
   // ── Helpers ───────────────────────────────────────────────────

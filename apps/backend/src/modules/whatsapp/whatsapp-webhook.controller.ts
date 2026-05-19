@@ -33,23 +33,32 @@ export class WhatsAppWebhookController {
     @Headers('apikey') apikey: string,
     @Param('event') eventParam?: string,
   ): Promise<{ ok: boolean }> {
+    this.logger.log(`[WEBHOOK] Recebido: event=${payload?.event ?? eventParam ?? 'N/A'} instance=${payload?.instance ?? 'N/A'} path_event=${eventParam ?? '-'}`);
+
     // Normalizar event: pode vir no body (byEvents=false) ou na URL (byEvents=true)
     if (!payload.event && eventParam) {
-      // /webhook/connection-update → connection.update
       payload.event = eventParam.replace(/-/g, '.');
+      this.logger.log(`[WEBHOOK] Event normalizado da URL: ${payload.event}`);
     }
+
     // Evolution API não manda apikey no webhook — só rejeitar se vier errada
     const expectedKey = this.config.get<string>('EVOLUTION_API_KEY', '');
     if (expectedKey && apikey && apikey !== expectedKey) {
+      this.logger.warn(`[WEBHOOK] apikey inválida recebida`);
       throw new UnauthorizedException('Webhook apikey inválida');
     }
 
     const tenantId = payload.instance;
-    if (!tenantId) return { ok: true };
+    if (!tenantId) {
+      this.logger.warn(`[WEBHOOK] Sem tenantId no payload`);
+      return { ok: true };
+    }
+
+    const event = (payload.event ?? '').toLowerCase().replace(/_/g, '.');
+    this.logger.log(`[WEBHOOK] Processando event="${event}" tenant="${tenantId.slice(0,8)}..."`);
+    this.logger.debug(`[WEBHOOK] Data: ${JSON.stringify(payload.data ?? {}).slice(0, 200)}`);
 
     try {
-      // Normalizar event para lowercase com pontos
-      const event = (payload.event ?? '').toLowerCase().replace(/_/g, '.');
       switch (event) {
         case 'connection.update':
           await this.handleConnectionUpdate(tenantId, payload.data);
@@ -61,11 +70,11 @@ export class WhatsAppWebhookController {
           await this.handleMessages(tenantId, payload.data);
           break;
         default:
-          // Ignorar outros eventos silenciosamente
+          this.logger.debug(`[WEBHOOK] Evento ignorado: "${event}"`);
           break;
       }
     } catch (err) {
-      this.logger.error(`Erro processando webhook ${payload.event} tenant ${tenantId}`, err);
+      this.logger.error(`[WEBHOOK] Erro processando ${event} tenant ${tenantId}`, err);
     }
 
     return { ok: true };
