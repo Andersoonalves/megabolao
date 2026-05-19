@@ -38,8 +38,9 @@ export class WhatsAppWebhookController {
       // /webhook/connection-update → connection.update
       payload.event = eventParam.replace(/-/g, '.');
     }
+    // Evolution API não manda apikey no webhook — só rejeitar se vier errada
     const expectedKey = this.config.get<string>('EVOLUTION_API_KEY', '');
-    if (expectedKey && apikey !== expectedKey) {
+    if (expectedKey && apikey && apikey !== expectedKey) {
       throw new UnauthorizedException('Webhook apikey inválida');
     }
 
