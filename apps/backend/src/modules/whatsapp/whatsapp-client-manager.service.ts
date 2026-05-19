@@ -194,7 +194,7 @@ export class WhatsAppClientManager {
       enabled:         true,
       url:             this.webhookUrl(),
       webhookByEvents: false,
-      webhookBase64:   true,
+      base64:          true,
       events:          ['QRCODE_UPDATED', 'CONNECTION_UPDATE', 'MESSAGES_UPSERT'] as const,
     };
   }

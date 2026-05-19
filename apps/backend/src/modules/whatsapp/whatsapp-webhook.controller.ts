@@ -152,6 +152,42 @@ export class WhatsAppWebhookController {
     return `[${messageType}]`;
   }
 
+  private mapTipo(messageType: string): 'text' | 'image' | 'document' | 'audio' {
+    if (messageType === 'imageMessage') return 'image';
+    if (messageType === 'documentMessage' || messageType === 'documentWithCaptionMessage') return 'document';
+    if (messageType === 'audioMessage' || messageType === 'pttMessage') return 'audio';
+    return 'text';
+  }
+
+  private extractImageConteudo(msg: Record<string, unknown>): string {
+    const rawMessage = msg['message'] as Record<string, unknown> | undefined;
+    if (!rawMessage) return '[imageMessage]';
+    const imgMsg = rawMessage['imageMessage'] as {
+      jpegThumbnail?: string | { type?: string; data?: number[] };
+      caption?: string;
+    } | undefined;
+    if (!imgMsg) return '[imageMessage]';
+    const thumb = imgMsg.jpegThumbnail;
+    if (typeof thumb === 'string' && thumb.length > 0) {
+      return `data:image/jpeg;base64,${thumb}`;
+    }
+    if (Array.isArray(thumb) && thumb.length > 0) {
+      return `data:image/jpeg;base64,${Buffer.from(thumb as number[]).toString('base64')}`;
+    }
+    if (thumb && typeof thumb === 'object') {
+      const bufType = (thumb as { type?: string; data?: number[] });
+      if (bufType.type === 'Buffer' && Array.isArray(bufType.data)) {
+        return `data:image/jpeg;base64,${Buffer.from(bufType.data).toString('base64')}`;
+      }
+      // Uint8Array serializado como { "0": 255, "1": 216, ... }
+      const vals = Object.values(thumb as Record<string, number>);
+      if (vals.length > 0 && vals.every(v => typeof v === 'number')) {
+        return `data:image/jpeg;base64,${Buffer.from(vals).toString('base64')}`;
+      }
+    }
+    return imgMsg.caption ?? '[imageMessage]';
+  }
+
   private async handleMessages(tenantId: string, data: Record<string, unknown>): Promise<void> {
     const messages = this.collectIncomingMessages(data);
     if (messages.length === 0) {
@@ -183,7 +219,11 @@ export class WhatsAppWebhookController {
         continue;
       }
 
-      const conteudo = this.extractMessageText(raw);
+      const messageType = (msg as { messageType?: string }).messageType ?? '';
+      const tipo = this.mapTipo(messageType);
+      const conteudo = tipo === 'image'
+        ? this.extractImageConteudo(raw)
+        : this.extractMessageText(raw);
       const waMessageId = msg.key?.id;
 
       const contatoExistente = await this.prisma.crmContato.findFirst({
@@ -207,7 +247,7 @@ export class WhatsAppWebhookController {
           celular: celularMensagem,
           direcao: 'IN',
           conteudo,
-          tipo: 'text',
+          tipo,
           lida: false,
           waMessageId,
         },

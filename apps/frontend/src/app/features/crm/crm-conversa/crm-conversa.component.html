@@ -53,10 +53,18 @@
                   </div>
                 </div>
               } @else {
-                <!-- Recebida do participante (IN — futuro WA listener) -->
+                <!-- Recebida do participante -->
                 <div class="flex justify-start">
                   <div class="max-w-[75%] bg-white border border-slate-200 rounded-2xl rounded-bl-sm px-4 py-2.5 shadow-sm">
-                    <p class="text-[13.5px] leading-relaxed whitespace-pre-wrap text-slate-800">{{ m.conteudo }}</p>
+                    @if (m.tipo === 'image') {
+                      <img [src]="m.conteudo" class="rounded-lg max-w-full max-h-64 object-cover cursor-pointer" alt="imagem" (click)="abrirImagem(m.conteudo)" />
+                    } @else if (m.tipo === 'audio') {
+                      <p class="text-[13px] text-slate-500 italic">🎤 Áudio recebido</p>
+                    } @else if (m.tipo === 'document') {
+                      <p class="text-[13px] text-slate-500 italic">📄 Documento recebido</p>
+                    } @else {
+                      <p class="text-[13.5px] leading-relaxed whitespace-pre-wrap text-slate-800">{{ m.conteudo }}</p>
+                    }
                     <div class="text-[10.5px] text-slate-400 mt-1">{{ fmtHora(m.criadoEm) }}</div>
                   </div>
                 </div>

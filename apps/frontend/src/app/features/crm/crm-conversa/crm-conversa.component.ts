@@ -232,4 +232,8 @@ export class CrmConversaComponent implements AfterViewChecked, OnDestroy {
     if (s === 'PENDENTE') return 'bg-amber-50 text-amber-700 border-amber-200';
     return 'bg-slate-50 text-slate-500 border-slate-200';
   }
+
+  abrirImagem(src: string): void {
+    window.open(src, '_blank');
+  }
 }
