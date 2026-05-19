@@ -3,6 +3,7 @@ import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import helmet from 'helmet';
+import * as express from 'express';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
@@ -27,6 +28,9 @@ async function bootstrap(): Promise<void> {
   const env = config.get<string>('APP_ENV', 'local');
   const port = config.get<number>('API_PORT', 3000);
   const corsOrigins = config.get<string>('CORS_ORIGINS', 'http://localhost:4200');
+
+  app.use(express.json({ limit: '5mb' }));
+  app.use(express.urlencoded({ limit: '5mb', extended: true }));
 
   app.use(helmet({
     contentSecurityPolicy: {

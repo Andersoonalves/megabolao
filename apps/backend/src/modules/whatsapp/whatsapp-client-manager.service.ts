@@ -194,7 +194,7 @@ export class WhatsAppClientManager {
       enabled:         true,
       url:             this.webhookUrl(),
       webhookByEvents: false,
-      base64:          true,
+      base64:          false,
       events:          ['QRCODE_UPDATED', 'CONNECTION_UPDATE', 'MESSAGES_UPSERT'] as const,
     };
   }
@@ -447,6 +447,29 @@ export class WhatsAppClientManager {
   private async enviarMensagem(tenantId: string, number: string, text: string): Promise<void> {
     await this.assertConectado(tenantId);
     await this.post(`/message/sendText/${tenantId}`, { number, text });
+  }
+
+  /** Busca base64 da mídia completa via Evolution API. Retorna undefined em falha. */
+  async fetchMediaBase64(
+    tenantId: string,
+    messageKey: { remoteJid: string; fromMe: boolean; id: string },
+  ): Promise<string | undefined> {
+    try {
+      const res = await this.post<{ base64?: string; mediaType?: string }>(
+        `/chat/getBase64FromMediaMessage/${tenantId}`,
+        { message: { key: messageKey }, convertToMp4: false },
+      );
+      if (typeof res?.base64 === 'string' && res.base64.length > 0) {
+        const mime = res.mediaType ?? 'image/jpeg';
+        return res.base64.startsWith('data:')
+          ? res.base64
+          : `data:${mime};base64,${res.base64}`;
+      }
+      return undefined;
+    } catch (err) {
+      this.logger.warn(`fetchMediaBase64: ${err instanceof Error ? err.message : err}`);
+      return undefined;
+    }
   }
 
   // ── Webhook callbacks (chamados pelo WhatsAppWebhookController) ──

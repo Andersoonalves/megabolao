@@ -221,10 +221,23 @@ export class WhatsAppWebhookController {
 
       const messageType = (msg as { messageType?: string }).messageType ?? '';
       const tipo = this.mapTipo(messageType);
-      const conteudo = tipo === 'image'
-        ? this.extractImageConteudo(raw)
-        : this.extractMessageText(raw);
       const waMessageId = msg.key?.id;
+
+      let conteudo: string;
+      if (tipo === 'image') {
+        // Tenta imagem completa via Evolution API; cai no thumbnail se falhar
+        const fullJid = msg.key?.remoteJidAlt ?? remoteJid;
+        const fullImg = waMessageId
+          ? await this.clientManager.fetchMediaBase64(tenantId, {
+              remoteJid: fullJid,
+              fromMe: false,
+              id: waMessageId,
+            })
+          : undefined;
+        conteudo = fullImg ?? this.extractImageConteudo(raw);
+      } else {
+        conteudo = this.extractMessageText(raw);
+      }
 
       const contatoExistente = await this.prisma.crmContato.findFirst({
         where: prismaCelularWhere(tenantId, celular),

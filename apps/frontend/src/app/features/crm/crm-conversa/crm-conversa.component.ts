@@ -1,6 +1,6 @@
 import {
   Component, signal, input, effect, ChangeDetectionStrategy, inject,
-  ViewChild, ElementRef, AfterViewChecked, OnDestroy,
+  ViewChild, ElementRef, AfterViewChecked, OnDestroy, HostListener,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -69,6 +69,7 @@ export class CrmConversaComponent implements AfterViewChecked, OnDestroy {
   texto      = signal('');
   modoEnvio  = signal<'OUT' | 'NOTE'>('OUT');
   pagandoId  = signal('');
+  lightboxSrc = signal<string | null>(null);
 
   private shouldScroll = false;
   private pollMensagens: ReturnType<typeof setInterval> | null = null;
@@ -233,7 +234,25 @@ export class CrmConversaComponent implements AfterViewChecked, OnDestroy {
     return 'bg-slate-50 text-slate-500 border-slate-200';
   }
 
-  abrirImagem(src: string): void {
-    window.open(src, '_blank');
+  abrirLightbox(src: string): void {
+    this.lightboxSrc.set(src);
+  }
+
+  fecharLightbox(): void {
+    this.lightboxSrc.set(null);
+  }
+
+  baixarImagem(): void {
+    const src = this.lightboxSrc();
+    if (!src) return;
+    const a = document.createElement('a');
+    a.href = src;
+    a.download = `imagem-${Date.now()}.jpg`;
+    a.click();
+  }
+
+  @HostListener('document:keydown.escape')
+  onEsc(): void {
+    this.fecharLightbox();
   }
 }
