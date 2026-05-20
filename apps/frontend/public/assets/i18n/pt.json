@@ -1575,6 +1575,9 @@
     "deleteBtn": "Excluir",
     "deleteTitle": "Excluir bolão",
     "deleteConfirm": "Tem certeza que deseja excluir \"{{nome}}\"?",
-    "deleteWarning": "Esta ação remove todas as cotas e sorteios vinculados. Participantes não são excluídos. Esta ação não pode ser desfeita."
+    "deleteWarning": "Esta ação remove todas as cotas e sorteios vinculados. Participantes não são excluídos. Esta ação não pode ser desfeita.",
+    "openSheets": "Planilha",
+    "openSheetsTitle": "Abrir planilha vinculada no Google Sheets",
+    "linkSheetsTitle": "Nenhuma planilha vinculada — clique para configurar"
   }
 }

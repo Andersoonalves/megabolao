@@ -1,4 +1,4 @@
-import { Component, signal, input, OnInit, ChangeDetectionStrategy, inject, effect } from '@angular/core';
+import { Component, signal, computed, input, OnInit, ChangeDetectionStrategy, inject, effect } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { DecimalPipe, CurrencyPipe, DatePipe } from '@angular/common';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
@@ -62,6 +62,12 @@ export class BolaoDetalhesComponent implements OnInit {
   loading      = signal(true);
   error        = signal('');
   data         = signal<DashboardData | null>(null);
+  sheetsId     = signal<string | null>(null);
+
+  sheetsUrl = computed(() => {
+    const id = this.sheetsId();
+    return id ? `https://docs.google.com/spreadsheets/d/${id}/edit` : null;
+  });
 
   confirmandoExclusao = signal(false);
   deletando           = signal(false);
@@ -84,7 +90,12 @@ export class BolaoDetalhesComponent implements OnInit {
     this.loading.set(true);
     this.error.set('');
     try {
-      const d = await firstValueFrom(this.api.get<DashboardData>(`/boloes/${this.id()}/dashboard`));
+      const [d] = await Promise.all([
+        firstValueFrom(this.api.get<DashboardData>(`/boloes/${this.id()}/dashboard`)),
+        firstValueFrom(this.api.get<{ spreadsheetId: string | null }>(`/boloes/${this.id()}/google-drive/status`))
+          .then(r => this.sheetsId.set(r.spreadsheetId))
+          .catch(() => {}),
+      ]);
       this.data.set(d);
     } catch {
       this.error.set(this.translate.instant('errors.loadDetails'));

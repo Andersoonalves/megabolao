@@ -20,6 +20,7 @@ interface BolaoItem {
   valorBrutoArrecadado: number;
   dataInicio: string | null;
   dataTermino: string | null;
+  criadoEm: string;
 }
 
 interface SorteioRecente {
@@ -191,9 +192,9 @@ export class DashboardAdminComponent implements OnInit {
       };
     });
     for (const b of this.bolaoes()) {
-      if (!b.dataInicio) continue;
-      const key   = b.dataInicio.slice(0, 7);
-      const month = months.find(m => m.key === key);
+      const dateRef = b.dataInicio ?? b.criadoEm;
+      const key     = dateRef.slice(0, 7);
+      const month   = months.find(m => m.key === key);
       if (month) { month.arrec += b.valorBrutoArrecadado; month.cotas += b.totalCotasAtivas; }
     }
     return months;

@@ -1575,6 +1575,9 @@
     "deleteBtn": "Delete",
     "deleteTitle": "Delete pool",
     "deleteConfirm": "Are you sure you want to delete \"{{nome}}\"?",
-    "deleteWarning": "This removes all linked quotas and draws. Participants are not deleted. This action cannot be undone."
+    "deleteWarning": "This removes all linked quotas and draws. Participants are not deleted. This action cannot be undone.",
+    "openSheets": "Spreadsheet",
+    "openSheetsTitle": "Open linked spreadsheet in Google Sheets",
+    "linkSheetsTitle": "No spreadsheet linked — click to configure"
   }
 }
