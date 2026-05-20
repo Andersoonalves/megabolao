@@ -28,7 +28,7 @@ export class QrCodeComponent implements OnChanges {
     QRCode.toCanvas(canvas, this.data(), {
       width:  this.size(),
       margin: 1,
-      color:  { dark: '#1a1a1a', light: '#ffffff' },
+      color:  { dark: '#000000', light: '#ffffff' },
     }).catch(() => {});
   }
 }
