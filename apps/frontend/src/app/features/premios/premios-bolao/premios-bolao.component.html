@@ -155,7 +155,7 @@
                   } @else {
                     <div class="text-right">
                       <div class="text-[11px] text-slate-400">{{ 'premios.destination' | translate }}</div>
-                      <div class="font-display font-semibold text-[18px]">{{ 'premios.destinationTenant' | translate }}</div>
+                      <div class="font-display font-semibold text-[18px]">{{ tenantNome() || ('premios.destinationTenant' | translate) }}</div>
                     </div>
                   }
                 </div>

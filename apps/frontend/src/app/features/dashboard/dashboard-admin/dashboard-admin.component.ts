@@ -228,9 +228,14 @@ export class DashboardAdminComponent implements OnInit {
     const last  = aPts[aPts.length - 1];
     const aArea = `${aLine} L${last.x},${padT + innerH} L${padL},${padT + innerH}Z`;
 
+    const fmtLabel = (v: number): string => {
+      if (v >= 1_000_000) return (v / 1_000_000).toFixed(1).replace('.0', '') + 'M';
+      if (v >= 1_000)     return (v / 1_000).toFixed(0) + 'k';
+      return Math.round(v).toString();
+    };
     const yLabels = [0, 0.25, 0.5, 0.75, 1].map(t => ({
       y:     padT + t * innerH,
-      label: ((1 - t) * maxA / 1000).toFixed(0) + 'k',
+      label: fmtLabel((1 - t) * maxA),
     }));
 
     return { W, H, padL, padT, innerH, aLine, aArea, cLine: smooth(cPts), aPts, cPts, yLabels, data, stepX };

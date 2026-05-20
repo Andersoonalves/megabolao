@@ -6,6 +6,8 @@ import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { ApiService } from '../../../core/services/api.service';
+import { MasterTenantService } from '../../../core/services/master-tenant.service';
+import { AuthService } from '../../../core/services/auth.service';
 import { BackButtonComponent } from '../../../shared/components/back-button/back-button.component';
 
 // ── Pipe ─────────────────────────────────────────────────────────────────────
@@ -75,11 +77,14 @@ interface CategoriaView {
 export class PremiosBolaoComponent implements OnInit {
   readonly id = input<string>('');
 
-  private readonly api = inject(ApiService);
-  private readonly translate = inject(TranslateService);
+  private readonly api          = inject(ApiService);
+  private readonly translate    = inject(TranslateService);
+  private readonly masterTenant = inject(MasterTenantService);
+  private readonly auth         = inject(AuthService);
 
   // ── State ──────────────────────────────────────────────────────────────────
   bolao      = signal<BolaoResponse | null>(null);
+  tenantNome = signal('');
   premios    = signal<PremioResponse[]>([]);
   loading    = signal(false);
   calculando = signal(false);
@@ -145,6 +150,18 @@ export class PremiosBolaoComponent implements OnInit {
     try {
       this.bolao.set(await firstValueFrom(this.api.get<BolaoResponse>(`/boloes/${this.bolaoId}`)));
     } catch { this.bolao.set(DEMO_BOLAO); }
+    void this.loadTenantNome();
+  }
+
+  private async loadTenantNome(): Promise<void> {
+    // MASTER: nome já está em memória (MasterTenantService)
+    const fromMemory = this.masterTenant.tenant()?.nome;
+    if (fromMemory) { this.tenantNome.set(fromMemory); return; }
+    // ADMIN: busca do endpoint
+    try {
+      const t = await firstValueFrom(this.api.get<{ nome: string }>('/tenants/me'));
+      this.tenantNome.set(t.nome);
+    } catch { /* mantém vazio — fallback no template */ }
   }
 
   async loadPremios(): Promise<void> {
