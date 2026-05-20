@@ -174,11 +174,18 @@ export class AuthService {
     const { data, error } = await this.supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
 
-    const meta = data.user?.user_metadata as { papel?: string } | undefined;
+    const meta = data.user?.user_metadata as { papel?: string; permissoes?: string[] } | undefined;
     this._postLoginDest = meta?.papel === 'MASTER' ? '/dashboard-master' : '/dashboard';
 
     const aal = await this.getMfaAssuranceLevel();
     if (aal.needsVerification) return { needsMfa: true };
+
+    // ADMIN: refresh session to pick up backend-synced permissions
+    // The backend lazy-syncs permissions on first API call, but the JWT
+    // returned by signInWithPassword may have stale/empty permissions.
+    if (meta?.papel === 'ADMIN' && (!Array.isArray(meta.permissoes) || meta.permissoes.length === 0)) {
+      await this.refreshSession();
+    }
 
     await this.router.navigate([this._postLoginDest]);
     return { needsMfa: false };

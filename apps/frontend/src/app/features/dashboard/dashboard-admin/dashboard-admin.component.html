@@ -1,0 +1,629 @@
+<!-- Topbar -->
+<div class="bg-white border-b border-slate-200 px-4 lg:px-7 py-3 flex items-center justify-between gap-4 sticky top-14 lg:top-0 z-10">
+  <span class="font-display font-semibold text-[14px] sm:text-base">{{ 'dashboardAdmin.title' | translate }}</span>
+  <div class="flex gap-2">
+    <button type="button"
+            class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-[12.5px] font-semibold rounded-[10px] text-slate-700 transition-colors min-h-9">
+      ↓ {{ 'dashboardAdmin.exportBtn' | translate }}
+    </button>
+    <a routerLink="/bolao/novo"
+       class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-800 text-white text-sm font-semibold rounded-[10px] no-underline transition-colors shadow-sm min-h-9">
+      + <span class="hidden sm:inline">{{ 'dashboardAdmin.newPool' | translate }}</span>
+    </a>
+  </div>
+</div>
+
+<nb-mega-sena-alert (applied)="ngOnInit()" />
+
+<div class="p-4 lg:p-7">
+
+  <!-- Page header -->
+  <div class="flex items-start justify-between gap-4 mb-6">
+    <div>
+      <h1 class="font-display text-[26px] font-semibold tracking-tight mb-1">{{ 'dashboardAdmin.overview' | translate }}</h1>
+      <p class="text-slate-500 text-[13.5px]">{{ 'dashboardAdmin.subtitle' | translate }}
+        @if (!loading()) {
+          <span class="font-mono text-[12px] ml-2 text-slate-400">· {{ bolaoes().length }} bolões</span>
+        }
+      </p>
+    </div>
+    @if (!loading()) {
+      <span class="hidden sm:inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-green-50 text-green-800 border border-green-200 flex-shrink-0 mt-1">
+        <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+        Sistema operacional
+      </span>
+    }
+  </div>
+
+  @if (error()) {
+    <div class="mb-5 p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">⚠ {{ error() }}</div>
+  }
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- KPI STRIP (6 tiles)                                                    -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  @if (loading()) {
+    <div class="grid grid-cols-2 lg:grid-cols-6 gap-3 mb-5">
+      @for (i of [1,2,3,4,5,6]; track i) {
+        <div class="bg-white border border-slate-200 rounded-lg p-4 h-24 animate-pulse"></div>
+      }
+    </div>
+  } @else {
+    <div class="grid grid-cols-2 lg:grid-cols-6 gap-3 mb-5">
+
+      <!-- BigKpi: Participantes -->
+      <div class="col-span-2 lg:col-span-1 rounded-lg p-4 bg-gradient-to-br from-green-800 to-green-900 border border-green-900">
+        <div class="text-[10.5px] font-semibold uppercase tracking-widest text-white/70 mb-1">{{ 'dashboardAdmin.kpiParticipants' | translate }}</div>
+        <div class="font-display text-[30px] font-semibold tracking-tight tabular text-white leading-none mt-1">{{ totalParticipantes() | number }}</div>
+        <div class="flex flex-col gap-1 mt-3">
+          <div class="flex items-center gap-1.5 text-[11px]">
+            <span class="w-1.5 h-1.5 rounded-full bg-green-400"></span>
+            <span class="text-white/85 flex-1">{{ 'dashboardAdmin.kpiParticipantsHint' | translate }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cotas ativas -->
+      <div class="bg-white border border-slate-200 rounded-lg p-4">
+        <div class="text-[10.5px] font-semibold text-slate-500 uppercase tracking-widest mb-1">{{ 'dashboardAdmin.kpiQuotas' | translate }}</div>
+        <div class="font-display text-[26px] font-semibold tracking-tight tabular mt-1">{{ totalCotas() | number }}</div>
+        <div class="text-[11px] text-green-700 font-semibold mt-1">{{ emAndamento() }} {{ 'dashboardAdmin.kpiActivePools' | translate }}</div>
+      </div>
+
+      <!-- Arrecadação YTD -->
+      <div class="bg-white border border-slate-200 rounded-lg p-4">
+        <div class="text-[10.5px] font-semibold text-slate-500 uppercase tracking-widest mb-1">{{ 'dashboardAdmin.kpiRevenue' | translate }}</div>
+        <div class="font-display text-[20px] font-semibold tracking-tight tabular text-amber-700 mt-1 leading-tight">
+          {{ totalArrecadado() | currency:'BRL':'symbol':'1.0-0' }}
+        </div>
+        <div class="text-[11px] text-slate-400 mt-1">{{ 'dashboardAdmin.kpiRevenueHint' | translate }}</div>
+      </div>
+
+      <!-- Ticket médio -->
+      <div class="bg-white border border-slate-200 rounded-lg p-4">
+        <div class="text-[10.5px] font-semibold text-slate-500 uppercase tracking-widest mb-1">{{ 'dashboardAdmin.kpiTicket' | translate }}</div>
+        <div class="font-display text-[26px] font-semibold tracking-tight tabular text-amber-700 mt-1">
+          {{ ticketMedio() | currency:'BRL':'symbol':'1.2-2' }}
+        </div>
+        <div class="text-[11px] text-slate-400 mt-1">{{ 'dashboardAdmin.kpiTicketHint' | translate }}</div>
+      </div>
+
+      <!-- Bolões a iniciar -->
+      <div class="bg-white border border-slate-200 rounded-lg p-4" [class.border-t-2]="aIniciar() > 0" [class.border-t-blue-400]="aIniciar() > 0">
+        <div class="text-[10.5px] font-semibold text-slate-500 uppercase tracking-widest mb-1">{{ 'dashboardAdmin.kpiPending' | translate }}</div>
+        <div class="font-display text-[26px] font-semibold tracking-tight tabular mt-1"
+             [class.text-blue-600]="aIniciar() > 0">{{ aIniciar() }}</div>
+        <div class="text-[11px] mt-1" [class.text-blue-600]="aIniciar() > 0" [class.text-slate-400]="aIniciar() === 0">
+          @if (aIniciar() > 0) { a iniciar } @else { nenhum pendente }
+        </div>
+      </div>
+
+      <!-- Próximo sorteio -->
+      <div class="bg-white border border-slate-200 rounded-lg p-4" [class.border-t-2]="temProximoSorteio()" [class.border-t-green-600]="temProximoSorteio()">
+        <div class="text-[10.5px] font-semibold text-slate-500 uppercase tracking-widest mb-1">{{ 'dashboardAdmin.kpiNextDraw' | translate }}</div>
+        @if (temProximoSorteio()) {
+          <div class="font-display text-[20px] font-semibold tracking-tight tabular text-green-700 mt-1 leading-tight">
+            {{ proximoSorteioDataLabel() }}
+          </div>
+          <div class="text-[11px] text-green-700 font-semibold mt-1">
+            @if (proximoSorteioDias() === 0) { Hoje }
+            @else if (proximoSorteioDias() === 1) { Amanhã }
+            @else { Em {{ proximoSorteioDias() }} dias }
+          </div>
+        } @else {
+          <div class="font-display text-[26px] font-semibold tracking-tight tabular text-slate-300 mt-1">—</div>
+          <div class="text-[11px] text-slate-400 mt-1">{{ 'dashboardAdmin.kpiNextDrawHint' | translate }}</div>
+        }
+      </div>
+
+    </div>
+  }
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- ROW: ARRECADAÇÃO CHART + STATUS DONUT                                  -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  @if (!loading()) {
+    <div class="grid grid-cols-1 lg:grid-cols-[1.7fr_1fr] gap-4 mb-4">
+
+      <!-- Arrecadação chart -->
+      <div class="bg-white border border-slate-200 rounded-lg overflow-hidden">
+        <div class="px-5 py-4 border-b border-slate-100 flex items-start justify-between gap-3">
+          <div>
+            <h3 class="font-display font-semibold text-[15px]">{{ 'dashboardAdmin.chartTitle' | translate }}</h3>
+            <p class="text-[11.5px] text-slate-400 mt-0.5">{{ 'dashboardAdmin.chartSubtitle' | translate }}</p>
+          </div>
+          <div class="flex gap-4 text-[11.5px] flex-shrink-0 pt-0.5">
+            <span class="flex items-center gap-1.5">
+              <span class="w-2.5 h-2.5 rounded-[3px] bg-green-600"></span> Arrecadação
+            </span>
+            <span class="flex items-center gap-1.5">
+              <span class="w-2.5 h-2.5 rounded-[3px] bg-amber-500"></span> Cotas
+            </span>
+          </div>
+        </div>
+        <div class="p-5">
+          @if (arrecPaths(); as paths) {
+            <svg [attr.viewBox]="'0 0 ' + paths.W + ' ' + paths.H" class="w-full h-auto block">
+              <defs>
+                <linearGradient id="arrecGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#047857" stop-opacity="0.2"/>
+                  <stop offset="100%" stop-color="#047857" stop-opacity="0"/>
+                </linearGradient>
+              </defs>
+              <!-- Grid lines -->
+              @for (yl of paths.yLabels; track yl.label) {
+                <line [attr.x1]="paths.padL" [attr.x2]="paths.W - 16"
+                      [attr.y1]="yl.y" [attr.y2]="yl.y"
+                      stroke="#f1f5f9" stroke-width="1"/>
+                <text [attr.x]="paths.padL - 8" [attr.y]="yl.y + 4"
+                      text-anchor="end" font-size="10.5" fill="#94a3b8"
+                      font-family="monospace">{{ yl.label }}</text>
+              }
+              <!-- Area fill -->
+              <path [attr.d]="paths.aArea" fill="url(#arrecGrad)"/>
+              <!-- Arrecadação line -->
+              <path [attr.d]="paths.aLine" fill="none" stroke="#047857" stroke-width="2.5" stroke-linecap="round"/>
+              <!-- Cotas line -->
+              <path [attr.d]="paths.cLine" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round"/>
+              <!-- Dots + x-labels -->
+              @for (pt of paths.aPts; track $index) {
+                <circle [attr.cx]="pt.x" [attr.cy]="pt.y" r="4" fill="#fff" stroke="#047857" stroke-width="2"/>
+                <text [attr.x]="pt.x" [attr.y]="paths.H - 8"
+                      text-anchor="middle" font-size="11" fill="#94a3b8">{{ paths.data[$index].m }}</text>
+              }
+              @for (pt of paths.cPts; track $index) {
+                <circle [attr.cx]="pt.x" [attr.cy]="pt.y" r="3" fill="#f59e0b" stroke="#fff" stroke-width="1.5"/>
+              }
+            </svg>
+          } @else {
+            <div class="h-[180px] flex flex-col items-center justify-center text-slate-300">
+              <span class="text-3xl mb-2">📊</span>
+              <p class="text-[12px]">{{ 'dashboardAdmin.chartEmpty' | translate }}</p>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Status donut -->
+      <div class="bg-white border border-slate-200 rounded-lg overflow-hidden">
+        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+          <h3 class="font-display font-semibold text-[15px]">{{ 'dashboardAdmin.donutTitle' | translate }}</h3>
+          <span class="text-[11.5px] text-slate-400">{{ bolaoes().length }} bolões</span>
+        </div>
+        <div class="p-5 flex flex-col items-center gap-4">
+          @if (donutSegs().length > 0) {
+            <svg viewBox="0 0 160 160" width="160" height="160">
+              @for (seg of donutSegs(); track seg.color) {
+                <path [attr.d]="seg.d" [attr.fill]="seg.color"/>
+              }
+              <circle cx="80" cy="80" r="54" fill="#fff"/>
+              <text x="80" y="75" text-anchor="middle"
+                    font-family="var(--font-display, sans-serif)"
+                    font-weight="600" font-size="28" letter-spacing="-0.02em">
+                {{ bolaoes().length }}
+              </text>
+              <text x="80" y="92" text-anchor="middle" font-size="11" fill="#94a3b8" font-weight="500">
+                bolões
+              </text>
+            </svg>
+          } @else {
+            <div class="w-40 h-40 rounded-full bg-slate-100 flex items-center justify-center text-slate-300 text-4xl">🎲</div>
+          }
+          <div class="w-full flex flex-col gap-2">
+            @for (seg of donutSegs(); track seg.color) {
+              <div class="flex items-center gap-2.5 text-[12.5px]">
+                <span class="w-2 h-2 rounded-[2px] flex-shrink-0" [style.background]="seg.color"></span>
+                <span class="flex-1 font-semibold">{{ seg.lab }}</span>
+                <span class="font-mono text-[11.5px] text-slate-400 tabular">{{ seg.pct }}%</span>
+                <span class="font-mono font-semibold tabular min-w-[16px] text-right">{{ seg.n }}</span>
+              </div>
+            }
+            @if (donutSegs().length === 0) {
+              <p class="text-[12px] text-slate-400 text-center">{{ 'dashboardAdmin.emptyPools' | translate }}</p>
+            }
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- ROW: AÇÕES PENDENTES + CRM FUNIL                                   -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-4 mb-4">
+
+      <!-- Ações pendentes -->
+      <div class="bg-white border border-slate-200 rounded-lg overflow-hidden">
+        <div class="px-5 py-4 border-b border-slate-100 flex items-start justify-between gap-3">
+          <div>
+            <h3 class="font-display font-semibold text-[15px]">{{ 'dashboardAdmin.pendentesTitle' | translate }}</h3>
+            <p class="text-[11.5px] text-slate-400 mt-0.5">{{ 'dashboardAdmin.pendentesSubtitle' | translate }}</p>
+          </div>
+          @if (acoesPendentes().length > 0) {
+            <span class="flex-shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-100">
+              {{ acoesPendentes().length }} {{ acoesPendentes().length === 1 ? 'item' : 'itens' }}
+            </span>
+          }
+        </div>
+
+        @if (acoesPendentes().length === 0) {
+          <div class="p-8 flex flex-col items-center gap-2 text-slate-400">
+            <span class="text-2xl">✓</span>
+            <p class="text-[12.5px]">{{ 'dashboardAdmin.pendentesEmpty' | translate }}</p>
+          </div>
+        } @else {
+          @for (acao of acoesPendentes(); track acao.title; let i = $index; let last = $last) {
+            <div class="grid grid-cols-[36px_1fr_auto] gap-3 px-5 py-3.5 items-center"
+                 [class.border-b]="!last" [class.border-slate-100]="!last"
+                 [class.bg-gradient-to-r]="acao.prio === 'alta'"
+                 [class.from-red-50/60]="acao.prio === 'alta'">
+              <div class="w-8 h-8 rounded-[8px] flex items-center justify-center text-sm flex-shrink-0"
+                   [ngClass]="acaoColorClass(acao.color)">
+                {{ acao.icon }}
+              </div>
+              <div class="min-w-0">
+                <div class="flex items-center gap-1.5 flex-wrap">
+                  <span class="text-[13px] font-semibold">{{ acao.title }}</span>
+                  @if (acao.prio === 'alta') {
+                    <span class="text-[9.5px] font-bold px-1.5 py-0.5 rounded-[3px] bg-red-50 text-red-700 border border-red-200 uppercase tracking-wide">
+                      urgente
+                    </span>
+                  }
+                </div>
+                <p class="text-[11.5px] text-slate-400 mt-0.5">{{ acao.desc }}</p>
+              </div>
+              <a [routerLink]="acao.link"
+                 class="flex-shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 text-[11.5px] font-semibold bg-white border border-slate-200 hover:bg-slate-50 rounded-lg no-underline text-slate-700 transition-colors">
+                {{ acao.cta }} ›
+              </a>
+            </div>
+          }
+        }
+      </div>
+
+      <!-- Funil CRM -->
+      <div class="bg-white border border-slate-200 rounded-lg overflow-hidden">
+        <div class="px-5 py-4 border-b border-slate-100 flex items-start justify-between gap-3">
+          <div>
+            <h3 class="font-display font-semibold text-[15px]">{{ 'dashboardAdmin.crmFunilTitle' | translate }}</h3>
+            <p class="text-[11.5px] text-slate-400 mt-0.5">{{ 'dashboardAdmin.crmFunilSubtitle' | translate }}</p>
+          </div>
+          <a routerLink="/crm"
+             class="flex-shrink-0 text-[12px] text-slate-400 hover:text-green-700 no-underline flex items-center gap-1 transition-colors mt-0.5">
+            Abrir CRM ›
+          </a>
+        </div>
+
+        @if (crmFunilData().items.length === 0) {
+          <div class="p-8 flex flex-col items-center gap-2 text-slate-400">
+            <span class="text-2xl">💬</span>
+            <p class="text-[12.5px]">{{ 'dashboardAdmin.crmFunilEmpty' | translate }}</p>
+            <a routerLink="/crm/configurar"
+               class="text-[12px] text-green-700 font-semibold no-underline hover:underline">
+              Configurar funil →
+            </a>
+          </div>
+        } @else {
+          <div class="p-5">
+            <!-- Mini stats -->
+            <div class="grid grid-cols-2 gap-4 pb-4 mb-4 border-b border-slate-100">
+              <div>
+                <div class="text-[10.5px] font-semibold text-slate-400 uppercase tracking-wide">Total</div>
+                <div class="font-display text-[22px] font-semibold tracking-tight mt-0.5">{{ crmFunilData().total }}</div>
+              </div>
+              <div>
+                <div class="text-[10.5px] font-semibold text-slate-400 uppercase tracking-wide">Etapas</div>
+                <div class="font-display text-[22px] font-semibold tracking-tight mt-0.5">{{ crmFunilData().items.length }}</div>
+              </div>
+            </div>
+            <!-- Funil bars -->
+            <div class="flex flex-col gap-2">
+              @for (item of crmFunilData().items; track item.id) {
+                <div class="flex items-center gap-2.5">
+                  <span class="w-[100px] text-[12px] font-semibold text-slate-700 flex-shrink-0 truncate">{{ item.nome }}</span>
+                  <div class="flex-1 h-[22px] relative bg-slate-50 rounded-[5px] overflow-hidden">
+                    <div class="h-full rounded-[5px] transition-all flex items-center justify-end pr-2"
+                         [style.width.%]="item.w"
+                         style="background: #047857;">
+                      @if (item.w > 20) {
+                        <span class="text-[11px] font-bold text-white tabular">{{ item.n }}</span>
+                      }
+                    </div>
+                    @if (item.w <= 20 && item.n > 0) {
+                      <span class="absolute left-2 top-1/2 -translate-y-1/2 text-[11px] font-bold text-slate-700 tabular">{{ item.n }}</span>
+                    }
+                  </div>
+                  <span class="w-8 text-[11px] text-slate-400 text-right tabular flex-shrink-0">
+                    @if (item.conv !== null) { {{ item.conv }}% } @else { — }
+                  </span>
+                </div>
+              }
+            </div>
+          </div>
+        }
+      </div>
+
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- ROW: HEATMAP NÚMEROS + PRÓXIMOS SORTEIOS                           -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] gap-4 mb-4">
+
+      <!-- Heatmap dos números -->
+      <div class="bg-white border border-slate-200 rounded-lg overflow-hidden">
+        <div class="px-5 py-4 border-b border-slate-100 flex items-start justify-between gap-3">
+          <div>
+            <h3 class="font-display font-semibold text-[15px]">{{ 'dashboardAdmin.heatmapTitle' | translate }}</h3>
+            <p class="text-[11.5px] text-slate-400 mt-0.5">
+              {{ 'dashboardAdmin.heatmapSubtitle' | translate }}
+              @if (heatmapCells().totalSorteios > 0) {
+                · {{ heatmapCells().totalSorteios }} sorteios
+              }
+            </p>
+          </div>
+          @if (heatmapCells().topNum !== '—') {
+            <span class="text-[11.5px] text-slate-400 flex-shrink-0 pt-0.5">
+              Mais sorteado: <strong class="font-mono text-slate-700">{{ heatmapCells().topNum }}</strong>
+            </span>
+          }
+        </div>
+        <div class="p-5">
+          @if (heatmapCells().totalSorteios === 0) {
+            <div class="h-[160px] flex flex-col items-center justify-center text-slate-300 gap-2">
+              <span class="text-3xl">🎱</span>
+              <p class="text-[12px]">{{ 'dashboardAdmin.heatmapEmpty' | translate }}</p>
+            </div>
+          } @else {
+            <div class="grid grid-cols-[repeat(15,1fr)] gap-1">
+              @for (cell of heatmapCells().cells; track cell.n) {
+                <div class="aspect-square rounded-[5px] flex flex-col items-center justify-center cursor-default transition-opacity"
+                     [style.background]="'rgba(4,120,87,' + cell.alpha + ')'"
+                     [class.ring-1]="cell.isTop"
+                     [class.ring-amber-400]="cell.isTop"
+                     [attr.title]="cell.n + ': ' + cell.v + 'x'">
+                  <span class="font-mono text-[10px] font-semibold leading-none"
+                        [style.color]="cell.textDark ? '#1e293b' : '#fff'">
+                    {{ cell.n | number:'2.0-0' }}
+                  </span>
+                  @if (cell.v > 0) {
+                    <span class="font-mono text-[8px] leading-none mt-0.5"
+                          [style.color]="cell.textDark ? '#94a3b8' : 'rgba(255,255,255,0.7)'">
+                      {{ cell.v }}x
+                    </span>
+                  }
+                </div>
+              }
+            </div>
+            <!-- Legend -->
+            <div class="flex items-center justify-between mt-3">
+              <div class="flex items-center gap-1.5 text-[11px] text-slate-400">
+                <span>Menos</span>
+                @for (step of [0.12, 0.28, 0.45, 0.62, 0.78, 0.97]; track step) {
+                  <span class="w-3.5 h-3.5 rounded-[3px]"
+                        [style.background]="'rgba(4,120,87,' + step + ')'"></span>
+                }
+                <span>Mais</span>
+              </div>
+              <span class="text-[11px] text-slate-400 font-mono">
+                números 01 — 60
+              </span>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Próximos sorteios -->
+      <div class="bg-white border border-slate-200 rounded-lg overflow-hidden">
+        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+          <h3 class="font-display font-semibold text-[15px]">{{ 'dashboardAdmin.proximosTitle' | translate }}</h3>
+        </div>
+
+        @if (bolaoes().filter(b => b.status === 'EM_ANDAMENTO').length === 0) {
+          <div class="p-8 flex flex-col items-center gap-2 text-slate-400">
+            <span class="text-2xl">📅</span>
+            <p class="text-[12.5px]">{{ 'dashboardAdmin.proximosEmpty' | translate }}</p>
+          </div>
+        } @else {
+          <!-- Próximo sorteio principal -->
+          @if (temProximoSorteio()) {
+            <div class="flex gap-4 px-5 py-4 items-center border-b border-slate-100 bg-green-50/40">
+              <div class="w-11 min-w-11 py-1.5 bg-green-700 text-white rounded-[8px] text-center">
+                <div class="text-[9px] uppercase font-semibold opacity-75 tracking-wide">Próx.</div>
+                <div class="font-display font-bold text-[16px] tracking-tight leading-none mt-0.5">
+                  {{ proximoSorteioDiaMes() }}
+                </div>
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="text-[13px] font-semibold">Concurso {{ proximoConcurso()?.numero ?? '?' }}</div>
+                <div class="text-[11.5px] text-slate-500 mt-0.5">
+                  {{ emAndamento() }} bolão(ões) ativo(s) · {{ proximoSorteioDiaHoraLabel() }}
+                </div>
+              </div>
+              <div class="text-right flex-shrink-0">
+                <div class="font-mono text-[13px] font-semibold">{{ proximoSorteioDiaHoraLabel() }}</div>
+                <div class="text-[10.5px] text-green-700 font-semibold mt-0.5">
+                  @if (proximoSorteioDias() === 0) { Hoje }
+                  @else if (proximoSorteioDias() === 1) { Amanhã }
+                  @else { Em {{ proximoSorteioDias() }} dias }
+                </div>
+              </div>
+            </div>
+          }
+
+          <!-- Bolões ativos -->
+          <div class="divide-y divide-slate-100">
+            @for (b of bolaoes().slice(0, 5); track b.id) {
+              @if (b.status === 'EM_ANDAMENTO' || b.status === 'A_SER_INICIADO') {
+                <div class="flex gap-3 px-5 py-3 items-center">
+                  <span class="w-2 h-2 rounded-full flex-shrink-0 mt-0.5"
+                        [class.bg-green-500]="b.status === 'EM_ANDAMENTO'"
+                        [class.bg-blue-400]="b.status === 'A_SER_INICIADO'"></span>
+                  <div class="flex-1 min-w-0">
+                    <div class="text-[13px] font-semibold truncate">{{ b.nome }}</div>
+                    <div class="text-[11px] text-slate-400">
+                      {{ b.totalCotasAtivas | number }} cotas · {{ b.valorBrutoArrecadado | currency:'BRL':'symbol':'1.0-0' }}
+                    </div>
+                  </div>
+                  <a [routerLink]="['/bolao', b.id, 'detalhes']"
+                     class="text-[11px] text-green-700 font-semibold no-underline hover:underline flex-shrink-0">
+                    Ver →
+                  </a>
+                </div>
+              }
+            }
+          </div>
+
+          <div class="px-5 py-3 border-t border-slate-100 text-center">
+            <a routerLink="/sorteios"
+               class="text-[12px] text-green-700 font-semibold no-underline hover:underline">
+              {{ 'dashboardAdmin.shortcutDraw' | translate }} →
+            </a>
+          </div>
+        }
+      </div>
+
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- ROW: BOLÕES ATIVOS (KANBAN CARDS) + ATIVIDADE RECENTE              -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+
+      <!-- Bolões em andamento — cards -->
+      <div class="bg-white border border-slate-200 rounded-lg overflow-hidden">
+        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+          <h3 class="font-display font-semibold text-[15px]">{{ 'dashboardAdmin.sectionPools' | translate }}</h3>
+          <a routerLink="/boloes" class="text-[12px] text-green-700 font-semibold no-underline hover:underline">
+            {{ 'common.viewAll' | translate }}
+          </a>
+        </div>
+
+        @if (bolaoes().length === 0) {
+          <div class="p-10 text-center">
+            <div class="text-4xl mb-3">🎲</div>
+            <p class="text-slate-500 text-sm mb-4">{{ 'dashboardAdmin.emptyPools' | translate }}</p>
+            <a routerLink="/bolao/novo"
+               class="inline-flex items-center gap-1.5 px-4 py-2 bg-green-700 hover:bg-green-800 text-white text-sm font-semibold rounded-[10px] no-underline transition-colors">
+              {{ 'dashboardAdmin.createFirst' | translate }}
+            </a>
+          </div>
+        } @else {
+          <div class="divide-y divide-slate-100">
+            @for (b of bolaoes().slice(0, 6); track b.id) {
+              <div class="px-5 py-4 flex items-center gap-4 hover:bg-slate-50 transition-colors">
+                <!-- Status + nome -->
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2 mb-0.5 flex-wrap">
+                    <span class="w-2 h-2 rounded-full flex-shrink-0"
+                          [class.bg-green-500]="b.status === 'EM_ANDAMENTO'"
+                          [class.bg-blue-400]="b.status === 'A_SER_INICIADO'"
+                          [class.bg-slate-300]="b.status !== 'EM_ANDAMENTO' && b.status !== 'A_SER_INICIADO'"></span>
+                    <span class="font-semibold text-[14px] truncate">{{ b.nome }}</span>
+                    <span class="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded-full flex-shrink-0"
+                          [class.bg-green-100]="b.status === 'EM_ANDAMENTO'"
+                          [class.text-green-800]="b.status === 'EM_ANDAMENTO'"
+                          [class.bg-blue-50]="b.status === 'A_SER_INICIADO'"
+                          [class.text-blue-700]="b.status === 'A_SER_INICIADO'"
+                          [class.bg-slate-100]="b.status === 'FINALIZADO'"
+                          [class.text-slate-500]="b.status === 'FINALIZADO'">
+                      {{ ('dashboardAdmin.status.' + b.status) | translate }}
+                    </span>
+                  </div>
+                  @if (b.dataInicio) {
+                    <p class="text-[11.5px] text-slate-400 ml-4">{{ b.dataInicio | slice:0:10 | date:'dd/MM/yyyy' }}</p>
+                  }
+                </div>
+
+                <!-- Stats (sm+) -->
+                <div class="hidden sm:flex items-center gap-5 text-right flex-shrink-0">
+                  <div>
+                    <div class="font-semibold text-[14px] tabular">{{ b.totalCotasAtivas | number }}</div>
+                    <div class="text-[10.5px] text-slate-400">{{ 'dashboardAdmin.cotasLabel' | translate }}</div>
+                  </div>
+                  <div>
+                    <div class="font-semibold text-[13px] tabular text-green-700">{{ b.valorBrutoArrecadado | currency:'BRL':'symbol':'1.0-0' }}</div>
+                    <div class="text-[10.5px] text-slate-400">{{ 'dashboardAdmin.raisedLabel' | translate }}</div>
+                  </div>
+                </div>
+
+                <!-- Ações -->
+                <div class="flex items-center gap-1.5 flex-shrink-0">
+                  <a [routerLink]="['/bolao', b.id, 'cotas']"
+                     class="px-2.5 py-1.5 text-[12px] font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200 no-underline">
+                    {{ 'common.viewQuotas' | translate }}
+                  </a>
+                  <a [routerLink]="['/bolao', b.id, 'detalhes']"
+                     class="px-2.5 py-1.5 text-[12px] font-semibold text-green-700 hover:bg-green-50 rounded-lg transition-colors border border-green-200 no-underline">
+                    {{ 'common.viewDetails' | translate }}
+                  </a>
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- Atividade recente -->
+      <div class="bg-white border border-slate-200 rounded-lg overflow-hidden">
+        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+          <h3 class="font-display font-semibold text-[15px]">{{ 'dashboardAdmin.atividadeTitle' | translate }}</h3>
+          <a routerLink="/auditoria"
+             class="text-[12px] text-slate-400 hover:text-green-700 no-underline flex items-center gap-1 transition-colors">
+            Ver tudo ›
+          </a>
+        </div>
+
+        @if (auditoriaLabels().length === 0) {
+          <div class="p-8 flex flex-col items-center gap-2 text-slate-400">
+            <span class="text-2xl">📋</span>
+            <p class="text-[12.5px]">{{ 'dashboardAdmin.atividadeEmpty' | translate }}</p>
+          </div>
+        } @else {
+          <div class="divide-y divide-slate-100">
+            @for (a of auditoriaLabels(); track a.id) {
+              <div class="flex gap-3 px-5 py-3.5 items-start">
+                <div class="w-7 h-7 min-w-7 rounded-[8px] bg-slate-100 text-slate-600 flex items-center justify-center text-sm flex-shrink-0 mt-0.5">
+                  {{ a.icon }}
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-[12.5px] font-medium leading-snug">{{ a.label }}</div>
+                  <div class="text-[11px] text-slate-400 mt-0.5">{{ a.who }} · {{ a.ago }}</div>
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- ATALHOS RÁPIDOS                                                     -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-1">
+      <a routerLink="/participantes"
+         class="bg-white border border-slate-200 rounded-xl p-4 flex flex-col items-center gap-2 hover:border-green-300 hover:bg-green-50 transition-colors no-underline text-slate-700 group">
+        <span class="text-2xl">👥</span>
+        <span class="text-[12px] font-semibold text-center group-hover:text-green-700">{{ 'dashboardAdmin.shortcutParticipants' | translate }}</span>
+      </a>
+      <a routerLink="/sorteios"
+         class="bg-white border border-slate-200 rounded-xl p-4 flex flex-col items-center gap-2 hover:border-green-300 hover:bg-green-50 transition-colors no-underline text-slate-700 group">
+        <span class="text-2xl">✦</span>
+        <span class="text-[12px] font-semibold text-center group-hover:text-green-700">{{ 'dashboardAdmin.shortcutDraw' | translate }}</span>
+      </a>
+      <a routerLink="/whatsapp"
+         class="bg-white border border-slate-200 rounded-xl p-4 flex flex-col items-center gap-2 hover:border-green-300 hover:bg-green-50 transition-colors no-underline text-slate-700 group">
+        <span class="text-2xl">💬</span>
+        <span class="text-[12px] font-semibold text-center group-hover:text-green-700">{{ 'dashboardAdmin.shortcutWhatsapp' | translate }}</span>
+      </a>
+      <a routerLink="/relatorios"
+         class="bg-white border border-slate-200 rounded-xl p-4 flex flex-col items-center gap-2 hover:border-green-300 hover:bg-green-50 transition-colors no-underline text-slate-700 group">
+        <span class="text-2xl">📄</span>
+        <span class="text-[12px] font-semibold text-center group-hover:text-green-700">{{ 'dashboardAdmin.shortcutReports' | translate }}</span>
+      </a>
+    </div>
+
+  } <!-- /!loading -->
+
+</div>

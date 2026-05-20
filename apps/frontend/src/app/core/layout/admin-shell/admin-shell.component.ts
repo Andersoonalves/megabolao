@@ -61,6 +61,18 @@ const ADMIN_NAV: NavItem[] = [
         route: '/whatsapp/envio-etapas',
         permissoes: ['whatsapp.ler'],
       },
+      {
+        id: 'whatsapp-nova-mensagem',
+        labelKey: 'nav.whatsappNewMessage',
+        route: '/whatsapp/nova-mensagem',
+        permissoes: ['whatsapp.enviar'],
+      },
+      {
+        id: 'whatsapp-templates',
+        labelKey: 'nav.whatsappTemplates',
+        route: '/whatsapp/templates',
+        permissoes: ['whatsapp.ler'],
+      },
     ],
   },
   { sectionKey: 'nav.section.system' },

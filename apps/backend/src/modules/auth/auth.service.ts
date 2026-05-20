@@ -67,8 +67,9 @@ export class AuthService {
       // ADMIN: usa permissões cacheadas no JWT.
       // Lazy-sync: usuários pré-RBAC ainda não têm `permissoes_rev` →
       // sincroniza uma vez para popular o JWT no próximo refresh.
+      // Also re-sync if permissions are empty (stale JWT after RBAC migration).
       let permissoes = Array.isArray(meta.permissoes) ? meta.permissoes : [];
-      if (!meta.permissoes_rev) {
+      if (!meta.permissoes_rev || permissoes.length === 0) {
         try {
           permissoes = await this.syncUserPermissions(user.id);
         } catch (err) {
