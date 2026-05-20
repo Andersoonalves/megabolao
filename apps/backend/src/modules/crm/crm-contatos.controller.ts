@@ -32,6 +32,13 @@ export class CrmContatosController {
     return this.service.findAll(tenantId, busca, etapaId);
   }
 
+  @Get('lista-preview')
+  @RequerPermissoes('crm.ler')
+  @ApiOperation({ summary: 'Lista com última mensagem e contagem de não lidas' })
+  listaPreview(@TenantId() tenantId: string, @Query('busca') busca?: string) {
+    return this.service.findAllWithPreview(tenantId, busca);
+  }
+
   @Get(':celular')
   @RequerPermissoes('crm.ler')
   @ApiOperation({ summary: 'Detalhes do contato com cotas e bolões' })

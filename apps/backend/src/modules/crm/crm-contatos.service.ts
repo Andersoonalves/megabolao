@@ -37,6 +37,54 @@ export class CrmContatosService {
     return { etapas, contatos };
   }
 
+  async findAllWithPreview(tenantId: string, busca?: string) {
+    const contatos = await this.prisma.crmContato.findMany({
+      where: {
+        tenantId,
+        ...(busca && {
+          OR: [
+            { nome:    { contains: busca, mode: 'insensitive' } },
+            { celular: { contains: busca } },
+          ],
+        }),
+      },
+      include: { etapa: { select: { id: true, nome: true, cor: true } } },
+      orderBy: { atualizadoEm: 'desc' },
+      take: 100,
+    });
+
+    if (contatos.length === 0) return [];
+
+    const celulares = contatos.map(c => c.celular);
+
+    const [ultimasMensagens, naoLidasRaw] = await Promise.all([
+      this.prisma.$queryRaw<
+        Array<{ celular: string; conteudo: string; direcao: string; tipo: string; criado_em: Date }>
+      >`
+        SELECT DISTINCT ON (celular) celular, conteudo, direcao, tipo, criado_em
+        FROM crm_mensagens
+        WHERE tenant_id = ${tenantId}::uuid AND celular = ANY(${celulares})
+        ORDER BY celular, criado_em DESC
+      `,
+      this.prisma.$queryRaw<Array<{ celular: string; count: number }>>`
+        SELECT celular, COUNT(*)::int AS count
+        FROM crm_mensagens
+        WHERE tenant_id = ${tenantId}::uuid AND celular = ANY(${celulares})
+          AND direcao = 'IN' AND lida = false
+        GROUP BY celular
+      `,
+    ]);
+
+    const msgMap  = new Map(ultimasMensagens.map(m => [m.celular, m]));
+    const naoMap  = new Map(naoLidasRaw.map(n => [n.celular, Number(n.count)]));
+
+    return contatos.map(c => ({
+      ...c,
+      ultimaMensagem: msgMap.get(c.celular) ?? null,
+      naoLidas: naoMap.get(c.celular) ?? 0,
+    }));
+  }
+
   async findAll(tenantId: string, busca?: string, etapaId?: string) {
     return this.prisma.crmContato.findMany({
       where: {

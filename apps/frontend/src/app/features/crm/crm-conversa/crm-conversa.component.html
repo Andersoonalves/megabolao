@@ -1,210 +1,361 @@
-    <!-- Topbar -->
-    <div class="bg-white border-b border-slate-200 px-4 lg:px-6 py-3 flex items-center gap-3 sticky top-14 lg:top-0 z-10">
-      <nb-back-button />
-      <div class="min-w-0 flex-1">
-        @if (contato(); as c) {
-          <div class="font-display font-semibold text-[14px] truncate">{{ nomeDisplay(c) }}</div>
-          <div class="text-[12px] text-slate-400 font-mono">{{ c.celular }}</div>
+<!-- 3-col split: lista | thread | classificação -->
+<div class="flex h-[calc(100vh-56px)] overflow-hidden">
+
+  <!-- ══════════════ COL 1 — LISTA DE CONVERSAS ══════════════ -->
+  <aside class="hidden lg:flex w-[316px] flex-col border-r border-slate-200 bg-white flex-shrink-0">
+
+    <!-- Header lista -->
+    <div class="px-3.5 pt-3.5 pb-2.5 border-b border-slate-200">
+      <div class="flex items-center justify-between mb-2.5">
+        <span class="font-display font-semibold text-[14.5px]">Conversas</span>
+        <span class="bg-green-50 text-green-800 border border-green-200 rounded-full px-2 py-px text-[10.5px] font-bold">
+          {{ lista().length }}
+        </span>
+      </div>
+      <!-- Search -->
+      <div class="relative mb-2">
+        <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input [value]="busca()" (input)="busca.set($any($event.target).value)"
+               class="w-full pl-7 pr-3 py-1.5 text-[12.5px] border border-slate-200 rounded-lg focus:outline-none focus:border-[#1F4E79]"
+               placeholder="Buscar…" />
+      </div>
+      <!-- Filter chips -->
+      <div class="flex gap-1 flex-wrap">
+        @for (f of [{id:'all',label:'Todas'},{id:'nao',label:'Não lidas'},{id:'aguar',label:'Aguard. pagto'},{id:'sem',label:'Sem resposta'}]; track f.id) {
+          <button (click)="filtro.set($any(f.id))"
+                  class="px-2.5 py-1 rounded-full text-[11px] font-semibold transition-colors"
+                  [class]="filtro() === f.id ? 'bg-[#1F4E79] text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'">
+            {{ f.label }}
+          </button>
         }
       </div>
-      <a routerLink="/crm" class="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-sm font-semibold rounded-[10px] no-underline text-slate-700 transition-colors">
-        ← {{ 'crm.backKanban' | translate }}
-      </a>
     </div>
 
-    @if (loading()) {
-      <div class="flex items-center justify-center h-64 text-slate-400 text-sm">{{ 'common.loading' | translate }}</div>
-    } @else if (error() && !contato()) {
-      <div class="p-7 text-red-600">⚠ {{ error() }}</div>
-    } @else if (contato(); as c) {
-      <!-- Split layout: messages (flex-1) + detail panel -->
-      <div class="flex h-[calc(100vh-112px)] lg:h-[calc(100vh-56px)] overflow-hidden">
-
-        <!-- ── LEFT: Conversation ─────────────────────────────── -->
-        <div class="flex-1 flex flex-col min-w-0">
-
-          <!-- Messages area -->
-          <div #msgContainer class="flex-1 overflow-y-auto p-4 lg:p-6 flex flex-col gap-3 bg-slate-50">
-
-            @if (mensagens().length === 0) {
-              <div class="flex-1 flex items-center justify-center text-slate-400 text-sm">
-                {{ 'crm.noMessages' | translate }}
-              </div>
-            }
-
-            @for (m of mensagens(); track m.id) {
-              @if (m.direcao === 'NOTE') {
-                <!-- Nota interna -->
-                <div class="flex justify-center">
-                  <div class="max-w-[80%] bg-amber-50 border border-amber-100 rounded-xl px-4 py-2.5 text-[12.5px] text-amber-800">
-                    <div class="flex items-center gap-1.5 mb-1">
-                      <span class="text-[10px] font-semibold uppercase tracking-wide text-amber-600">📝 {{ 'crm.internalNote' | translate }}</span>
-                    </div>
-                    <p class="leading-relaxed whitespace-pre-wrap">{{ m.conteudo }}</p>
-                    <div class="text-[10.5px] text-amber-400 mt-1 text-right">{{ fmtHora(m.criadoEm) }}</div>
-                  </div>
-                </div>
-              } @else if (m.direcao === 'OUT') {
-                <!-- Enviada pelo admin -->
-                <div class="flex justify-end">
-                  <div class="max-w-[75%] bg-green-700 rounded-2xl rounded-br-sm px-4 py-2.5 text-white shadow-sm">
-                    <p class="text-[13.5px] leading-relaxed whitespace-pre-wrap">{{ m.conteudo }}</p>
-                    <div class="text-[10.5px] text-green-200 mt-1 text-right">{{ fmtHora(m.criadoEm) }}</div>
-                  </div>
-                </div>
-              } @else {
-                <!-- Recebida do participante -->
-                <div class="flex justify-start">
-                  <div class="max-w-[75%] bg-white border border-slate-200 rounded-2xl rounded-bl-sm px-4 py-2.5 shadow-sm">
-                    @if (m.tipo === 'image') {
-                      <img [src]="m.conteudo" class="rounded-lg max-w-full max-h-64 object-cover cursor-zoom-in" alt="imagem" (click)="abrirLightbox(m.conteudo)" />
-                    } @else if (m.tipo === 'audio') {
-                      <p class="text-[13px] text-slate-500 italic">🎤 Áudio recebido</p>
-                    } @else if (m.tipo === 'document') {
-                      <p class="text-[13px] text-slate-500 italic">📄 Documento recebido</p>
-                    } @else {
-                      <p class="text-[13.5px] leading-relaxed whitespace-pre-wrap text-slate-800">{{ m.conteudo }}</p>
-                    }
-                    <div class="text-[10.5px] text-slate-400 mt-1">{{ fmtHora(m.criadoEm) }}</div>
-                  </div>
-                </div>
+    <!-- Contact list -->
+    <div class="flex-1 overflow-y-auto min-h-0">
+      @for (c of listaFiltrada(); track c.id) {
+        @let isSel = c.celular === (contato()?.celular ?? celular());
+        <div (click)="selecionarContato(c.celular)"
+             class="flex gap-2.5 px-3.5 py-3 border-b border-slate-100 cursor-pointer transition-colors"
+             [class]="isSel ? 'bg-green-50 border-l-[3px] border-l-[#1F4E79]' : 'hover:bg-slate-50 border-l-[3px] border-l-transparent'">
+          <!-- Avatar -->
+          <div class="w-9 h-9 rounded-full flex items-center justify-center text-white text-[12px] font-bold flex-shrink-0"
+               [style.background]="avatarColor(c.celular)">
+            {{ iniciais(c) }}
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-1.5">
+              <span class="text-[12.5px] font-semibold flex-1 truncate">{{ nomeDisplay(c) }}</span>
+              @if (c.ultimaMensagem) {
+                <span class="text-[10px] text-slate-400 flex-shrink-0">{{ fmtHora(c.ultimaMensagem.criado_em) }}</span>
               }
-            }
-          </div>
-
-          @if (error()) {
-            <div class="px-4 py-2 bg-red-50 border-t border-red-200 text-sm text-red-700">⚠ {{ error() }}</div>
-          }
-
-          <!-- Input bar -->
-          <div class="bg-white border-t border-slate-200 p-3 flex flex-col gap-2">
-            <!-- Mode toggle -->
-            <div class="flex gap-1">
-              <button (click)="modoEnvio.set('OUT')"
-                      class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-colors"
-                      [class]="modoEnvio() === 'OUT' ? 'bg-green-100 text-green-800' : 'text-slate-400 hover:bg-slate-50'">
-                💬 {{ 'crm.modeWA' | translate }}
-              </button>
-              <button (click)="modoEnvio.set('NOTE')"
-                      class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-colors"
-                      [class]="modoEnvio() === 'NOTE' ? 'bg-amber-100 text-amber-800' : 'text-slate-400 hover:bg-slate-50'">
-                📝 {{ 'crm.modeNote' | translate }}
-              </button>
             </div>
-            <!-- Text + send -->
-            <div class="flex items-end gap-2">
-              <textarea [value]="texto()" (input)="texto.set($any($event.target).value)"
-                        (keydown)="onEnter($event)"
-                        rows="2"
-                        class="flex-1 px-3 py-2 border border-slate-200 rounded-xl text-sm resize-none focus:outline-none focus:border-green-700"
-                        [placeholder]="(modoEnvio() === 'OUT' ? ('crm.msgPh' | translate) : ('crm.notePh' | translate))"></textarea>
-              <button (click)="enviar()" [disabled]="!texto().trim() || sending()"
-                      class="px-4 py-2 bg-green-700 hover:bg-green-800 disabled:opacity-40 text-white font-semibold text-sm rounded-xl shadow-sm transition-colors h-[52px]">
-                {{ sending() ? '…' : '↑' }}
-              </button>
+            <div class="text-[11.5px] text-slate-400 mt-0.5 truncate">{{ previewConteudo(c.ultimaMensagem) }}</div>
+            <div class="flex items-center gap-1.5 mt-1.5">
+              @if (c.etapa) {
+                <span class="inline-flex items-center gap-1 px-1.5 py-px rounded text-[9.5px] font-semibold"
+                      [style.color]="c.etapa.cor"
+                      [style.background]="etapaColor(c.etapa.cor).bg"
+                      [style.border]="'1px solid ' + etapaColor(c.etapa.cor).bd">
+                  <span class="w-1.5 h-1.5 rounded-full flex-shrink-0" [style.background]="c.etapa.cor"></span>
+                  {{ c.etapa.nome }}
+                </span>
+              }
+              @if (c.naoLidas > 0) {
+                <span class="ml-auto bg-green-600 text-white rounded-full px-1.5 py-px text-[9.5px] font-bold">
+                  {{ c.naoLidas }}
+                </span>
+              }
             </div>
           </div>
         </div>
+      }
+      @if (listaFiltrada().length === 0 && !loadingLista()) {
+        <div class="p-6 text-center text-[12.5px] text-slate-400">Nenhuma conversa encontrada</div>
+      }
+    </div>
+  </aside>
 
-        <!-- ── RIGHT: Contact detail panel ───────────────────── -->
-        <div class="hidden lg:flex w-80 flex-col border-l border-slate-200 bg-white overflow-y-auto flex-shrink-0">
+  <!-- ══════════════ COL 2 — THREAD ══════════════ -->
+  @if (loading()) {
+    <div class="flex-1 flex items-center justify-center text-slate-400 text-sm" style="background:#e5ded4">
+      Carregando…
+    </div>
+  } @else if (error() && !contato()) {
+    <div class="flex-1 p-7 text-red-600" style="background:#e5ded4">⚠ {{ error() }}</div>
+  } @else if (contato(); as c) {
+    <div class="flex-1 flex flex-col min-w-0" style="background:#e5ded4">
 
-          <!-- Contact info -->
-          <div class="p-5 border-b border-slate-100">
-            <div class="flex items-start justify-between gap-2 mb-3">
-              <div>
-                <div class="font-display font-semibold text-[16px]">{{ nomeDisplay(c) }}</div>
-                <div class="text-[12px] text-slate-400 font-mono mt-0.5">{{ c.celular }}</div>
-              </div>
-              <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-bold text-[16px] flex-shrink-0">
-                {{ (nomeDisplay(c))[0]?.toUpperCase() }}
-              </div>
-            </div>
+      <!-- Chat header -->
+      <div class="flex items-center gap-3 px-4 py-2.5 bg-white border-b border-slate-200 flex-shrink-0">
+        <div class="lg:hidden"><nb-back-button /></div>
+        <div class="w-10 h-10 rounded-full flex items-center justify-center text-white text-[13px] font-bold flex-shrink-0"
+             [style.background]="avatarColor(c.celular)">
+          {{ iniciais(c) }}
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="text-[14px] font-semibold truncate">{{ nomeDisplay(c) }}</div>
+          <div class="font-mono text-[11.5px] text-slate-400">{{ c.celular }}</div>
+        </div>
+        @if (c.etapa) {
+          <span class="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold"
+                [style.color]="c.etapa.cor"
+                [style.background]="etapaColor(c.etapa.cor).bg"
+                [style.border]="'1px solid ' + etapaColor(c.etapa.cor).bd">
+            <span class="w-1.5 h-1.5 rounded-full" [style.background]="c.etapa.cor"></span>
+            {{ c.etapa.nome }}
+          </span>
+        }
+      </div>
 
-            <!-- Tags -->
-            @if (c.tags.length > 0) {
-              <div class="flex flex-wrap gap-1 mb-3">
-                @for (tag of c.tags; track tag) {
-                  <span class="px-2 py-0.5 bg-blue-50 text-blue-700 text-[11px] font-semibold rounded-full">{{ tag }}</span>
-                }
-              </div>
-            }
+      <!-- Messages -->
+      <div #msgContainer class="flex-1 overflow-y-auto min-h-0 px-[14%] py-4 flex flex-col gap-1.5"
+           style="background:#e5ded4;background-image:radial-gradient(circle at 50% 0%,rgba(0,0,0,.04) 0%,transparent 40%)">
 
-            <!-- Etapa selector -->
-            <div>
-              <label class="block text-[10.5px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">{{ 'crm.stageLabel' | translate }}</label>
-              <select [value]="c.etapaId ?? ''"
-                      (change)="moverEtapa($any($event.target).value)"
-                      class="w-full px-3 py-2 border border-slate-200 rounded-[8px] text-sm bg-white focus:outline-none focus:border-green-700">
-                <option value="">{{ 'crm.noStage' | translate }}</option>
-                @for (e of etapas(); track e.id) {
-                  <option [value]="e.id">{{ e.nome }}</option>
-                }
-              </select>
-            </div>
+        @if (mensagens().length === 0) {
+          <div class="flex-1 flex items-center justify-center text-slate-500 text-sm">
+            Nenhuma mensagem ainda.
+          </div>
+        }
+
+        @for (group of groupedMensagens(); track group.label) {
+          <!-- Date chip -->
+          <div class="flex justify-center my-2">
+            <span class="text-[11px] font-medium px-2.5 py-1 rounded-full shadow-sm"
+                  style="background:rgba(225,245,254,.92);color:#1f2c33">
+              {{ group.label }}
+            </span>
           </div>
 
-          <!-- Notes -->
-          @if (c.notas) {
-            <div class="p-5 border-b border-slate-100">
-              <div class="text-[10.5px] font-semibold text-slate-400 uppercase tracking-wide mb-2">{{ 'crm.notesLabel' | translate }}</div>
-              <p class="text-[12.5px] text-slate-600 leading-relaxed">{{ c.notas }}</p>
-            </div>
-          }
+          @for (m of group.msgs; track m.id) {
+            <!-- NOTE -->
+            @if (m.direcao === 'NOTE') {
+              <div class="flex justify-center">
+                <div class="max-w-[80%] bg-amber-50 border border-amber-100 rounded-xl px-4 py-2.5 text-[12.5px] text-amber-800 shadow-sm">
+                  <div class="text-[10px] font-bold uppercase tracking-wide text-amber-600 mb-1">📝 Nota interna</div>
+                  <p class="leading-relaxed whitespace-pre-wrap">{{ m.conteudo }}</p>
+                  <div class="text-[10.5px] text-amber-400 mt-1 text-right">{{ fmtHora(m.criadoEm) }}</div>
+                </div>
+              </div>
 
-          <!-- Bolões & Cotas -->
-          @if (c.participante?.cotas && c.participante!.cotas.length > 0) {
-            <div class="p-5">
-              <div class="text-[10.5px] font-semibold text-slate-400 uppercase tracking-wide mb-3">{{ 'crm.cotasLabel' | translate }}</div>
-              <div class="flex flex-col gap-3">
-                @for (cota of c.participante!.cotas; track cota.id) {
-                  <div class="bg-slate-50 rounded-xl p-3.5 border border-slate-200">
-                    <div class="flex items-start justify-between gap-2 mb-2">
-                      <div class="min-w-0">
-                        <div class="font-semibold text-[12.5px] truncate">{{ cota.bolao.nome }}</div>
-                        <div class="text-[11px] text-slate-400 font-mono">#{{ cota.numeroSequencial }}</div>
-                      </div>
-                      <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10.5px] font-semibold border flex-shrink-0"
-                            [class]="statusClass(cota.statusPagamento)">
-                        {{ cota.statusPagamento === 'PAGO' ? '✓ Pago' : 'Pendente' }}
-                      </span>
-                    </div>
-                    @if (cota.statusPagamento === 'PENDENTE') {
-                      <button (click)="pagarCota(cota.id)" [disabled]="pagandoId() === cota.id"
-                              class="w-full py-1.5 bg-green-700 hover:bg-green-800 disabled:opacity-50 text-white text-[12px] font-semibold rounded-lg transition-colors">
-                        {{ pagandoId() === cota.id ? ('common.saving' | translate) : ('crm.confirmPayBtn' | translate) }}
-                      </button>
-                    }
+            <!-- OUT -->
+            } @else if (m.direcao === 'OUT') {
+              <div class="flex justify-end">
+                <div class="max-w-[72%] px-3 pt-1.5 pb-1 shadow-sm"
+                     style="background:#dcf8c6;border:1px solid #c5e8ad;border-radius:12px 12px 4px 12px">
+                  <p class="text-[13px] leading-[1.4] whitespace-pre-wrap" style="color:#111b21">{{ m.conteudo }}</p>
+                  <div class="flex items-center justify-end gap-1 mt-0.5" style="font-size:10px;color:#667781">
+                    {{ fmtHora(m.criadoEm) }}
+                    <!-- double check -->
+                    <svg width="14" height="10" viewBox="0 0 16 11" fill="none">
+                      <path d="M11 1L6 9l-2-2" stroke="#53bdeb" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+                      <path d="M15 1l-5 8" stroke="#53bdeb" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
                   </div>
-                }
+                </div>
               </div>
-            </div>
-          } @else {
-            <div class="p-5 text-center text-[12.5px] text-slate-400">
-              {{ 'crm.noCotas' | translate }}
-            </div>
+
+            <!-- IN -->
+            } @else {
+              <div class="flex justify-start">
+                <div class="max-w-[72%] px-3 pt-1.5 pb-1 shadow-sm"
+                     style="background:#fff;border:1px solid rgba(0,0,0,.06);border-radius:12px 12px 12px 4px">
+                  @if (m.tipo === 'image') {
+                    <img [src]="m.conteudo" class="rounded-lg max-w-full max-h-56 object-cover cursor-zoom-in mb-1"
+                         alt="imagem" (click)="abrirLightbox(m.conteudo)" />
+                  } @else if (m.tipo === 'audio') {
+                    <p class="text-[13px] text-slate-500 italic">🎤 Áudio recebido</p>
+                  } @else if (m.tipo === 'document') {
+                    <p class="text-[13px] text-slate-500 italic">📄 Documento recebido</p>
+                  } @else {
+                    <p class="text-[13px] leading-[1.4] whitespace-pre-wrap" style="color:#111b21">{{ m.conteudo }}</p>
+                  }
+                  <div class="text-[10px] mt-0.5" style="color:#667781">{{ fmtHora(m.criadoEm) }}</div>
+                </div>
+              </div>
+            }
+          }
+        }
+      </div>
+
+      @if (error()) {
+        <div class="px-4 py-2 bg-red-50 border-t border-red-200 text-sm text-red-700 flex-shrink-0">⚠ {{ error() }}</div>
+      }
+
+      <!-- Composer -->
+      <div class="flex items-center gap-2 px-3.5 py-2.5 bg-white border-t border-slate-200 flex-shrink-0">
+        <!-- Mode: WA vs Note -->
+        <button (click)="modoEnvio.set(modoEnvio() === 'OUT' ? 'NOTE' : 'OUT')"
+                class="flex-shrink-0 p-1.5 rounded-lg transition-colors"
+                [class]="modoEnvio() === 'NOTE' ? 'bg-amber-100 text-amber-700' : 'text-slate-400 hover:bg-slate-100'"
+                [title]="modoEnvio() === 'NOTE' ? 'Nota interna' : 'Enviar por WhatsApp'">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            @if (modoEnvio() === 'NOTE') {
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            } @else {
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            }
+          </svg>
+        </button>
+        <!-- Input -->
+        <div class="flex-1 relative">
+          <textarea [value]="texto()" (input)="texto.set($any($event.target).value)"
+                    (keydown)="onEnter($event)"
+                    rows="1"
+                    class="w-full px-4 py-2 pr-16 border border-slate-200 rounded-full text-[13px] resize-none focus:outline-none focus:border-[#1F4E79] leading-relaxed"
+                    [placeholder]="modoEnvio() === 'NOTE' ? 'Nota interna…' : 'Mensagem…'"></textarea>
+          <span class="absolute right-4 top-1/2 -translate-y-1/2 text-[10.5px] text-slate-400 pointer-events-none">
+            / template
+          </span>
+        </div>
+        <!-- Send -->
+        <button (click)="enviar()" [disabled]="!texto().trim() || sending()"
+                class="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center bg-[#1F4E79] hover:bg-[#2E75B6] disabled:opacity-40 text-white transition-colors">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+  } @else {
+    <!-- Nenhum contato selecionado -->
+    <div class="flex-1 flex items-center justify-center text-slate-400 text-sm" style="background:#e5ded4">
+      Selecione uma conversa
+    </div>
+  }
+
+  <!-- ══════════════ COL 3 — CLASSIFICAÇÃO ══════════════ -->
+  @if (contato(); as c) {
+    <aside class="hidden lg:flex w-[332px] flex-col border-l border-slate-200 bg-white overflow-y-auto flex-shrink-0">
+
+      <!-- Contact info -->
+      <div class="px-4 pt-5 pb-4 border-b border-slate-100 text-center">
+        <div class="w-16 h-16 rounded-full flex items-center justify-center text-white text-xl font-bold mx-auto"
+             [style.background]="avatarColor(c.celular)">
+          {{ iniciais(c) }}
+        </div>
+        <div class="font-display font-semibold text-[16px] mt-2.5">{{ nomeDisplay(c) }}</div>
+        <div class="font-mono text-[11.5px] text-slate-400 mt-0.5">{{ c.celular }}</div>
+        <div class="flex justify-center gap-2 mt-3">
+          @if (c.participante) {
+            <a [routerLink]="['/participantes', c.participante.id]"
+               class="inline-flex items-center gap-1 px-3 py-1.5 border border-slate-200 rounded-lg text-[11.5px] font-semibold text-slate-600 hover:bg-slate-50 no-underline transition-colors">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              Ver cota
+            </a>
           }
         </div>
       </div>
-    }
 
-    <!-- Lightbox -->
-    @if (lightboxSrc()) {
-      <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/90"
-           (click)="fecharLightbox()">
-        <div class="relative max-w-[95vw] max-h-[95vh] flex flex-col items-center gap-3"
-             (click)="$event.stopPropagation()">
-          <img [src]="lightboxSrc()!" class="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl" alt="imagem" />
-          <div class="flex gap-3">
-            <button (click)="baixarImagem()"
-                    class="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-sm font-semibold rounded-xl transition-colors">
-              ↓ Baixar
+      <!-- Funil stages -->
+      <div class="px-4 py-3.5 border-b border-slate-100">
+        <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-2.5">Estágio do funil</div>
+        <div class="flex flex-col gap-1">
+          @for (e of etapas(); track e.id; let i = $index) {
+            @let isCurrent = e.id === c.etapaId;
+            @let isPast = etapaIsPast(c.etapaId, i);
+            <button (click)="moverEtapa(e.id)"
+                    class="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-left transition-colors font-[inherit] w-full"
+                    [style.background]="isCurrent ? etapaColor(e.cor).bg : 'transparent'"
+                    [style.border]="'1px solid ' + (isCurrent ? etapaColor(e.cor).bd : 'transparent')">
+              <span class="w-[18px] h-[18px] rounded-full flex items-center justify-center flex-shrink-0 text-white"
+                    [style.background]="(isCurrent || isPast) ? e.cor : '#e2e8f0'">
+                @if (isPast) {
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                } @else {
+                  <span class="text-[9.5px] font-bold" [style.color]="(isCurrent || isPast) ? '#fff' : '#94a3b8'">{{ i + 1 }}</span>
+                }
+              </span>
+              <span class="flex-1 text-[12.5px]"
+                    [style.fontWeight]="isCurrent ? 700 : 500"
+                    [style.color]="isCurrent ? e.cor : '#374151'">
+                {{ e.nome }}
+              </span>
+              @if (isCurrent) {
+                <span class="text-[9.5px] font-bold px-1.5 py-px rounded-full bg-white"
+                      [style.color]="e.cor"
+                      [style.border]="'1px solid ' + etapaColor(e.cor).bd">
+                  AGORA
+                </span>
+              }
             </button>
-            <button (click)="fecharLightbox()"
-                    class="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-sm font-semibold rounded-xl transition-colors">
-              ✕ Fechar
-            </button>
+          }
+        </div>
+        <!-- Confirmar pagamento -->
+        @if (cotaPendente(); as cota) {
+          <button (click)="pagarCota(cota.id)" [disabled]="pagandoId() === cota.id"
+                  class="w-full mt-2.5 py-2 flex items-center justify-center gap-1.5 bg-[#1F4E79] hover:bg-[#2E75B6] disabled:opacity-50 text-white text-[12px] font-semibold rounded-lg transition-colors">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            {{ pagandoId() === cota.id ? 'Confirmando…' : 'Confirmar pagamento → Pago' }}
+          </button>
+        }
+      </div>
+
+      <!-- Cotas -->
+      @if (c.participante?.cotas && c.participante!.cotas.length > 0) {
+        <div class="px-4 py-3.5 border-b border-slate-100">
+          <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-2.5">Cota reservada</div>
+          @for (cota of c.participante!.cotas; track cota.id) {
+            <div class="p-3 rounded-xl border border-dashed"
+                 [class]="cota.statusPagamento === 'PENDENTE' ? 'bg-amber-50 border-amber-300' : 'bg-green-50 border-green-200'">
+              <div class="flex justify-between items-center mb-1.5">
+                <span class="font-mono text-[13px] font-bold">#{{ cota.numeroSequencial }}</span>
+                <span class="text-[10.5px] font-bold px-2 py-px rounded-full"
+                      [class]="cota.statusPagamento === 'PAGO' ? 'bg-green-200 text-green-800' : 'bg-amber-200 text-amber-800'">
+                  {{ cota.statusPagamento === 'PAGO' ? '✓ Pago' : 'Pendente' }}
+                </span>
+              </div>
+              <div class="text-[11px] text-slate-500">{{ cota.bolao.nome }}</div>
+            </div>
+          }
+        </div>
+      }
+
+      <!-- Tags -->
+      @if (c.tags.length > 0) {
+        <div class="px-4 py-3.5 border-b border-slate-100">
+          <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-2.5">Etiquetas</div>
+          <div class="flex flex-wrap gap-1.5">
+            @for (tag of c.tags; track tag) {
+              <span class="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 text-[11px] font-semibold rounded-full">
+                {{ tag }}
+              </span>
+            }
           </div>
         </div>
+      }
+
+      <!-- Notas -->
+      @if (c.notas) {
+        <div class="px-4 py-3.5">
+          <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-2">Observações</div>
+          <p class="text-[12.5px] text-slate-600 leading-relaxed">{{ c.notas }}</p>
+        </div>
+      }
+
+    </aside>
+  }
+
+</div>
+
+<!-- Lightbox -->
+@if (lightboxSrc()) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/90"
+       (click)="fecharLightbox()">
+    <div class="relative max-w-[95vw] max-h-[95vh] flex flex-col items-center gap-3"
+         (click)="$event.stopPropagation()">
+      <img [src]="lightboxSrc()!" class="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl" alt="imagem" />
+      <div class="flex gap-3">
+        <button (click)="baixarImagem()"
+                class="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-sm font-semibold rounded-xl transition-colors">
+          ↓ Baixar
+        </button>
+        <button (click)="fecharLightbox()"
+                class="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-sm font-semibold rounded-xl transition-colors">
+          ✕ Fechar
+        </button>
       </div>
-    }
+    </div>
+  </div>
+}
