@@ -209,28 +209,46 @@ export class PortalService {
       throw new ForbiddenException('BOLAO_FORA_DO_PORTAL_DO_PARTICIPANTE');
     }
 
-    const cotas = await this.prisma.cota.findMany({
-      where: { tenantId, bolaoId, statusPagamento: 'PAGO' },
-      orderBy: [{ totalAcertosAcumulados: 'desc' }, { numeroSequencial: 'asc' }],
-      select: {
-        id: true,
-        nomeIdentificacao: true,
-        numeroSequencial: true,
-        totalAcertosAcumulados: true,
-        statusPagamento: true,
-        palpites: true,
-      },
-    });
+    // Busca cotas pagas com soma real de acertos da tabela acertos_sorteio
+    const [cotas, acertosPorCota] = await Promise.all([
+      this.prisma.cota.findMany({
+        where: { tenantId, bolaoId, statusPagamento: 'PAGO' },
+        select: {
+          id: true,
+          nomeIdentificacao: true,
+          numeroSequencial: true,
+          statusPagamento: true,
+          palpites: true,
+        },
+      }),
+      this.prisma.acertoSorteio.groupBy({
+        by: ['cotaId'],
+        where: { tenantId, bolaoId },
+        _sum: { acertos: true },
+      }),
+    ]);
+
+    const acertosMap = new Map(
+      acertosPorCota.map(a => [a.cotaId, a._sum.acertos ?? 0]),
+    );
 
     const maxPalpites = cotas[0]?.palpites.length ?? 10;
 
-    // Posição com tie-breaking: cotas empatadas recebem a mesma posição (competition ranking)
+    // Ordena: mais acertos primeiro; empate por numeroSequencial
+    const sorted = cotas
+      .map(c => ({ ...c, totalAcertosAcumulados: acertosMap.get(c.id) ?? 0 }))
+      .sort((a, b) =>
+        b.totalAcertosAcumulados - a.totalAcertosAcumulados ||
+        a.numeroSequencial - b.numeroSequencial,
+      );
+
+    // Posição competition ranking (empatados ficam na mesma posição)
     const result: PortalRankingItem[] = [];
-    for (let i = 0; i < cotas.length; i++) {
-      const c = cotas[i];
+    for (let i = 0; i < sorted.length; i++) {
+      const c = sorted[i];
       const posicao = i === 0
         ? 1
-        : c.totalAcertosAcumulados === cotas[i - 1].totalAcertosAcumulados
+        : c.totalAcertosAcumulados === sorted[i - 1].totalAcertosAcumulados
           ? result[i - 1].posicao
           : i + 1;
       result.push({

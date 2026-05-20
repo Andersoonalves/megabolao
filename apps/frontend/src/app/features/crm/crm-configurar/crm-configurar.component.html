@@ -54,7 +54,7 @@
               @if (etapa.isSistema) {
                 <span class="text-[10.5px] text-slate-400 font-semibold px-2 py-0.5 bg-slate-100 rounded-full flex-shrink-0">sistema</span>
               } @else {
-                <button (click)="removerEtapa(etapa.id)"
+                <button (click)="pedirConfirmacaoRemover(etapa.id)"
                         class="opacity-0 group-hover:opacity-100 w-7 h-7 flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all text-sm flex-shrink-0">
                   ✕
                 </button>
@@ -87,3 +87,13 @@
         </div>
       }
     </div>
+
+    <nb-confirm-modal
+      [open]="confirmOpen()"
+      title="Remover etapa"
+      message="Esta etapa será excluída permanentemente. Contatos nela serão movidos para 'Sem etapa'."
+      confirmLabel="Remover"
+      cancelLabel="Cancelar"
+      variant="danger"
+      (confirmed)="removerEtapa()"
+      (cancelled)="cancelarRemover()" />

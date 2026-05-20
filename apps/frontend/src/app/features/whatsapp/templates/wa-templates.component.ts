@@ -8,6 +8,7 @@ import { firstValueFrom } from 'rxjs';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { ApiService } from '../../../core/services/api.service';
 import { BackButtonComponent } from '../../../shared/components/back-button/back-button.component';
+import { ConfirmModalComponent } from '../../../shared/components/confirm-modal/confirm-modal.component';
 
 interface Template {
   id: string;
@@ -92,7 +93,7 @@ function escapeRe(s: string): string {
 @Component({
   selector: 'nb-wa-templates',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, RouterLink, BackButtonComponent, TranslatePipe],
+  imports: [FormsModule, RouterLink, BackButtonComponent, TranslatePipe, ConfirmModalComponent],
   templateUrl: './wa-templates.component.html',
 })
 export class WaTemplatesComponent implements OnInit {
@@ -118,7 +119,9 @@ export class WaTemplatesComponent implements OnInit {
   fAtivo = signal(true);
   salvando = signal(false);
   editorError = signal('');
-  copiado = signal(false);
+  copiado          = signal(false);
+  confirmOpen      = signal(false);
+  confirmDeleteId  = signal<string | null>(null);
   editorTab = signal<'edit' | 'md'>('edit');
 
   snapshot = signal({ nome: '', conteudo: '', tipo: 'MANUAL', ativo: true });
@@ -366,8 +369,21 @@ export class WaTemplatesComponent implements OnInit {
     }
   }
 
-  async excluir(id: string): Promise<void> {
-    if (!globalThis.confirm(this.translate.instant('waTpl.confirmDelete'))) return;
+  pedirConfirmacaoExcluir(id: string): void {
+    this.confirmDeleteId.set(id);
+    this.confirmOpen.set(true);
+  }
+
+  cancelarExcluir(): void {
+    this.confirmOpen.set(false);
+    this.confirmDeleteId.set(null);
+  }
+
+  async excluir(): Promise<void> {
+    const id = this.confirmDeleteId();
+    this.confirmOpen.set(false);
+    this.confirmDeleteId.set(null);
+    if (!id) return;
     try {
       await firstValueFrom(this.api.delete(`/whatsapp/templates/${id}`));
       const wasSelected = this.selectedId() === id;

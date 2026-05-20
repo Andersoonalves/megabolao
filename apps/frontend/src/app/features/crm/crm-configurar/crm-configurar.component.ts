@@ -6,6 +6,7 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../../core/services/api.service';
 import { BackButtonComponent } from '../../../shared/components/back-button/back-button.component';
+import { ConfirmModalComponent } from '../../../shared/components/confirm-modal/confirm-modal.component';
 
 interface Etapa { id: string; nome: string; cor: string; ordem: number; isSistema: boolean; }
 
@@ -14,7 +15,7 @@ const CORES_PRESET = ['#64748b','#3b82f6','#f59e0b','#ef4444','#22c55e','#8b5cf6
 @Component({
   selector: 'nb-crm-configurar',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [BackButtonComponent, RouterLink, FormsModule, DragDropModule, TranslatePipe],
+  imports: [BackButtonComponent, RouterLink, FormsModule, DragDropModule, TranslatePipe, ConfirmModalComponent],
   templateUrl: './crm-configurar.component.html',
 })
 export class CrmConfigurarComponent implements OnInit {
@@ -29,7 +30,9 @@ export class CrmConfigurarComponent implements OnInit {
 
   novoNome  = '';
   novaCor   = '#3b82f6';
-  adicionando = signal(false);
+  adicionando      = signal(false);
+  confirmOpen      = signal(false);
+  confirmEtapaId   = signal<string | null>(null);
 
   readonly coresPreset = CORES_PRESET;
 
@@ -90,8 +93,21 @@ export class CrmConfigurarComponent implements OnInit {
     } catch { /* inline error handled elsewhere */ }
   }
 
-  async removerEtapa(id: string): Promise<void> {
-    if (!confirm(this.translate.instant('crm.deleteEtapaConfirm'))) return;
+  pedirConfirmacaoRemover(id: string): void {
+    this.confirmEtapaId.set(id);
+    this.confirmOpen.set(true);
+  }
+
+  cancelarRemover(): void {
+    this.confirmOpen.set(false);
+    this.confirmEtapaId.set(null);
+  }
+
+  async removerEtapa(): Promise<void> {
+    const id = this.confirmEtapaId();
+    this.confirmOpen.set(false);
+    this.confirmEtapaId.set(null);
+    if (!id) return;
     try {
       await firstValueFrom(this.api.delete(`/crm/etapas/${id}`));
       this.etapas.update(arr => arr.filter(e => e.id !== id));

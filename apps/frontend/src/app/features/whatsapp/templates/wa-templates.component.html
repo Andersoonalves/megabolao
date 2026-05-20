@@ -107,7 +107,7 @@
                     <span class="text-slate-400">{{ 'waTpl.shortManual' | translate }}</span>
                   </div>
                 </button>
-                <button type="button" (click)="excluir(t.id)"
+                <button type="button" (click)="pedirConfirmacaoExcluir(t.id)"
                         class="w-9 shrink-0 border-0 text-red-500 hover:bg-red-50 text-sm bg-white/80 cursor-pointer"
                         [attr.title]="'common.delete' | translate">✕</button>
               </div>
@@ -140,7 +140,7 @@
                     <span class="text-green-700 font-medium">{{ 'waTpl.shortAuto' | translate }}</span>
                   </div>
                 </button>
-                <button type="button" (click)="excluir(t.id)"
+                <button type="button" (click)="pedirConfirmacaoExcluir(t.id)"
                         class="w-9 shrink-0 border-0 text-red-500 hover:bg-red-50 text-sm bg-white/80 cursor-pointer"
                         [attr.title]="'common.delete' | translate">✕</button>
               </div>
@@ -410,3 +410,13 @@
     {{ 'waTpl.inserted' | translate }}
   </div>
 }
+
+<nb-confirm-modal
+  [open]="confirmOpen()"
+  title="Excluir template"
+  message="O template será removido permanentemente e não poderá ser recuperado."
+  confirmLabel="Excluir"
+  cancelLabel="Cancelar"
+  variant="danger"
+  (confirmed)="excluir()"
+  (cancelled)="cancelarExcluir()" />

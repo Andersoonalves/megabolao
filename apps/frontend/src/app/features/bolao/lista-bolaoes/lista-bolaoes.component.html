@@ -299,7 +299,6 @@
               <table class="w-full text-left text-[13px] min-w-[880px]">
                 <thead class="border-b border-slate-200 bg-slate-50/90 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                   <tr>
-                    <th class="w-14 px-3 py-3"></th>
                     <th class="px-3 py-3">{{ 'listaBoloes.thPool' | translate }}</th>
                     <th class="px-3 py-3">{{ 'listaBoloes.thStatus' | translate }}</th>
                     <th class="px-3 py-3 text-right">{{ 'listaBoloes.thQuotas' | translate }}</th>
@@ -312,13 +311,6 @@
                 <tbody>
                   @for (b of boloesOrdenados(); track b.id) {
                     <tr class="border-b border-slate-100 hover:bg-slate-50/80">
-                      <td class="px-3 py-3">
-                        <div class="w-9 h-9 rounded-lg flex items-center justify-center font-display font-bold text-[11px] border"
-                             [class.bg-slate-100]="b.status === 'FINALIZADO'"
-                             [class.text-slate-500]="b.status === 'FINALIZADO'"
-                             [class.bg-green-50]="b.status !== 'FINALIZADO'"
-                             [class.text-green-800]="b.status !== 'FINALIZADO'">{{ sorteiosReg(b) }}</div>
-                      </td>
                       <td class="px-3 py-3 max-w-[220px]">
                         <div class="font-semibold text-slate-900 truncate">{{ b.nome }}</div>
                         <div class="text-[11.5px] text-slate-500 truncate">{{ fmtDate(b.dataInicio) }} · {{ brl(b.valorCota) }}</div>

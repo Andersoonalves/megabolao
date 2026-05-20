@@ -21,84 +21,86 @@
       </div>
     </div>
 
-    <div class="px-4 py-5 flex flex-col gap-6">
-      @if (loading()) {
+    @if (loading()) {
+      <div class="px-4 py-5 flex flex-col gap-4">
+        <div class="h-10 bg-slate-100 rounded-xl animate-pulse"></div>
         <div class="h-40 bg-slate-100 rounded-2xl animate-pulse"></div>
         <div class="h-48 bg-slate-100 rounded-2xl animate-pulse"></div>
-      } @else if (notFound()) {
+      </div>
+    } @else if (notFound()) {
+      <div class="px-4 py-5">
         <div class="bg-white rounded-2xl p-6 text-center shadow-sm border border-slate-100">
           <p class="text-slate-600 text-sm">{{ 'portalBolaoDetalhe.notFound' | translate }}</p>
           <a routerLink="/portal/cotas" class="inline-block mt-4 min-h-12 px-5 py-3 bg-green-700 text-white font-semibold rounded-[10px] no-underline text-sm">
             {{ 'portalBolaoDetalhe.back' | translate }}
           </a>
         </div>
-      } @else if (error()) {
-        <div class="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700">
-          {{ error() }}
-        </div>
-      } @else if (bolao()) {
-        <!-- Compartilhar: link abre WhatsApp com o organizador -->
-        <section class="bg-white rounded-2xl p-4 shadow-sm border border-green-100">
-          <div class="flex items-start gap-3">
-            <span class="text-2xl leading-none shrink-0" aria-hidden="true">💬</span>
-            <div class="min-w-0 flex-1">
-              <h2 class="text-[13px] font-semibold text-slate-900 mb-1">
-                {{ 'portalBolaoDetalhe.shareTitle' | translate }}
-              </h2>
-              <p class="text-[12.5px] text-slate-600 leading-relaxed">
-                {{ 'portalBolaoDetalhe.shareHint' | translate }}
-              </p>
-              @if (bolao()!.linkWhatsappOrganizador) {
-                <div class="flex flex-col sm:flex-row gap-2.5 mt-3">
-                  <button
-                    type="button"
-                    (click)="copyWhatsappLink()"
-                    class="min-h-12 px-4 py-3 rounded-[10px] bg-green-700 hover:bg-green-800 text-white text-sm font-semibold transition-colors"
-                  >
-                    {{ (shareCopied() ? 'portalBolaoDetalhe.shareCopied' : 'portalBolaoDetalhe.copyLink') | translate }}
-                  </button>
-                  <button
-                    type="button"
-                    (click)="openWhatsapp()"
-                    class="min-h-12 px-4 py-3 rounded-[10px] bg-white border-2 border-green-800/25 text-green-800 text-sm font-semibold hover:bg-green-50/80 transition-colors"
-                  >
-                    {{ 'portalBolaoDetalhe.openWhatsapp' | translate }}
-                  </button>
-                </div>
-                <p class="text-[10.5px] text-slate-400 mt-2.5 break-all leading-snug">
-                  {{ bolao()!.linkWhatsappOrganizador }}
-                </p>
-              } @else {
-                <p class="text-[12.5px] text-amber-900 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 mt-3">
-                  {{ 'portalBolaoDetalhe.shareUnavailable' | translate }}
-                </p>
-              }
-            </div>
-          </div>
-        </section>
+      </div>
+    } @else if (error()) {
+      <div class="px-4 py-5">
+        <div class="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700">{{ error() }}</div>
+      </div>
+    } @else if (bolao()) {
 
-        <!-- Minhas cotas -->
-        <section>
-          <h2 class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-3 px-0.5">
-            {{ 'portalBolaoDetalhe.sectionQuotas' | translate }}
-          </h2>
+      <!-- ── TABS BAR ─────────────────────────────────────────────────────── -->
+      <div class="flex border-b border-slate-200 bg-white sticky top-0 z-10 px-1">
+        @for (tab of [
+          { id: 'cotas',    label: 'portalBolaoDetalhe.tabCotas' },
+          { id: 'ranking',  label: 'portalBolaoDetalhe.tabRanking' },
+          { id: 'sorteios', label: 'portalBolaoDetalhe.tabSorteios' }
+        ]; track tab.id) {
+          <button
+            type="button"
+            class="flex-1 py-3.5 text-[13px] font-medium border-b-2 transition-colors bg-transparent border-0 cursor-pointer"
+            [class.font-semibold]="activeTab() === tab.id"
+            [class.text-green-700]="activeTab() === tab.id"
+            [class.border-green-700]="activeTab() === tab.id"
+            [class.text-slate-400]="activeTab() !== tab.id"
+            [class.border-transparent]="activeTab() !== tab.id"
+            (click)="activeTab.set($any(tab.id))"
+          >
+            {{ tab.label | translate }}
+          </button>
+        }
+      </div>
+
+      <!-- ── TAB CONTENT ─────────────────────────────────────────────────── -->
+      <div class="px-4 py-5 flex flex-col gap-4">
+
+        <!-- TAB: Cotas -->
+        @if (activeTab() === 'cotas') {
+          <!-- WhatsApp organizador (compacto) -->
+          @if (bolao()!.linkWhatsappOrganizador) {
+            <div class="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-slate-200 bg-white">
+              <span class="text-base leading-none shrink-0" aria-hidden="true">💬</span>
+              <span class="text-[12.5px] text-slate-500 flex-1 leading-snug">
+                {{ 'portalBolaoDetalhe.shareTitle' | translate }}
+              </span>
+              <div class="flex gap-2 flex-shrink-0">
+                <button type="button" (click)="copyWhatsappLink()"
+                  class="h-8 px-3 rounded-lg text-[12px] font-semibold text-green-700 border border-green-200 bg-green-50 hover:bg-green-100 transition-colors">
+                  {{ shareCopied() ? '✓' : ('portalBolaoDetalhe.copyLink' | translate) }}
+                </button>
+                <button type="button" (click)="openWhatsapp()"
+                  class="h-8 px-3 rounded-lg text-[12px] font-semibold text-white bg-green-700 hover:bg-green-800 transition-colors">
+                  {{ 'portalBolaoDetalhe.openWhatsapp' | translate }}
+                </button>
+              </div>
+            </div>
+          }
+
+          <!-- Minhas cotas -->
           @if (bolao()!.cotas.length === 0) {
             <p class="text-slate-500 text-sm">{{ 'portalBolaoDetalhe.emptyQuotas' | translate }}</p>
           } @else {
             <div class="flex flex-col gap-3">
               @for (cota of bolao()!.cotas; track cota.id) {
-                <div
-                  class="bg-white rounded-2xl overflow-hidden shadow-sm border border-slate-100"
-                  [class]="cota.statusResultado === 'PREMIADO' ? 'border-amber-200 shadow-amber-50' : ''"
-                >
-                  <div
-                    class="px-4 pt-4 pb-3 border-b"
-                    [style]="
-                      cota.statusResultado === 'PREMIADO'
-                        ? 'background: linear-gradient(135deg, #fffbeb, #fff); border-color: #fde68a'
-                        : 'border-color: #f1f5f9'
-                    "
-                  >
+                <div class="bg-white rounded-2xl overflow-hidden shadow-sm border border-slate-100"
+                     [class]="cota.statusResultado === 'PREMIADO' ? 'border-amber-200 shadow-amber-50' : ''">
+                  <div class="px-4 pt-4 pb-3 border-b"
+                       [style]="cota.statusResultado === 'PREMIADO'
+                         ? 'background: linear-gradient(135deg, #fffbeb, #fff); border-color: #fde68a'
+                         : 'border-color: #f1f5f9'">
                     <div class="flex items-start justify-between gap-2">
                       <div>
                         <div class="font-display font-semibold text-[14.5px]">{{ bolao()!.nome }}</div>
@@ -106,10 +108,8 @@
                           {{ 'portalCotas.quotaNum' | translate:{ n: cota.numeroSequencial } }}
                         </div>
                       </div>
-                      <span
-                        class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-semibold tracking-wide uppercase border flex-shrink-0 mt-0.5"
-                        [class]="resultadoBadgeClass(cota.statusResultado)"
-                      >
+                      <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-semibold tracking-wide uppercase border flex-shrink-0 mt-0.5"
+                            [class]="resultadoBadgeClass(cota.statusResultado)">
                         {{ ('portalCotas.badge.' + cota.statusResultado) | translate }}
                       </span>
                     </div>
@@ -124,12 +124,8 @@
                     </div>
                     <div class="flex flex-wrap gap-1.5">
                       @for (n of cota.palpites; track n) {
-                        <span
-                          class="w-8 h-8 rounded-full flex items-center justify-center font-mono font-semibold text-[11.5px] border transition-all"
-                          [class]="bolaClass(n, allDrawn())"
-                        >
-                          {{ pad(n) }}
-                        </span>
+                        <span class="w-8 h-8 rounded-full flex items-center justify-center font-mono font-semibold text-[11.5px] border transition-all"
+                              [class]="bolaClass(n, allDrawn())">{{ pad(n) }}</span>
                       }
                     </div>
                     @if (allDrawn().length > 0) {
@@ -150,15 +146,13 @@
                       <div class="flex-1 px-4 py-3 border-r border-slate-100">
                         <div class="text-[10.5px] text-slate-400">{{ 'portalCotas.accHits' | translate }}</div>
                         <div class="font-mono font-bold text-[15px] mt-0.5">
-                          {{ cota.totalAcertosAcumulados }}<span class="text-slate-300 font-normal">/{{ cota.palpites.length }}</span>
+                          {{ acertosAcumulados(cota) }}<span class="text-slate-300 font-normal">/{{ cota.palpites.length }}</span>
                         </div>
                       </div>
                       <div class="flex-1 px-4 py-3 border-r border-slate-100">
                         <div class="text-[10.5px] text-slate-400">{{ 'portalCotas.payment' | translate }}</div>
-                        <div
-                          class="text-[12px] font-semibold mt-0.5"
-                          [class]="cota.statusPagamento === 'PAGO' ? 'text-green-700' : 'text-amber-600'"
-                        >
+                        <div class="text-[12px] font-semibold mt-0.5"
+                             [class]="cota.statusPagamento === 'PAGO' ? 'text-green-700' : 'text-amber-600'">
                           {{ ('portalCotas.payStatus.' + cota.statusPagamento) | translate }}
                         </div>
                       </div>
@@ -172,85 +166,119 @@
               }
             </div>
           }
-        </section>
+        }
 
-        <!-- Ranking deste bolão -->
-        <section>
-          <h2 class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-3 px-0.5">
-            {{ 'portalBolaoDetalhe.sectionRanking' | translate }}
-          </h2>
+        <!-- TAB: Ranking -->
+        @if (activeTab() === 'ranking') {
           @if (rankingError()) {
             <div class="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-700">{{ rankingError() }}</div>
-          } @else if (ranking().length === 0) {
-            <div class="text-center py-8 text-slate-400 text-sm bg-white rounded-2xl border border-slate-100">
-              {{ 'portalRanking.empty' | translate }}
-            </div>
           } @else {
-            <div class="bg-white rounded-2xl overflow-hidden shadow-sm border border-slate-100">
-              @for (r of ranking(); track r.cotaId) {
-                <div
-                  class="flex items-center gap-3 px-4 py-3.5 border-b border-slate-100 last:border-0"
-                  [class]="rankingRowClass(r)"
-                >
-                  <div
-                    class="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-[12px] flex-shrink-0"
-                    [class]="
-                      r.posicao === 1
-                        ? 'bg-amber-400 text-white'
-                        : r.posicao <= 3
-                          ? 'bg-amber-100 text-amber-700'
-                          : 'bg-slate-100 text-slate-400'
-                    "
-                  >
-                    {{ r.posicao }}
-                  </div>
-                  <div class="flex-1 min-w-0">
-                    <div class="font-semibold text-[13.5px] truncate">{{ r.nomeIdentificacao }}</div>
-                    <div class="text-[11px] text-slate-400 font-mono">
-                      {{ 'portalRanking.quotaNum' | translate:{ n: r.numeroSequencial } }}
+            <!-- Minhas cotas (sempre visíveis no topo) -->
+            @if (minhasCotasRanking().length > 0) {
+              <div class="flex flex-col gap-2">
+                @for (mc of minhasCotasRanking(); track mc.cota.id) {
+                  <div class="flex items-center gap-3 px-4 py-3.5 rounded-2xl border border-green-200 bg-green-50/60 shadow-sm">
+                    <div class="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-[12px] flex-shrink-0"
+                         [class]="mc.posicao === 1 ? 'bg-amber-400 text-white'
+                                  : mc.posicao && mc.posicao <= 3 ? 'bg-amber-100 text-amber-700'
+                                  : 'bg-green-700 text-white'">
+                      {{ mc.posicao ?? '—' }}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <div class="text-[10px] font-bold tracking-widest uppercase text-green-700 mb-0.5">Minha cota</div>
+                      <div class="text-[11px] text-slate-400 font-mono">
+                        {{ 'portalRanking.quotaNum' | translate:{ n: mc.cota.numeroSequencial } }}
+                      </div>
+                    </div>
+                    <div class="font-mono font-bold text-[15px] tabular flex-shrink-0 text-green-700">
+                      {{ mc.acertos }}<span class="text-green-300 text-[11px] font-normal">/{{ mc.maxPalpites }}</span>
                     </div>
                   </div>
-                  <div class="text-right flex-shrink-0">
-                    <div class="font-mono font-bold text-[15px] tabular">
-                      {{ r.totalAcertosAcumulados }}<span class="text-slate-300 text-[11px] font-normal">/{{ r.maxPalpites }}</span>
-                    </div>
-                  </div>
-                </div>
-              }
-            </div>
-          }
-        </section>
+                }
+              </div>
+            }
 
-        <!-- Números sorteados -->
-        <section>
-          <h2 class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-3 px-0.5">
-            {{ 'portalBolaoDetalhe.sectionDraws' | translate }}
-          </h2>
+            <!-- Lista completa do ranking -->
+            @if (ranking().length === 0) {
+              <div class="text-center py-12 text-slate-400 text-sm bg-white rounded-2xl border border-slate-100">
+                {{ 'portalRanking.empty' | translate }}
+              </div>
+            } @else {
+              <div class="bg-white rounded-2xl overflow-hidden shadow-sm border border-slate-100">
+                @for (r of ranking(); track r.cotaId) {
+                  <div class="flex items-center gap-3 px-4 py-3.5 border-b border-slate-100 last:border-0"
+                       [class]="rankingRowClass(r)">
+                    <div class="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-[12px] flex-shrink-0"
+                         [class]="r.posicao === 1 ? 'bg-amber-400 text-white'
+                                  : r.posicao <= 3 ? 'bg-amber-100 text-amber-700'
+                                  : 'bg-slate-100 text-slate-400'">
+                      {{ r.posicao }}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <div class="font-semibold text-[13.5px] truncate">{{ r.nomeIdentificacao }}</div>
+                      <div class="text-[11px] text-slate-400 font-mono">
+                        {{ 'portalRanking.quotaNum' | translate:{ n: r.numeroSequencial } }}
+                      </div>
+                    </div>
+                    <div class="font-mono font-bold text-[15px] tabular flex-shrink-0">
+                      {{ acertosRanking(r) }}<span class="text-slate-300 text-[11px] font-normal">/{{ r.maxPalpites }}</span>
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+          }
+        }
+
+        <!-- TAB: Sorteios -->
+        @if (activeTab() === 'sorteios') {
           @if (sorteiosProcessados().length === 0) {
-            <div class="text-center py-8 text-slate-400 text-sm bg-white rounded-2xl border border-slate-100">
+            <div class="text-center py-12 text-slate-400 text-sm bg-white rounded-2xl border border-slate-100">
               {{ 'portalBolaoDetalhe.emptyDraws' | translate }}
             </div>
           } @else {
-            <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 divide-y divide-slate-100">
-              @for (s of sorteiosProcessados(); track s.id) {
-                <div class="flex flex-col sm:flex-row sm:items-start gap-3 py-3 first:pt-0 last:pb-0">
-                  <div class="flex-shrink-0 text-center sm:text-left sm:min-w-[88px]">
-                    <div class="font-mono font-bold text-[13px]">#{{ s.numeroConcurso }}</div>
-                    <div class="text-[10px] text-slate-400">{{ fmtDate(s.dataSorteio) }}</div>
+            <div class="flex flex-col gap-2.5">
+              @for (s of sorteiosProcessados(); track s.id; let i = $index) {
+                <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                  <!-- Header sorteio -->
+                  <div class="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+                    <div>
+                      <div class="font-semibold text-[13px]">
+                        Sorteio {{ sorteiosProcessados().length - i }} · Concurso #{{ s.numeroConcurso }}
+                      </div>
+                      <div class="text-[11px] text-slate-400 mt-0.5">{{ fmtDate(s.dataSorteio) }}</div>
+                    </div>
+                    <span class="text-green-700 text-lg leading-none">✓</span>
                   </div>
-                  <div class="flex flex-wrap gap-1.5">
+                  <!-- Bolas sorteadas -->
+                  <div class="flex gap-1.5 px-4 py-3">
                     @for (n of s.bolasSorteadas; track n) {
-                      <span
-                        class="w-8 h-8 sm:w-7 sm:h-7 rounded-full flex items-center justify-center font-mono font-semibold text-[11px] sm:text-[10.5px] bg-green-700 text-white"
-                      >
+                      <span class="w-9 h-9 rounded-[9px] flex items-center justify-center font-mono font-bold text-[12px] bg-green-700 text-white flex-shrink-0">
                         {{ pad(n) }}
                       </span>
                     }
                   </div>
+                  <!-- Acertos por cota -->
+                  @if (bolao()!.cotas.length > 0) {
+                    <div class="border-t border-dashed border-slate-100 px-4 py-2.5 flex flex-col gap-1.5">
+                      @for (cota of bolao()!.cotas; track cota.id) {
+                        @let hits = acertosNoSorteio(cota.palpites, s.bolasSorteadas);
+                        <div class="flex justify-between text-[12px]">
+                          <span class="text-slate-400">
+                            {{ 'portalCotas.quotaNum' | translate:{ n: cota.numeroSequencial } }}
+                          </span>
+                          <span class="font-semibold" [class]="hits > 0 ? 'text-green-700' : 'text-slate-300'">
+                            {{ hits > 0 ? '+' + hits + (hits === 1 ? ' acerto' : ' acertos') : '0 acertos' }}
+                          </span>
+                        </div>
+                      }
+                    </div>
+                  }
                 </div>
               }
             </div>
           }
-        </section>
-      }
-    </div>
+        }
+
+      </div>
+    }

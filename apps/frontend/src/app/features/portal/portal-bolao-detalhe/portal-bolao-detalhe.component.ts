@@ -31,6 +31,7 @@ export class PortalBolaoDetalheComponent implements OnInit {
   readonly notFound = signal(false);
   readonly rankingError = signal('');
   readonly shareCopied = signal(false);
+  readonly activeTab   = signal<'cotas' | 'ranking' | 'sorteios'>('cotas');
   private copyFeedbackTimer: ReturnType<typeof setTimeout> | null = null;
 
   readonly allDrawn = computed(() =>
@@ -44,6 +45,30 @@ export class PortalBolaoDetalheComponent implements OnInit {
   });
 
   private readonly minhaCotaIds = computed(() => new Set(this.bolao()?.cotas.map(c => c.id) ?? []));
+
+  /** Acertos client-side de uma cota própria (pela lista de palpites). */
+  acertosDaCota(cotaId: string): number {
+    const cota = this.bolao()?.cotas.find(c => c.id === cotaId);
+    if (!cota) return 0;
+    return this.acertosAcumulados(cota);
+  }
+
+  /** Retorna o acertos correto: client-side p/ cotas próprias, backend p/ outras. */
+  acertosRanking(r: PortalRankingItem): number {
+    return this.minhaCotaIds().has(r.cotaId)
+      ? this.acertosDaCota(r.cotaId)
+      : r.totalAcertosAcumulados;
+  }
+
+  /** Cotas próprias com posição e acertos calculados, para exibir no topo do ranking. */
+  minhasCotasRanking = computed(() => {
+    const cotas = this.bolao()?.cotas ?? [];
+    return cotas.map(c => {
+      const acertos = this.acertosAcumulados(c);
+      const rankItem = this.ranking().find(r => r.cotaId === c.id);
+      return { cota: c, acertos, posicao: rankItem?.posicao ?? null, maxPalpites: c.palpites.length };
+    });
+  });
 
   ngOnInit(): void {
     this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(pm => {
@@ -91,6 +116,20 @@ export class PortalBolaoDetalheComponent implements OnInit {
 
   pad(n: number): string {
     return String(n).padStart(2, '0');
+  }
+
+  /** Acertos de uma cota em um sorteio específico. */
+  acertosNoSorteio(palpites: number[], bolasSorteadas: number[]): number {
+    const set = new Set(bolasSorteadas);
+    return palpites.filter(n => set.has(n)).length;
+  }
+
+  /** Acertos acumulados calculados client-side: soma de hits por sorteio. */
+  acertosAcumulados(cota: { palpites: number[] }): number {
+    return this.sorteiosProcessados().reduce((sum, s) => {
+      const set = new Set(s.bolasSorteadas);
+      return sum + cota.palpites.filter(n => set.has(n)).length;
+    }, 0);
   }
 
   bolaClass(n: number, allDrawn: number[]): string {

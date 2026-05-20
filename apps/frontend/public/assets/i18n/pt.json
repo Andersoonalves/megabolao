@@ -199,7 +199,15 @@
       "CANCELADO": "Cancelado"
     },
     "errorLoad": "Erro ao carregar seus dados. Tente novamente.",
-    "participantFallback": "Participante"
+    "participantFallback": "Participante",
+    "title": "Meus bolões",
+    "poolCount": "VOCÊ PARTICIPA DE {{n}} BOLÃO(ÕES)",
+    "prizeLabel": "PRÊMIO A RECEBER",
+    "awaitingDraw": "Aguardando sorteio",
+    "bestQuota": "MELHOR COTA",
+    "hits": "acertos",
+    "toReceive": "A RECEBER",
+    "received": "RECEBIDO"
   },
   "portalRanking": {
     "subtitle": "{{n}} cotas participando",
@@ -223,7 +231,10 @@
     "copyLink": "Copiar link",
     "shareCopied": "Link copiado!",
     "openWhatsapp": "Abrir WhatsApp",
-    "shareUnavailable": "Não há número para contato pelo WhatsApp. O administrador pode informar o celular no perfil do usuário admin ou manter a sessão WhatsApp do bolão conectada no painel."
+    "shareUnavailable": "Não há número para contato pelo WhatsApp. O administrador pode informar o celular no perfil do usuário admin ou manter a sessão WhatsApp do bolão conectada no painel.",
+    "tabCotas": "Cotas",
+    "tabRanking": "Ranking",
+    "tabSorteios": "Sorteios"
   },
   "portalDetalhe": {
     "title": "Minhas cotas",

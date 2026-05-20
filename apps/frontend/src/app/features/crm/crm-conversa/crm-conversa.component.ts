@@ -9,6 +9,7 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../../core/services/api.service';
 import { BackButtonComponent } from '../../../shared/components/back-button/back-button.component';
+import { ConfirmModalComponent } from '../../../shared/components/confirm-modal/confirm-modal.component';
 
 interface Etapa { id: string; nome: string; cor: string; }
 
@@ -69,7 +70,7 @@ interface MsgGroup { label: string; msgs: Mensagem[]; }
 @Component({
   selector: 'nb-crm-conversa',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [BackButtonComponent, RouterLink, FormsModule, TranslatePipe],
+  imports: [BackButtonComponent, RouterLink, FormsModule, TranslatePipe, ConfirmModalComponent],
   templateUrl: './crm-conversa.component.html',
 })
 export class CrmConversaComponent implements AfterViewChecked, OnDestroy {
@@ -91,8 +92,11 @@ export class CrmConversaComponent implements AfterViewChecked, OnDestroy {
   error        = signal('');
   texto        = signal('');
   modoEnvio    = signal<'OUT' | 'NOTE'>('OUT');
-  pagandoId    = signal('');
-  lightboxSrc  = signal<string | null>(null);
+  pagandoId        = signal('');
+  lightboxSrc      = signal<string | null>(null);
+  confirmEtapaOpen  = signal(false);
+  confirmEtapaId    = signal<string | null>(null);
+  etapaSelectValue  = signal('');
   busca        = signal('');
   filtro       = signal<'all'|'nao'|'aguar'|'sem'>('all');
 
@@ -132,6 +136,11 @@ export class CrmConversaComponent implements AfterViewChecked, OnDestroy {
   }
 
   constructor() {
+    // Sincroniza select com etapa real do contato (inclui reset após cancelar)
+    effect(() => {
+      this.etapaSelectValue.set(this.contato()?.etapaId ?? '');
+    });
+
     effect(() => {
       const cel = this.celular();
       if (this.pollMensagens) clearInterval(this.pollMensagens);
@@ -228,7 +237,24 @@ export class CrmConversaComponent implements AfterViewChecked, OnDestroy {
     }
   }
 
-  async moverEtapa(etapaId: string): Promise<void> {
+  pedirConfirmacaoEtapa(etapaId: string): void {
+    const atual = this.contato()?.etapaId;
+    if (!etapaId || etapaId === atual) return;
+    this.confirmEtapaId.set(etapaId);
+    this.confirmEtapaOpen.set(true);
+  }
+
+  cancelarMoverEtapa(): void {
+    this.confirmEtapaOpen.set(false);
+    this.confirmEtapaId.set(null);
+    // Reverte select para valor atual do contato
+    this.etapaSelectValue.set(this.contato()?.etapaId ?? '');
+  }
+
+  async moverEtapa(): Promise<void> {
+    const etapaId = this.confirmEtapaId();
+    this.confirmEtapaOpen.set(false);
+    this.confirmEtapaId.set(null);
     if (!etapaId) return;
     try {
       const c = await firstValueFrom(
@@ -236,6 +262,16 @@ export class CrmConversaComponent implements AfterViewChecked, OnDestroy {
       );
       this.contato.set(c);
     } catch { /* silencioso */ }
+  }
+
+  confirmEtapaNome(): string {
+    const id = this.confirmEtapaId();
+    return this.etapas().find(e => e.id === id)?.nome ?? '';
+  }
+
+  etapaAtualDo(etapaId: string | null): Etapa | null {
+    if (!etapaId) return null;
+    return this.etapas().find(e => e.id === etapaId) ?? null;
   }
 
   async pagarCota(cotaId: string): Promise<void> {

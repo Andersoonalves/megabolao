@@ -199,7 +199,15 @@
       "CANCELADO": "Cancelled"
     },
     "errorLoad": "Could not load your data. Try again.",
-    "participantFallback": "Participant"
+    "participantFallback": "Participant",
+    "title": "My pools",
+    "poolCount": "YOU PARTICIPATE IN {{n}} POOL(S)",
+    "prizeLabel": "PRIZE TO RECEIVE",
+    "awaitingDraw": "Awaiting draw",
+    "bestQuota": "BEST QUOTA",
+    "hits": "hits",
+    "toReceive": "TO RECEIVE",
+    "received": "RECEIVED"
   },
   "portalRanking": {
     "subtitle": "{{n}} quotas participating",
@@ -223,7 +231,10 @@
     "copyLink": "Copy link",
     "shareCopied": "Link copied!",
     "openWhatsapp": "Open WhatsApp",
-    "shareUnavailable": "No WhatsApp contact number is available yet. The administrator can add a mobile number on the admin user profile or keep the pool WhatsApp session connected in the console."
+    "shareUnavailable": "No WhatsApp contact number is available yet. The administrator can add a mobile number on the admin user profile or keep the pool WhatsApp session connected in the console.",
+    "tabCotas": "Quotas",
+    "tabRanking": "Ranking",
+    "tabSorteios": "Draws"
   },
   "portalDetalhe": {
     "title": "My quotas",
