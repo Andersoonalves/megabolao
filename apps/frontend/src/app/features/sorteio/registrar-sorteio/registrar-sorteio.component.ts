@@ -1,8 +1,8 @@
 import {
-  Component, signal, computed, OnInit, ChangeDetectionStrategy, inject,
+  Component, signal, computed, OnInit, OnDestroy, ChangeDetectionStrategy, inject,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { ApiService } from '../../../core/services/api.service';
@@ -43,10 +43,10 @@ interface ResultadoCaixa {
 @Component({
   selector: 'nb-registrar-sorteio',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [BackButtonComponent, FormsModule, TranslatePipe, MegaSenaAlertComponent],
+  imports: [BackButtonComponent, FormsModule, TranslatePipe, MegaSenaAlertComponent, RouterLink],
   templateUrl: './registrar-sorteio.component.html',
 })
-export class RegistrarSorteioComponent implements OnInit {
+export class RegistrarSorteioComponent implements OnInit, OnDestroy {
   private readonly api    = inject(ApiService);
   private readonly router = inject(Router);
   private readonly translate = inject(TranslateService);
@@ -71,6 +71,15 @@ export class RegistrarSorteioComponent implements OnInit {
   autoApply      = signal(false);
   loadingPendente = signal(false);
 
+  // ── Wizard pós-registro ───────────────────────────────────────────────────
+  wizardEtapa       = signal<'idle' | 'processando' | 'concluido'>('idle');
+  wizardBoloes      = signal(0);
+  wizardConcurso    = signal(0);
+  wizardSorteioIds  = signal<string[]>([]);
+  wizardErroTimeout = signal(false);
+  private pollTimer: ReturnType<typeof setInterval> | null = null;
+  private pollAttempts = 0;
+
   valido        = computed(() => this.bolasSelected().length === 6 && this.numeroConcurso() > 0);
   bolasOrdenadas = computed(() => [...this.bolasSelected()].sort((a, b) => a - b));
   readonly nums60 = Array.from({ length: 60 }, (_, i) => i + 1);
@@ -78,6 +87,10 @@ export class RegistrarSorteioComponent implements OnInit {
   ngOnInit(): void {
     this.loadRecentes();
     void this.checkPendente();
+  }
+
+  ngOnDestroy(): void {
+    this.stopPoll();
   }
 
   private async checkPendente(): Promise<void> {
@@ -151,6 +164,7 @@ export class RegistrarSorteioComponent implements OnInit {
     this.loading.set(true);
     this.error.set('');
     this.sucesso.set(false);
+    this.wizardEtapa.set('idle');
     try {
       const res = await firstValueFrom(
         this.api.post<RegistroResult>('/sorteios', {
@@ -163,6 +177,21 @@ export class RegistrarSorteioComponent implements OnInit {
       this.ultimosBoloes.set(res.bolaoesProcessados);
       this.sucesso.set(true);
       this.bolasSelected.set([]);
+
+      // Inicia wizard de acompanhamento
+      const ids = res.sorteios.map(s => s.id);
+      this.wizardSorteioIds.set(ids);
+      this.wizardConcurso.set(this.numeroConcurso());
+      this.wizardBoloes.set(res.bolaoesProcessados);
+      this.wizardErroTimeout.set(false);
+
+      if (ids.length > 0 && res.sorteios.every(s => s.processado)) {
+        this.wizardEtapa.set('concluido');
+      } else {
+        this.wizardEtapa.set('processando');
+        this.startPoll(ids);
+      }
+
       await this.loadRecentes();
     } catch (err: unknown) {
       const msg = (err as { error?: { message?: string } })?.error?.message
@@ -170,6 +199,43 @@ export class RegistrarSorteioComponent implements OnInit {
       this.error.set(msg);
     } finally {
       this.loading.set(false);
+    }
+  }
+
+  novoSorteio(): void {
+    this.wizardEtapa.set('idle');
+    this.sucesso.set(false);
+    this.stopPoll();
+  }
+
+  private startPoll(ids: string[]): void {
+    this.stopPoll();
+    this.pollAttempts = 0;
+    this.pollTimer = setInterval(async () => {
+      this.pollAttempts++;
+      await this.loadRecentes();
+      const recentes = this.recentes();
+      const todosProcessados = ids.every(id => recentes.find(r => r.id === id)?.processado);
+
+      if (todosProcessados) {
+        this.wizardEtapa.set('concluido');
+        this.stopPoll();
+        return;
+      }
+
+      // Timeout após 30 tentativas (~60s)
+      if (this.pollAttempts >= 30) {
+        this.wizardErroTimeout.set(true);
+        this.wizardEtapa.set('concluido');
+        this.stopPoll();
+      }
+    }, 2000);
+  }
+
+  private stopPoll(): void {
+    if (this.pollTimer !== null) {
+      clearInterval(this.pollTimer);
+      this.pollTimer = null;
     }
   }
 

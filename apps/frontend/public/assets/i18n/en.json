@@ -702,6 +702,19 @@
     "tipTitle": "Automatic close:",
     "tipBody": "if any active quota reaches 10 cumulative hits, the pool is finalized and prizes are calculated."
   },
+  "wizard": {
+    "step1": "Registered",
+    "step2Processing": "Calculating hits…",
+    "step2Done": "Hits calculated",
+    "step2Timeout": "Still processing",
+    "step3": "Next steps",
+    "processingHint": "Calculating hits for {{n}} pool(s) in background…",
+    "doneMsg": "Draw #{{concurso}} processed — {{boloes}} pool(s) updated",
+    "timeoutHint": "Processing still running. Check the pools shortly.",
+    "actionWhatsapp": "Send result via WhatsApp",
+    "actionBoloes": "View pools",
+    "actionProximo": "Register next draw"
+  },
   "megaSenaPainel": {
     "breadcrumbParent": "Draws",
     "breadcrumbCurrent": "Official Mega-Sena",
@@ -905,7 +918,7 @@
     "cancel": "Cancel",
     "brand": "Bolão CG",
     "newMessage": "+ New message",
-    "subtitle": "whatsapp-web.js session · {{g}} groups · {{m}} messages this month",
+    "subtitle": "{{g}} groups · {{m}} messages this month",
     "sessionTitle": "Session",
     "qrPart1": "Open WhatsApp → ",
     "qrBold1": "⋮ Menu",

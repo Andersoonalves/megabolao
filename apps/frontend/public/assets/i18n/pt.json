@@ -702,6 +702,19 @@
     "tipTitle": "Encerramento automático:",
     "tipBody": "se alguma cota atingir 10 acertos acumulados, o bolão é finalizado e os prêmios calculados."
   },
+  "wizard": {
+    "step1": "Registrado",
+    "step2Processing": "Calculando acertos…",
+    "step2Done": "Acertos calculados",
+    "step2Timeout": "Ainda processando",
+    "step3": "Próximos passos",
+    "processingHint": "Calculando acertos para {{n}} bolão(ões) em segundo plano…",
+    "doneMsg": "Concurso #{{concurso}} processado — {{boloes}} bolão(ões) atualizado(s)",
+    "timeoutHint": "Processamento ainda em andamento. Confira os bolões em instantes.",
+    "actionWhatsapp": "Enviar resultado via WhatsApp",
+    "actionBoloes": "Ver bolões",
+    "actionProximo": "Registrar próximo concurso"
+  },
   "megaSenaPainel": {
     "breadcrumbParent": "Sorteios",
     "breadcrumbCurrent": "Mega-Sena oficial",
@@ -905,7 +918,7 @@
     "cancel": "Cancelar",
     "brand": "Bolão CG",
     "newMessage": "+ Nova mensagem",
-    "subtitle": "Sessão whatsapp-web.js · {{g}} grupos · {{m}} mensagens este mês",
+    "subtitle": "{{g}} grupos · {{m}} mensagens este mês",
     "sessionTitle": "Sessão",
     "qrPart1": "Abra o WhatsApp → ",
     "qrBold1": "⋮ Menu",
