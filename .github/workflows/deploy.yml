@@ -35,7 +35,7 @@ jobs:
 
       - run: npx prisma generate
 
-      - run: npm run build:backend
+      - run: npx tsc --project apps/backend/tsconfig.app.json
       - run: npm run build:frontend
 
       - uses: actions/upload-artifact@v4

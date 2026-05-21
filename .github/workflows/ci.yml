@@ -47,7 +47,7 @@ jobs:
         run: npm run lint
 
       - name: Build backend
-        run: npm run build:backend
+        run: npx tsc --project apps/backend/tsconfig.app.json
 
       - name: Build frontend
         run: npm run build:frontend

@@ -8,7 +8,8 @@ RUN npm ci --ignore-scripts
 
 COPY . .
 RUN npx prisma generate
-RUN npm run build:backend
+# Build direto via tsc (nx build falha com rootDir em monorepo)
+RUN npx tsc --project apps/backend/tsconfig.app.json
 
 # Remove devDependencies
 RUN npm prune --production
@@ -30,4 +31,4 @@ RUN npx prisma generate
 EXPOSE 3000
 
 # Roda migrations antes de subir o servidor
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/apps/backend/apps/backend/src/main.js"]
