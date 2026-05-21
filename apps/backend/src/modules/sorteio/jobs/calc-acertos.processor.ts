@@ -94,18 +94,23 @@ export class CalcAcertosProcessor implements OnModuleInit, OnModuleDestroy {
       if (cotas.length < BATCH_SIZE) break;
     } while (true);
 
-    // Recalcular acumulado em batch via SQL único (eficiente para 9244+ cotas)
+    // FROM + pre-aggregate evita correlated subquery (era 8515 loops → agora 1 HashAggregate)
     await this.prisma.$executeRaw`
       UPDATE cotas
-      SET total_acertos_acumulados = (
-        SELECT COALESCE(SUM(a.acertos), 0)
-        FROM acertos_sorteio a
-        WHERE a.cota_id = cotas.id
-      ),
-      atualizado_em = NOW()
-      WHERE bolao_id = ${bolaoId}::UUID
-        AND tenant_id = ${tenantId}::UUID
-        AND status_pagamento = 'PAGO'
+      SET
+        total_acertos_acumulados = agg.total,
+        atualizado_em            = NOW()
+      FROM (
+        SELECT cota_id, COALESCE(SUM(acertos), 0)::INT AS total
+        FROM acertos_sorteio
+        WHERE tenant_id = ${tenantId}::UUID
+          AND bolao_id  = ${bolaoId}::UUID
+        GROUP BY cota_id
+      ) agg
+      WHERE cotas.id               = agg.cota_id
+        AND cotas.bolao_id         = ${bolaoId}::UUID
+        AND cotas.tenant_id        = ${tenantId}::UUID
+        AND cotas.status_pagamento = 'PAGO'
     `;
 
     await this.prisma.sorteio.update({
