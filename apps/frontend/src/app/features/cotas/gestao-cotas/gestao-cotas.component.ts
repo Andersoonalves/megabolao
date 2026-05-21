@@ -69,9 +69,24 @@ export class GestaoCotasComponent implements OnInit {
   // ── Computed KPIs ─────────────────────────────────────────────────────────────
   totalPago     = computed(() => this.cotas().filter(c => c.statusPagamento === 'PAGO').length);
   totalPendente = computed(() => this.cotas().filter(c => c.statusPagamento === 'PENDENTE').length);
-  valorCotaRef  = 30; // TODO: from bolão API
-  valorBruto    = computed(() => this.totalPago() * this.valorCotaRef);
-  valorPendente = computed(() => this.totalPendente() * this.valorCotaRef);
+  valorBruto    = computed(() => this.totalPago()     * (this.bolao()?.valorCota ?? 0));
+  valorPendente = computed(() => this.totalPendente() * (this.bolao()?.valorCota ?? 0));
+
+  // ── Seleção em massa ──────────────────────────────────────────────────────────
+  selecionadas     = signal<Set<string>>(new Set());
+  confirmandoMassa = signal(false);
+  confirmandoTodas = signal(false);
+  showConfirmTodas = signal(false);
+  successMsg       = signal('');
+
+  todasNaPaginaSelecionadas = computed(() => {
+    const pendentes = this.cotas().filter(c => c.statusPagamento === 'PENDENTE');
+    return pendentes.length > 0 && pendentes.every(c => this.selecionadas().has(c.id));
+  });
+
+  totalPendenteFiltro = computed(() =>
+    this.cotas().filter(c => c.statusPagamento === 'PENDENTE').length,
+  );
 
   // ── Modal state ───────────────────────────────────────────────────────────────
   showModal             = signal(false);
@@ -180,6 +195,7 @@ export class GestaoCotasComponent implements OnInit {
   onStatusChange(value: string): void {
     this.statusFiltro.set(value);
     this.page.set(1);
+    this.selecionadas.set(new Set());
     this.loadCotas();
   }
 
@@ -201,11 +217,84 @@ export class GestaoCotasComponent implements OnInit {
       this.cotas.update(cotas =>
         cotas.map(c => c.id === cotaId ? { ...c, statusPagamento: 'PAGO' as const } : c),
       );
+      this.selecionadas.update(s => { const n = new Set(s); n.delete(cotaId); return n; });
     } catch {
       this.error.set(this.translate.instant('gestaoCotas.errConfirmPay'));
     } finally {
       this.confirmandoId.set('');
     }
+  }
+
+  toggleSelecionada(cotaId: string): void {
+    this.selecionadas.update(s => {
+      const n = new Set(s);
+      n.has(cotaId) ? n.delete(cotaId) : n.add(cotaId);
+      return n;
+    });
+  }
+
+  toggleTodasNaPagina(): void {
+    const pendentes = this.cotas().filter(c => c.statusPagamento === 'PENDENTE').map(c => c.id);
+    const allSelected = pendentes.every(id => this.selecionadas().has(id));
+    this.selecionadas.update(s => {
+      const n = new Set(s);
+      allSelected ? pendentes.forEach(id => n.delete(id)) : pendentes.forEach(id => n.add(id));
+      return n;
+    });
+  }
+
+  limparSelecao(): void {
+    this.selecionadas.set(new Set());
+  }
+
+  async confirmarSelecionadas(): Promise<void> {
+    if (this.selecionadas().size === 0 || this.confirmandoMassa()) return;
+    this.confirmandoMassa.set(true);
+    this.error.set('');
+    try {
+      const res = await firstValueFrom(
+        this.api.patch<{ atualizadas: number }>(
+          `/boloes/${this.bolaoId}/cotas/pagar-em-massa`,
+          { cotaIds: [...this.selecionadas()] },
+        ),
+      );
+      this.selecionadas.set(new Set());
+      this.showSuccess(this.translate.instant('gestaoCotas.bulkSuccess', { n: res.atualizadas }));
+      await this.loadCotas();
+    } catch {
+      this.error.set(this.translate.instant('gestaoCotas.errBulkPay'));
+    } finally {
+      this.confirmandoMassa.set(false);
+    }
+  }
+
+  async confirmarTodasPendentes(): Promise<void> {
+    if (this.confirmandoTodas()) return;
+    this.confirmandoTodas.set(true);
+    this.showConfirmTodas.set(false);
+    this.error.set('');
+    try {
+      const res = await firstValueFrom(
+        this.api.patch<{ atualizadas: number }>(
+          `/boloes/${this.bolaoId}/cotas/pagar-todas-pendentes`,
+          {},
+        ),
+      );
+      this.selecionadas.set(new Set());
+      this.showSuccess(this.translate.instant('gestaoCotas.bulkSuccess', { n: res.atualizadas }));
+      await this.loadCotas();
+    } catch {
+      this.error.set(this.translate.instant('gestaoCotas.errBulkPay'));
+    } finally {
+      this.confirmandoTodas.set(false);
+    }
+  }
+
+  private successTimer: ReturnType<typeof setTimeout> | null = null;
+  private showSuccess(msg: string): void {
+    this.successMsg.set(msg);
+    if (this.successTimer) clearTimeout(this.successTimer);
+    this.successTimer = setTimeout(() => this.successMsg.set(''), 4000);
   }
 
   // ── Modal ─────────────────────────────────────────────────────────────────────

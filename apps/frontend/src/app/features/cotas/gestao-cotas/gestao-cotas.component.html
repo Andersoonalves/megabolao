@@ -84,7 +84,17 @@
               <option value="INATIVO">{{ 'gestaoCotas.payStatusINATIVO' | translate }}</option>
             </select>
           </div>
-          <div class="flex gap-2">
+          <div class="flex gap-2 flex-wrap">
+            <!-- Confirmar todas pendentes -->
+            @if (totalPendente() > 0 && !confirmandoTodas()) {
+              <button (click)="showConfirmTodas.set(true)"
+                      class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-amber-50 border border-amber-200 hover:bg-amber-100 text-[12.5px] font-semibold rounded-[10px] text-amber-800 transition-colors">
+                ✓ {{ 'gestaoCotas.confirmAllPending' | translate: { n: totalPendente() } }}
+              </button>
+            }
+            @if (confirmandoTodas()) {
+              <span class="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-[12.5px] text-slate-400">{{ 'common.ellipsis' | translate }}</span>
+            }
             <button class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-[12.5px] font-semibold rounded-[10px] text-slate-700 transition-colors">
               {{ 'gestaoCotas.import' | translate }}
             </button>
@@ -93,6 +103,32 @@
             </button>
           </div>
         </div>
+
+        <!-- Bulk action bar -->
+        @if (selecionadas().size > 0) {
+          <div class="px-5 py-3 bg-green-50 border-b border-green-200 flex items-center justify-between gap-3">
+            <span class="text-[13px] font-semibold text-green-800">
+              {{ 'gestaoCotas.bulkBar' | translate: { n: selecionadas().size } }}
+            </span>
+            <div class="flex items-center gap-2">
+              <button (click)="limparSelecao()"
+                      class="px-3 py-1.5 text-[12.5px] font-semibold rounded-lg border border-green-200 bg-white text-slate-600 hover:bg-slate-50 transition-colors">
+                {{ 'gestaoCotas.bulkCancel' | translate }}
+              </button>
+              <button (click)="confirmarSelecionadas()" [disabled]="confirmandoMassa()"
+                      class="px-3 py-1.5 text-[12.5px] font-semibold rounded-lg bg-green-700 hover:bg-green-800 disabled:opacity-50 text-white transition-colors">
+                {{ confirmandoMassa() ? ('common.ellipsis' | translate) : ('gestaoCotas.bulkConfirm' | translate) }}
+              </button>
+            </div>
+          </div>
+        }
+
+        <!-- Success message -->
+        @if (successMsg()) {
+          <div class="px-5 py-2.5 bg-green-50 border-b border-green-200 text-[12.5px] font-semibold text-green-800 flex items-center gap-2">
+            <span>✓</span> {{ successMsg() }}
+          </div>
+        }
 
         <!-- Error -->
         @if (error()) {
@@ -104,6 +140,15 @@
           <table class="w-full text-[13.5px]">
             <thead class="bg-slate-50">
               <tr>
+                <!-- Checkbox select-all (só pendentes da página) -->
+                <th class="px-4 py-2.5 w-10">
+                  @if (totalPendenteFiltro() > 0) {
+                    <input type="checkbox"
+                           [checked]="todasNaPaginaSelecionadas()"
+                           (change)="toggleTodasNaPagina()"
+                           class="w-4 h-4 rounded border-slate-300 text-green-700 cursor-pointer" />
+                  }
+                </th>
                 <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">{{ 'gestaoCotas.thCota' | translate }}</th>
                 <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">{{ 'gestaoCotas.thParticipant' | translate }}</th>
                 <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">{{ 'gestaoCotas.thPhone' | translate }}</th>
@@ -118,14 +163,14 @@
               @if (loading()) {
                 @for (i of [1,2,3,4,5]; track i) {
                   <tr class="border-b border-slate-100">
-                    <td colspan="8" class="px-4 py-3">
+                    <td colspan="9" class="px-4 py-3">
                       <div class="h-4 bg-slate-100 rounded animate-pulse w-3/4"></div>
                     </td>
                   </tr>
                 }
               } @else if (cotas().length === 0) {
                 <tr>
-                  <td colspan="8" class="px-4 py-12 text-center text-slate-400 text-sm">
+                  <td colspan="9" class="px-4 py-12 text-center text-slate-400 text-sm">
                     @if (busca() || statusFiltro()) {
                       {{ 'gestaoCotas.emptyFiltered' | translate }}
                     } @else {
@@ -135,7 +180,18 @@
                 </tr>
               } @else {
                 @for (cota of cotas(); track cota.id) {
-                  <tr class="border-b border-slate-100 hover:bg-slate-50 last:border-0">
+                  <tr class="border-b border-slate-100 last:border-0 transition-colors"
+                      [class]="selecionadas().has(cota.id) ? 'bg-green-50' : 'hover:bg-slate-50'">
+
+                    <!-- Checkbox -->
+                    <td class="px-4 py-3 w-10">
+                      @if (cota.statusPagamento === 'PENDENTE') {
+                        <input type="checkbox"
+                               [checked]="selecionadas().has(cota.id)"
+                               (change)="toggleSelecionada(cota.id)"
+                               class="w-4 h-4 rounded border-slate-300 text-green-700 cursor-pointer" />
+                      }
+                    </td>
 
                     <!-- Nº -->
                     <td class="px-4 py-3 font-mono font-semibold text-[13px]">#{{ cota.numeroSequencial }}</td>
@@ -243,6 +299,28 @@
         </div>
       </div>
     </div>
+
+    <!-- ── Modal: Confirmar Todas Pendentes ─────────────────────────────────── -->
+    @if (showConfirmTodas()) {
+      <div class="fixed inset-0 bg-black/40 z-40 flex items-center justify-center p-4" (click)="showConfirmTodas.set(false)">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-sm p-6" (click)="$event.stopPropagation()">
+          <h3 class="font-display font-semibold text-lg mb-2">{{ 'gestaoCotas.confirmAllModalTitle' | translate }}</h3>
+          <p class="text-slate-500 text-sm mb-5">
+            {{ 'gestaoCotas.confirmAllModalBody' | translate: { n: totalPendente() } }}
+          </p>
+          <div class="flex gap-2.5">
+            <button (click)="showConfirmTodas.set(false)"
+                    class="flex-1 py-2.5 border border-slate-200 hover:bg-slate-50 font-semibold text-sm rounded-[10px] transition-colors">
+              {{ 'common.cancel' | translate }}
+            </button>
+            <button (click)="confirmarTodasPendentes()"
+                    class="flex-1 py-2.5 bg-green-700 hover:bg-green-800 text-white font-semibold text-sm rounded-[10px] transition-colors shadow-sm">
+              {{ 'gestaoCotas.confirmAllModalConfirm' | translate }}
+            </button>
+          </div>
+        </div>
+      </div>
+    }
 
     <!-- ── Modal: Nova Cota ──────────────────────────────────────────────────── -->
     @if (showModal()) {

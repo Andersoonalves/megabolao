@@ -183,6 +183,50 @@ export class ParticipanteService {
     return this.toResponse(updated);
   }
 
+  async pagarEmMassa(
+    tenantId: string | null,
+    bolaoId: string,
+    cotaIds: string[],
+  ): Promise<{ atualizadas: number }> {
+    this.assertTenantId(tenantId);
+    await this.findBolaoOrFail(tenantId, bolaoId);
+
+    const result = await this.prisma.cota.updateMany({
+      where: {
+        id:              { in: cotaIds },
+        bolaoId,
+        tenantId,
+        statusPagamento: 'PENDENTE',
+      },
+      data: {
+        statusPagamento:           'PAGO',
+        dataConfirmacaoPagamento:  new Date(),
+      },
+    });
+
+    if (result.count > 0) this.triggerSheetsSync(bolaoId, tenantId, 'COTA');
+    return { atualizadas: result.count };
+  }
+
+  async pagarTodasPendentes(
+    tenantId: string | null,
+    bolaoId: string,
+  ): Promise<{ atualizadas: number }> {
+    this.assertTenantId(tenantId);
+    await this.findBolaoOrFail(tenantId, bolaoId);
+
+    const result = await this.prisma.cota.updateMany({
+      where: { bolaoId, tenantId, statusPagamento: 'PENDENTE' },
+      data: {
+        statusPagamento:          'PAGO',
+        dataConfirmacaoPagamento: new Date(),
+      },
+    });
+
+    if (result.count > 0) this.triggerSheetsSync(bolaoId, tenantId, 'COTA');
+    return { atualizadas: result.count };
+  }
+
   async inativar(tenantId: string | null, bolaoId: string, id: string): Promise<CotaResponse> {
     this.assertTenantId(tenantId);
     const cota = await this.findCotaOrFail(tenantId, bolaoId, id);

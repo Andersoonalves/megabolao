@@ -18,6 +18,7 @@ import { TenantId } from '../auth/decorators/tenant-id.decorator';
 import { ListCotasDto } from './dto/list-cotas.dto';
 import { CreateCotaDto } from './dto/create-cota.dto';
 import { UpdateCotaDto } from './dto/update-cota.dto';
+import { PagarEmMassaDto } from './dto/pagar-em-massa.dto';
 import { ParticipanteService } from './participante.service';
 
 @ApiTags('cotas')
@@ -70,6 +71,28 @@ export class ParticipanteController {
     @Body() dto: UpdateCotaDto,
   ) {
     return this.participanteService.update(tenantId, bolaoId, id, dto);
+  }
+
+  @Patch('pagar-em-massa')
+  @RequerPermissoes('cota.confirmar_pagamento')
+  @ApiOperation({ summary: 'Confirmar pagamento de múltiplas cotas por ID (PENDENTE → PAGO)' })
+  pagarEmMassa(
+    @TenantId() tenantId: string | null,
+    @Param('bolaoId', ParseUUIDPipe) bolaoId: string,
+    @Body() dto: PagarEmMassaDto,
+  ) {
+    return this.participanteService.pagarEmMassa(tenantId, bolaoId, dto.cotaIds);
+  }
+
+  @Patch('pagar-todas-pendentes')
+  @HttpCode(HttpStatus.OK)
+  @RequerPermissoes('cota.confirmar_pagamento')
+  @ApiOperation({ summary: 'Confirmar pagamento de todas as cotas PENDENTE do bolão' })
+  pagarTodasPendentes(
+    @TenantId() tenantId: string | null,
+    @Param('bolaoId', ParseUUIDPipe) bolaoId: string,
+  ) {
+    return this.participanteService.pagarTodasPendentes(tenantId, bolaoId);
   }
 
   @Patch(':id/pagar')
