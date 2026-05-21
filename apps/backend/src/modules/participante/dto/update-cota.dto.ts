@@ -1,7 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
-  ArrayMaxSize,
-  ArrayMinSize,
   IsArray,
   IsInt,
   IsNotEmpty,
@@ -27,10 +25,8 @@ export class UpdateCotaDto {
   @IsOptional()
   numeroCelular?: string;
 
-  @ApiPropertyOptional({ example: [2, 8, 9, 15, 16, 24, 27, 33, 43, 56] })
+  @ApiPropertyOptional({ example: [2, 8, 9, 15, 16, 24, 27, 33, 43, 56], description: 'Números únicos entre 1 e 60. A quantidade exata é definida pelo qtdNumerosCota do bolão.' })
   @IsArray()
-  @ArrayMinSize(10, { message: 'Palpites devem conter exatamente 10 números' })
-  @ArrayMaxSize(10, { message: 'Palpites devem conter exatamente 10 números' })
   @IsInt({ each: true })
   @Min(1, { each: true })
   @Max(60, { each: true })

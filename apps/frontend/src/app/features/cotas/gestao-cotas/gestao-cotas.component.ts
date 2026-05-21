@@ -64,7 +64,7 @@ export class GestaoCotasComponent implements OnInit {
   private readonly translate = inject(TranslateService);
 
   // ── List state ───────────────────────────────────────────────────────────────
-  bolao         = signal<{ nome: string; valorCota: number } | null>(null);
+  bolao         = signal<{ nome: string; valorCota: number; qtdNumerosCota: number } | null>(null);
   cotas         = signal<CotaResponse[]>([]);
   sorteios      = signal<{ bolasSorteadas: number[] }[]>([]);
   loading       = signal(false);
@@ -79,6 +79,8 @@ export class GestaoCotasComponent implements OnInit {
   numerosJaSorteados = computed(() =>
     new Set(this.sorteios().flatMap(s => s.bolasSorteadas)),
   );
+
+  qtdPalpites = computed(() => this.bolao()?.qtdNumerosCota ?? 10);
 
   // ── Computed KPIs ─────────────────────────────────────────────────────────────
   totalPago     = computed(() => this.cotas().filter(c => c.statusPagamento === 'PAGO').length);
@@ -124,7 +126,7 @@ export class GestaoCotasComponent implements OnInit {
   podeSubmitModal = computed(() =>
     this.novaNome().trim().length > 0 &&
     this.todasCotas().length > 0 &&
-    this.todasCotas().every(p => p.length === 10),
+    this.todasCotas().every(p => p.length === this.qtdPalpites()),
   );
 
   // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -182,7 +184,7 @@ export class GestaoCotasComponent implements OnInit {
       const [cotasRes, sorteiosRes, bolaoRes] = await Promise.all([
         firstValueFrom(this.api.get<Paginated<CotaResponse>>(`/boloes/${this.bolaoId}/cotas?${params}`)),
         firstValueFrom(this.api.get<{ bolasSorteadas: number[] }[]>(`/boloes/${this.bolaoId}/sorteios`)).catch(() => []),
-        this.bolao() ? Promise.resolve(null) : firstValueFrom(this.api.get<{ nome: string; valorCota: number }>(`/boloes/${this.bolaoId}`)).catch(() => null),
+        this.bolao() ? Promise.resolve(null) : firstValueFrom(this.api.get<{ nome: string; valorCota: number; qtdNumerosCota: number }>(`/boloes/${this.bolaoId}`)).catch(() => null),
       ]);
       this.cotas.set(cotasRes.data);
       this.total.set(cotasRes.total);
@@ -365,11 +367,12 @@ export class GestaoCotasComponent implements OnInit {
       if (!nome || /^nome$/i.test(nome)) continue;
 
       const celular  = (cols[1] ?? '').replace(/\D/g, '');
-      const palpites = cols.slice(2, 12).map(c => parseInt(c, 10)).filter(n => !isNaN(n));
+      const qtd      = this.qtdPalpites();
+      const palpites = cols.slice(2, 2 + qtd).map(c => parseInt(c, 10)).filter(n => !isNaN(n));
 
       const erros: string[] = [];
-      if (!nome)                                   erros.push('Nome obrigatório');
-      if (palpites.length !== 10)                  erros.push(`${palpites.length}/10 palpites`);
+      if (!nome)                                      erros.push('Nome obrigatório');
+      if (palpites.length !== qtd)                    erros.push(`${palpites.length}/${qtd} palpites`);
       if (new Set(palpites).size !== palpites.length) erros.push('Palpites duplicados');
       if (palpites.some(n => n < 1 || n > 60))    erros.push('Número fora de 1–60');
 
@@ -508,7 +511,7 @@ export class GestaoCotasComponent implements OnInit {
       const cur = copy[idx];
       copy[idx] = cur.includes(n)
         ? cur.filter(x => x !== n)
-        : cur.length < 10 ? [...cur, n].sort((a, b) => a - b) : cur;
+        : cur.length < this.qtdPalpites() ? [...cur, n].sort((a, b) => a - b) : cur;
       return copy;
     });
   }

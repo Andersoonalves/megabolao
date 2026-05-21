@@ -38,6 +38,7 @@ export interface BolaoResponse {
   nome: string;
   status: string;
   valorCota: number;
+  qtdNumerosCota: number;
   dataInicio: string | null;
   dataTermino: string | null;
   totalCotasAtivas: number;
@@ -74,7 +75,8 @@ export class BolaoService {
   async create(tenantId: string | null, dto: CreateBolaoDto): Promise<BolaoResponse> {
     this.assertTenantId(tenantId);
     await this.tenantService.assertTenantPermiteCadastros(tenantId);
-    this.validarCategorias(dto.categorias);
+    const qtdNumerosCota = dto.qtdNumerosCota ?? 10;
+    this.validarCategorias(dto.categorias, qtdNumerosCota);
 
     const bolao = await this.prisma.$transaction(async (tx) => {
       const created = await tx.bolao.create({
@@ -82,6 +84,7 @@ export class BolaoService {
           tenantId,
           nome: dto.nome,
           valorCota: dto.valorCota,
+          qtdNumerosCota: dto.qtdNumerosCota ?? 10,
           dataInicio: dto.dataInicio ? new Date(dto.dataInicio) : null,
           dataTermino: dto.dataTermino ? new Date(dto.dataTermino) : null,
         },
@@ -191,6 +194,7 @@ export class BolaoService {
       data: {
         ...(dto.nome !== undefined && { nome: dto.nome }),
         ...(dto.valorCota !== undefined && { valorCota: dto.valorCota }),
+        ...(dto.qtdNumerosCota !== undefined && { qtdNumerosCota: dto.qtdNumerosCota }),
         ...(dto.dataInicio !== undefined && { dataInicio: dto.dataInicio ? new Date(dto.dataInicio) : null }),
         ...(dto.dataTermino !== undefined && { dataTermino: dto.dataTermino ? new Date(dto.dataTermino) : null }),
       },
@@ -219,7 +223,7 @@ export class BolaoService {
       );
     }
 
-    this.validarCategorias(dto.categorias);
+    this.validarCategorias(dto.categorias, bolao.qtdNumerosCota);
 
     const updated = await this.prisma.$transaction(async (tx) => {
       await tx.categoriaPremiacao.deleteMany({ where: { bolaoId, tenantId } });
@@ -570,7 +574,7 @@ export class BolaoService {
     return this.getWhatsappConfig(tenantId, bolaoId);
   }
 
-  private validarCategorias(categorias: CreateCategoriaDto[]): void {
+  private validarCategorias(categorias: CreateCategoriaDto[], qtdNumerosCota = 10): void {
     const soma = arredondarMonetario(categorias.reduce((acc, c) => acc + c.percentual, 0));
     if (soma !== 100) {
       throw new BusinessException(
@@ -581,12 +585,21 @@ export class BolaoService {
     }
 
     for (const cat of categorias) {
-      if (cat.tipo === 'ACERTOS_EXATOS' && (cat.acertosAlvo == null || cat.acertosAlvo < 0 || cat.acertosAlvo > 10)) {
-        throw new BusinessException(
-          'ACERTOS_ALVO_OBRIGATORIO',
-          `Categoria "${cat.nome}" do tipo ACERTOS_EXATOS exige acertosAlvo entre 0 e 10`,
-          [{ field: 'acertosAlvo', code: 'ACERTOS_ALVO_OBRIGATORIO', message: 'Campo obrigatório para ACERTOS_EXATOS (0–10)' }],
-        );
+      if (cat.tipo === 'ACERTOS_EXATOS') {
+        if (cat.acertosAlvo == null || cat.acertosAlvo < 0) {
+          throw new BusinessException(
+            'ACERTOS_ALVO_OBRIGATORIO',
+            `Categoria "${cat.nome}" do tipo ACERTOS_EXATOS exige acertosAlvo entre 0 e ${qtdNumerosCota}`,
+            [{ field: 'acertosAlvo', code: 'ACERTOS_ALVO_OBRIGATORIO', message: `Campo obrigatório para ACERTOS_EXATOS (0–${qtdNumerosCota})` }],
+          );
+        }
+        if (cat.acertosAlvo > qtdNumerosCota) {
+          throw new BusinessException(
+            'ACERTOS_ALVO_INVALIDO',
+            `acertosAlvo (${cat.acertosAlvo}) não pode ser maior que qtdNumerosCota (${qtdNumerosCota})`,
+            [{ field: 'acertosAlvo', code: 'ACERTOS_ALVO_INVALIDO', message: `Máximo permitido: ${qtdNumerosCota}` }],
+          );
+        }
       }
       if (cat.tipo === 'MAIOR_PONTUACAO_SORTEIO' && !cat.sorteioReferencia) {
         throw new BusinessException(
@@ -683,6 +696,7 @@ export class BolaoService {
       nome: b.nome,
       status: b.status,
       valorCota,
+      qtdNumerosCota: b.qtdNumerosCota,
       dataInicio: b.dataInicio ? b.dataInicio.toISOString().split('T')[0] : null,
       dataTermino: b.dataTermino ? b.dataTermino.toISOString().split('T')[0] : null,
       totalCotasAtivas: b._count.cotas,

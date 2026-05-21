@@ -139,6 +139,7 @@ model Bolao {
   valorCota    Decimal     @db.Decimal(10, 2) @map("valor_cota")
   dataInicio   DateTime?   @db.Date @map("data_inicio")
   dataTermino  DateTime?   @db.Date @map("data_termino")
+  qtdNumerosCota Int @default(10) @map("qtd_numeros_cota")
   whatsappGrupos    Json      @default("[]") @map("whatsapp_grupos")
   sheetsSpreadsheetId String?   @map("sheets_spreadsheet_id")
   sheetsAtivo         Boolean   @default(false) @map("sheets_ativo")

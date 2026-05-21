@@ -4,6 +4,7 @@ import {
   ArrayMinSize,
   IsArray,
   IsDateString,
+  IsInt,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -26,6 +27,12 @@ export class CreateBolaoDto {
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0.01)
   valorCota!: number;
+
+  @ApiPropertyOptional({ example: 10, minimum: 6, description: 'Quantidade de números por cota (mínimo 6, padrão 10)' })
+  @IsInt()
+  @Min(6)
+  @IsOptional()
+  qtdNumerosCota?: number;
 
   @ApiPropertyOptional({ example: '2026-04-01' })
   @IsDateString()

@@ -228,7 +228,7 @@
                     <td class="px-4 py-3">
                       <span class="font-mono font-bold tabular text-[14px]"
                             [class]="acertos(cota) >= 8 ? 'text-amber-600' : acertos(cota) >= 5 ? 'text-green-700' : ''">
-                        {{ acertos(cota) }}{{ 'gestaoCotas.hitsOfTen' | translate }}
+                        {{ acertos(cota) }}/{{ bolao()?.qtdNumerosCota ?? 10 }}
                       </span>
                     </td>
 
@@ -623,8 +623,8 @@
                           ? 'bg-green-700 text-white border-green-700'
                           : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'">
                   {{ 'gestaoCotas.cotaTab' | translate: { n: $index + 1 } }}
-                  <span class="font-mono" [class]="cotas.length === 10 ? 'text-green-300' : ''">
-                    {{ cotas.length }}{{ 'gestaoCotas.hitsOfTen' | translate }}
+                  <span class="font-mono" [class]="cotas.length === qtdPalpites() ? 'text-green-300' : ''">
+                    {{ cotas.length }}/{{ qtdPalpites() }}
                   </span>
                   @if (todasCotas().length > 1) {
                     <span (click)="$event.stopPropagation(); removerCota($index)"
@@ -646,7 +646,7 @@
                         class="w-full aspect-square rounded-full flex items-center justify-center font-mono font-semibold text-[11px] border transition-all"
                         [class]="todasCotas()[cotaAtualIdx()]?.includes(n)
                           ? 'bg-green-700 text-white border-green-700 shadow-sm scale-105'
-                          : (todasCotas()[cotaAtualIdx()]?.length ?? 0) >= 10
+                          : (todasCotas()[cotaAtualIdx()]?.length ?? 0) >= qtdPalpites()
                             ? 'bg-white text-slate-300 border-slate-200 cursor-not-allowed'
                             : 'bg-white text-slate-700 border-slate-200 hover:border-green-400 hover:text-green-700'">
                   {{ pad(n) }}

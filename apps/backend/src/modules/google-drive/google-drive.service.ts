@@ -93,10 +93,10 @@ export class GoogleDriveService {
 
         const celularRaw = row[1] ? String(row[1]).replace(/\D/g, '') : undefined;
         const celular = celularRaw && celularRaw.length >= 10 ? celularRaw : undefined;
-        const palpites = Array.from({ length: 10 }, (_, k) => parseInt(String(row[k + 2] ?? ''), 10));
+        const palpites = Array.from({ length: bolao.qtdNumerosCota }, (_, k) => parseInt(String(row[k + 2] ?? ''), 10));
 
-        if (!validarPalpites(palpites)) {
-          throw new Error(`Palpites inválidos: ${palpites.join(', ')} (devem ser 10 números únicos entre 1 e 60)`);
+        if (!validarPalpites(palpites, bolao.qtdNumerosCota)) {
+          throw new Error(`Palpites inválidos: ${palpites.join(', ')} (devem ser ${bolao.qtdNumerosCota} números únicos entre 1 e 60)`);
         }
 
         const cota = await this.prisma.$transaction(async (tx) => {
@@ -265,8 +265,8 @@ export class GoogleDriveService {
 
       const celularRaw = row[1] ? String(row[1]).replace(/\D/g, '') : undefined;
       const celular    = celularRaw && celularRaw.length >= 10 ? celularRaw : null;
-      const palpites   = Array.from({ length: 10 }, (_, k) => parseInt(String(row[k + 2] ?? ''), 10));
-      const valida     = validarPalpites(palpites);
+      const palpites   = Array.from({ length: bolao.qtdNumerosCota }, (_, k) => parseInt(String(row[k + 2] ?? ''), 10));
+      const valida     = validarPalpites(palpites, bolao.qtdNumerosCota);
       const erro       = valida ? null : `Palpites inválidos: ${palpites.join(', ')}`;
 
       valida ? validas++ : invalidas++;

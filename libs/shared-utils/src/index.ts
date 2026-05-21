@@ -1,9 +1,9 @@
 // ── Validação de palpites ─────────────────────────────────────────────────────
 
-export function validarPalpites(palpites: number[]): boolean {
-  if (palpites.length !== 10) return false;
+export function validarPalpites(palpites: number[], qtd = 10): boolean {
+  if (palpites.length !== qtd) return false;
   const unicos = new Set(palpites);
-  if (unicos.size !== 10) return false;
+  if (unicos.size !== qtd) return false;
   return palpites.every((n) => Number.isInteger(n) && n >= 1 && n <= 60);
 }
 

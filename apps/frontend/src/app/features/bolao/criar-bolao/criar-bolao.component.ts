@@ -39,6 +39,7 @@ interface BolaoResponse {
   nome: string;
   status: string;
   valorCota: number;
+  qtdNumerosCota: number;
   dataInicio: string | null;
   categorias: {
     id: string;
@@ -80,9 +81,10 @@ export class CriarBolaoComponent implements OnInit {
   private readonly translate = inject(TranslateService);
 
   // ── Form state ───────────────────────────────────────────────────────────────
-  nome       = '';
-  dataInicio = '';
-  valorCota  = 30;
+  nome           = '';
+  dataInicio     = '';
+  valorCota      = 30;
+  qtdNumerosCota = signal(10);
 
   categorias        = signal<CategoriaForm[]>(INITIAL_CATS.map(c => ({ ...c })));
   loading           = signal(false);
@@ -117,9 +119,10 @@ export class CriarBolaoComponent implements OnInit {
     this.error.set('');
     try {
       const b = await firstValueFrom(this.api.get<BolaoResponse>(`/boloes/${this.id()}`));
-      this.nome       = b.nome;
-      this.valorCota  = b.valorCota;
-      this.dataInicio = b.dataInicio ?? '';
+      this.nome           = b.nome;
+      this.valorCota      = b.valorCota;
+      this.qtdNumerosCota.set(b.qtdNumerosCota ?? 10);
+      this.dataInicio     = b.dataInicio ?? '';
       this.categorias.set(b.categorias.map(c => ({
         _id: c.id,
         nome: c.nome,
@@ -162,8 +165,8 @@ export class CriarBolaoComponent implements OnInit {
         : t.instant('criarBolao.errSomaExcede', { diff: Math.abs(diff) }));
     }
     for (const cat of this.categorias()) {
-      if (cat.tipo === 'ACERTOS_EXATOS' && (cat.acertosAlvo == null || cat.acertosAlvo < 0 || cat.acertosAlvo > 10)) {
-        erros.push(t.instant('criarBolao.errAcertos', { nome: cat.nome }));
+      if (cat.tipo === 'ACERTOS_EXATOS' && (cat.acertosAlvo == null || cat.acertosAlvo < 0 || cat.acertosAlvo > this.qtdNumerosCota())) {
+        erros.push(t.instant('criarBolao.errAcertos', { nome: cat.nome, qtd: this.qtdNumerosCota() }));
       }
       if (cat.tipo === 'MAIOR_PONTUACAO_SORTEIO' && !cat.sorteioReferencia) {
         erros.push(t.instant('criarBolao.errSorteio', { nome: cat.nome }));
@@ -290,8 +293,9 @@ export class CriarBolaoComponent implements OnInit {
     this.error.set('');
     try {
       const b = await firstValueFrom(this.api.get<BolaoResponse>(`/boloes/${id}`));
-      this.nome      = `${b.nome} (Cópia)`;
-      this.valorCota = b.valorCota;
+      this.nome           = `${b.nome} (Cópia)`;
+      this.valorCota      = b.valorCota;
+      this.qtdNumerosCota.set(b.qtdNumerosCota ?? 10);
       this.categorias.set(b.categorias.map(c => ({
         _id:               c.id,
         nome:              c.nome,
@@ -345,6 +349,7 @@ export class CriarBolaoComponent implements OnInit {
           this.api.patch(`/boloes/${this.id()}`, {
             nome: this.nome,
             valorCota: this.valorCota,
+            qtdNumerosCota: this.qtdNumerosCota(),
             dataInicio: this.dataInicio || undefined,
           }),
         );
@@ -356,11 +361,12 @@ export class CriarBolaoComponent implements OnInit {
         const clonado = await firstValueFrom(
           this.api.post<{ id: string; nome: string }>(`/boloes/${this.bolaoFonteId()}/clonar`, {}),
         );
-        // Sempre aplica dados editáveis pelo usuário (nome, valorCota, dataInicio)
+        // Sempre aplica dados editáveis pelo usuário (nome, valorCota, qtdNumerosCota, dataInicio)
         await firstValueFrom(
           this.api.patch(`/boloes/${clonado.id}`, {
-            nome:       this.nome.trim(),
-            valorCota:  this.valorCota,
+            nome:           this.nome.trim(),
+            valorCota:      this.valorCota,
+            qtdNumerosCota: this.qtdNumerosCota(),
             ...(this.dataInicio && { dataInicio: this.dataInicio }),
           }),
         );
@@ -374,6 +380,7 @@ export class CriarBolaoComponent implements OnInit {
           this.api.post('/boloes', {
             nome: this.nome,
             valorCota: this.valorCota,
+            qtdNumerosCota: this.qtdNumerosCota(),
             dataInicio: this.dataInicio || undefined,
             categorias: cats,
           }),

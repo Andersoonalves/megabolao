@@ -557,7 +557,7 @@
     "immutableRest": "Apenas o Master pode alterar em casos excepcionais.",
     "errSomaFalta": "Faltam {{diff}}% para fechar 100%",
     "errSomaExcede": "Soma excedida em {{diff}}%",
-    "errAcertos": "\"{{nome}}\": acertosAlvo deve ser 1–10",
+    "errAcertos": "\"{{nome}}\": acertosAlvo deve ser 0–{{qtd}} (qtd números do bolão)",
     "errSorteio": "\"{{nome}}\": informe o número do sorteio de referência",
     "condTaxa": "—",
     "condAcertosPending": "…",

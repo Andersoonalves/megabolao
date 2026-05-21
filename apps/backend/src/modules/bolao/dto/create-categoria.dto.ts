@@ -13,10 +13,9 @@ export class CreateCategoriaDto {
   @IsEnum(['TAXA_ADMINISTRATIVA','ACERTOS_EXATOS','MAIOR_PONTUACAO_SORTEIO','MAIOR_PONTUACAO_GERAL','MENOR_PONTUACAO_GERAL'])
   tipo!: CategoriaTipo;
 
-  @ApiPropertyOptional({ example: 10, minimum: 0, maximum: 10, description: 'Obrigatório quando tipo=ACERTOS_EXATOS. 0 = zero acertos (pior pontuação).' })
+  @ApiPropertyOptional({ example: 10, minimum: 0, description: 'Obrigatório quando tipo=ACERTOS_EXATOS. 0 = zero acertos (pior pontuação). Máximo = qtdNumerosCota do bolão.' })
   @IsInt()
   @Min(0)
-  @Max(10)
   @IsOptional()
   acertosAlvo?: number;
 

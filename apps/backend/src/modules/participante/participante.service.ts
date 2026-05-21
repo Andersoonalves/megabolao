@@ -52,7 +52,7 @@ export class ParticipanteService {
       throw new BusinessException('BOLAO_FINALIZADO', 'Não é possível adicionar cotas a um bolão finalizado');
     }
 
-    this.assertPalpitesValidos(dto.palpites);
+    this.assertPalpitesValidos(dto.palpites, bolao.qtdNumerosCota);
 
     // Auto-vincula ou cria participante quando celular for informado
     let participanteId: string | null = null;
@@ -151,7 +151,8 @@ export class ParticipanteService {
     }
 
     if (dto.palpites) {
-      this.assertPalpitesValidos(dto.palpites);
+      const bolao = await this.findBolaoOrFail(tenantId, bolaoId);
+      this.assertPalpitesValidos(dto.palpites, bolao.qtdNumerosCota);
     }
 
     const updated = await this.prisma.cota.update({
@@ -247,7 +248,7 @@ export class ParticipanteService {
       throw new BusinessException('BOLAO_FINALIZADO', 'Não é possível importar cotas para bolão FINALIZADO');
     }
 
-    const rows = this.parseCSVBuffer(fileBuffer);
+    const rows = this.parseCSVBuffer(fileBuffer, bolao.qtdNumerosCota);
     const erros: ImportCSVResult['erros'] = [];
     let criadas = 0;
 
@@ -261,10 +262,10 @@ export class ParticipanteService {
         continue;
       }
 
-      if (!validarPalpites(palpites)) {
+      if (!validarPalpites(palpites, bolao.qtdNumerosCota)) {
         erros.push({
           linha, campo: 'palpites',
-          erro: `10 números únicos 1-60 obrigatórios (recebido: ${palpites.join(',') || 'vazio'})`,
+          erro: `${bolao.qtdNumerosCota} números únicos 1-60 obrigatórios (recebido: ${palpites.join(',') || 'vazio'})`,
         });
         if (!ignorarErros) break;
         continue;
@@ -307,7 +308,7 @@ export class ParticipanteService {
 
   // ── CSV parsing (sem dependência externa) ─────────────────────────────────
 
-  private parseCSVBuffer(buffer: Buffer): { nome: string; celular?: string; palpites: number[] }[] {
+  private parseCSVBuffer(buffer: Buffer, qtd = 10): { nome: string; celular?: string; palpites: number[] }[] {
     const text  = buffer.toString('utf-8').replace(/^﻿/, ''); // remove BOM
     const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
     if (lines.length === 0) return [];
@@ -322,7 +323,7 @@ export class ParticipanteService {
 
       const celularRaw = (cols[1] ?? '').replace(/\D/g, '');
       const celular    = celularRaw.length >= 10 ? celularRaw : undefined;
-      const palpites   = cols.slice(2, 12).map(c => parseInt(c.trim(), 10)).filter(n => !isNaN(n));
+      const palpites   = cols.slice(2, 2 + qtd).map(c => parseInt(c.trim(), 10)).filter(n => !isNaN(n));
 
       result.push({ nome, celular, palpites });
     }
@@ -416,12 +417,12 @@ export class ParticipanteService {
     return cota;
   }
 
-  private assertPalpitesValidos(palpites: number[]): void {
-    if (!validarPalpites(palpites)) {
+  private assertPalpitesValidos(palpites: number[], qtd: number): void {
+    if (!validarPalpites(palpites, qtd)) {
       throw new BusinessException(
         'PALPITES_INVALIDOS',
-        'Palpites devem conter 10 números únicos entre 1 e 60',
-        [{ field: 'palpites', code: 'PALPITES_INVALIDOS', message: '10 números únicos, 1–60' }],
+        `Palpites devem conter ${qtd} números únicos entre 1 e 60`,
+        [{ field: 'palpites', code: 'PALPITES_INVALIDOS', message: `${qtd} números únicos, 1–60` }],
       );
     }
   }

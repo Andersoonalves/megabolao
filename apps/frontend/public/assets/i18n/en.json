@@ -557,7 +557,7 @@
     "immutableRest": "Only Master can change them in exceptional cases.",
     "errSomaFalta": "{{diff}}% remaining to reach 100%",
     "errSomaExcede": "Total exceeds by {{diff}}%",
-    "errAcertos": "\"{{nome}}\": target hits must be 1–10",
+    "errAcertos": "\"{{nome}}\": target hits must be 0–{{qtd}} (bolão's picks count)",
     "errSorteio": "\"{{nome}}\": enter the reference draw number",
     "condTaxa": "—",
     "condAcertosPending": "…",
