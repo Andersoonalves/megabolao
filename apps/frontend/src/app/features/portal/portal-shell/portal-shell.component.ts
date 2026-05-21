@@ -96,8 +96,8 @@ const NAV_ITEMS = [
                   {{ 'shell.language' | translate }}
                 </div>
                 <div class="flex gap-1 p-2">
-                  <button type="button" role="menuitem" (click)="setLang('pt')" [class]="langBtnClass('pt')">PT</button>
-                  <button type="button" role="menuitem" (click)="setLang('en')" [class]="langBtnClass('en')">EN</button>
+                  <button type="button" role="menuitem" title="Português" (click)="setLang('pt')" [class]="langBtnClass('pt')">🇧🇷</button>
+                  <button type="button" role="menuitem" title="English" (click)="setLang('en')" [class]="langBtnClass('en')">🇺🇸</button>
                 </div>
                 <div class="border-t border-slate-100 mt-0.5 pt-0.5">
                   <button
@@ -167,8 +167,8 @@ const NAV_ITEMS = [
                   {{ 'shell.language' | translate }}
                 </div>
                 <div class="flex gap-1 p-2">
-                  <button type="button" role="menuitem" (click)="setLang('pt')" [class]="langBtnClass('pt')">PT</button>
-                  <button type="button" role="menuitem" (click)="setLang('en')" [class]="langBtnClass('en')">EN</button>
+                  <button type="button" role="menuitem" title="Português" (click)="setLang('pt')" [class]="langBtnClass('pt')">🇧🇷</button>
+                  <button type="button" role="menuitem" title="English" (click)="setLang('en')" [class]="langBtnClass('en')">🇺🇸</button>
                 </div>
                 <div class="border-t border-slate-100 mt-0.5 pt-0.5">
                   <button
@@ -237,10 +237,10 @@ export class PortalShellComponent implements OnInit {
 
   langBtnClass(code: AppLang): string {
     const on = this.i18n.lang() === code;
-    const base = 'flex-1 min-h-10 px-2 text-xs font-bold rounded-lg border transition-colors';
+    const base = 'text-xl leading-none px-2 py-1 rounded-lg transition-all';
     return on
-      ? `${base} bg-green-700 text-white border-green-700`
-      : `${base} bg-white text-slate-600 border-slate-200 hover:bg-slate-50`;
+      ? `${base} opacity-100 ring-2 ring-green-600 ring-offset-1 scale-110`
+      : `${base} opacity-40 hover:opacity-70`;
   }
 
   async setLang(code: AppLang): Promise<void> {

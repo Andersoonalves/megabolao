@@ -4,18 +4,24 @@ import {
   DestroyRef,
   OnInit,
   computed,
+  effect,
   inject,
   signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { ScrollingModule } from '@angular/cdk/scrolling';
+import { FormsModule } from '@angular/forms';
 import { PortalApiService, PortalBolao, PortalRankingItem, PortalSorteio } from '../portal-api.service';
 
 @Component({
   selector: 'nb-portal-bolao-detalhe',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, TranslatePipe],
+  host: {
+    style: 'display:flex; flex-direction:column; height:calc(100dvh - 60px - env(safe-area-inset-bottom,0px))',
+  },
+  imports: [RouterLink, TranslatePipe, ScrollingModule, FormsModule],
   templateUrl: './portal-bolao-detalhe.component.html',
 })
 export class PortalBolaoDetalheComponent implements OnInit {
@@ -30,8 +36,16 @@ export class PortalBolaoDetalheComponent implements OnInit {
   readonly error = signal('');
   readonly notFound = signal(false);
   readonly rankingError = signal('');
-  readonly shareCopied = signal(false);
-  readonly activeTab   = signal<'cotas' | 'ranking' | 'sorteios'>('cotas');
+  readonly shareCopied    = signal(false);
+  readonly activeTab      = signal<'cotas' | 'ranking' | 'sorteios'>('cotas');
+  readonly filtroAcertos     = signal<number>(0);   // 0 = todos
+  readonly rankingFiltradoArr = signal<PortalRankingItem[]>([]);
+
+  /** Range 0..maxPalpites para o select de filtro. */
+  readonly filtroOpcoes = computed(() => {
+    const max = this.ranking()[0]?.maxPalpites ?? 10;
+    return Array.from({ length: max + 1 }, (_, i) => i).reverse(); // 10,9,8..0
+  });
   private copyFeedbackTimer: ReturnType<typeof setTimeout> | null = null;
 
   readonly allDrawn = computed(() =>
@@ -70,6 +84,17 @@ export class PortalBolaoDetalheComponent implements OnInit {
     });
   });
 
+  constructor() {
+    // Mantém rankingFiltradoArr sincronizado (plain signal para cdkVirtualFor)
+    effect(() => {
+      const min = this.filtroAcertos();
+      const list = this.ranking();
+      this.rankingFiltradoArr.set(
+        min === 0 ? list : list.filter(r => this.acertosRanking(r) === min),
+      );
+    });
+  }
+
   ngOnInit(): void {
     this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(pm => {
       const id = pm.get('bolaoId');
@@ -107,6 +132,8 @@ export class PortalBolaoDetalheComponent implements OnInit {
     }
   }
 
+  trackRanking(_: number, r: PortalRankingItem): string { return r.cotaId; }
+
   rankingRowClass(r: PortalRankingItem): string {
     const parts: string[] = [];
     if (r.posicao <= 3) parts.push('bg-amber-50/50');
@@ -135,7 +162,7 @@ export class PortalBolaoDetalheComponent implements OnInit {
   bolaClass(n: number, allDrawn: number[]): string {
     if (allDrawn.length === 0) return 'bg-white text-slate-700 border-slate-200';
     return allDrawn.includes(n)
-      ? 'bg-amber-400 text-white border-amber-400 shadow-sm'
+      ? 'bg-green-700 text-white border-green-700 shadow-sm'
       : 'bg-white text-slate-300 border-slate-100';
   }
 

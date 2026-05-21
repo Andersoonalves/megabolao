@@ -451,23 +451,38 @@ export class BolaoService {
     });
     if (!bolao) throw new NotFoundException({ statusCode: 404, error: 'BOLAO_NAO_ENCONTRADO', message: `Bolão ${bolaoId} não encontrado`, details: [] });
 
-    const [[totalPago, totalPendente, ranking], distribuicao] = await Promise.all([
-      this.prisma.$transaction([
-        this.prisma.cota.count({ where: { bolaoId, tenantId, statusPagamento: 'PAGO' } }),
-        this.prisma.cota.count({ where: { bolaoId, tenantId, statusPagamento: 'PENDENTE' } }),
-        this.prisma.cota.findMany({
-          where:   { bolaoId, tenantId, statusPagamento: 'PAGO' },
-          orderBy: { totalAcertosAcumulados: 'desc' },
-          take:    10,
-          select:  { numeroSequencial: true, nomeIdentificacao: true, totalAcertosAcumulados: true, statusResultado: true },
-        }),
-      ]),
-      this.prisma.cota.groupBy({
-        by:    ['totalAcertosAcumulados'],
-        where: { bolaoId, tenantId, statusPagamento: 'PAGO' },
-        _count: true,
+    const [totalPago, totalPendente, cotasPagas, acertosPorCota] = await Promise.all([
+      this.prisma.cota.count({ where: { bolaoId, tenantId, statusPagamento: 'PAGO' } }),
+      this.prisma.cota.count({ where: { bolaoId, tenantId, statusPagamento: 'PENDENTE' } }),
+      this.prisma.cota.findMany({
+        where:  { bolaoId, tenantId, statusPagamento: 'PAGO' },
+        select: { id: true, numeroSequencial: true, nomeIdentificacao: true, statusResultado: true },
+      }),
+      this.prisma.acertoSorteio.groupBy({
+        by:    ['cotaId'],
+        where: { bolaoId, tenantId },
+        _sum:  { acertos: true },
       }),
     ]);
+
+    // Mapa cotaId → acertos reais (da tabela acertos_sorteio)
+    const acertosMap = new Map(
+      acertosPorCota.map(a => [a.cotaId, a._sum.acertos ?? 0]),
+    );
+
+    // Ranking top 10 por acertos reais
+    const ranking = cotasPagas
+      .map(c => ({ ...c, totalAcertosAcumulados: acertosMap.get(c.id) ?? 0 }))
+      .sort((a, b) => b.totalAcertosAcumulados - a.totalAcertosAcumulados)
+      .slice(0, 10);
+
+    // Distribuição por acertos (agrupa contagens)
+    const distMap = new Map<number, number>();
+    for (const c of cotasPagas) {
+      const ac = acertosMap.get(c.id) ?? 0;
+      distMap.set(ac, (distMap.get(ac) ?? 0) + 1);
+    }
+    const distribuicao = Array.from(distMap.entries()).map(([acertos, quantidade]) => ({ acertos, quantidade }));
 
     const bolasJaSorteadas = [...new Set(bolao.sorteios.flatMap(s => s.bolasSorteadas))].sort((a, b) => a - b);
     const valorBruto       = Number(bolao.valorCota) * totalPago;
@@ -510,7 +525,6 @@ export class BolaoService {
         statusResultado:        c.statusResultado,
       })),
       distribuicaoAcertos: distribuicao
-        .map(d => ({ acertos: d.totalAcertosAcumulados, quantidade: typeof d._count === 'number' ? d._count : 0 }))
         .sort((a, b) => a.acertos - b.acertos),
     };
   }

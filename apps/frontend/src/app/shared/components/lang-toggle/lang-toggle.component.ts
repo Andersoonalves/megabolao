@@ -10,20 +10,19 @@ import { I18nService, AppLang } from '../../../core/services/i18n.service';
   template: `
     <div [class]="wrapClass()"
          [attr.aria-label]="'lang.switch' | translate">
-      @if (prominent) {
-        <span class="text-base leading-none mr-0.5" aria-hidden="true">🌐</span>
-      }
       <button type="button"
               (click)="set('pt')"
               [class]="btnClass('pt')"
-              [attr.aria-pressed]="i18n.lang() === 'pt'">
-        PT
+              [attr.aria-pressed]="i18n.lang() === 'pt'"
+              title="Português">
+        🇧🇷
       </button>
       <button type="button"
               (click)="set('en')"
               [class]="btnClass('en')"
-              [attr.aria-pressed]="i18n.lang() === 'en'">
-        EN
+              [attr.aria-pressed]="i18n.lang() === 'en'"
+              title="English">
+        🇺🇸
       </button>
     </div>
   `,
@@ -43,9 +42,11 @@ export class LangToggleComponent {
   btnClass(code: AppLang): string {
     const on = this.i18n.lang() === code;
     const size = this.prominent
-      ? 'min-h-9 min-w-[2.75rem] px-2.5 py-2 text-xs font-bold rounded-lg transition-colors'
-      : 'px-2 py-1 text-[11px] font-bold rounded-md transition-colors min-w-[2.25rem]';
-    return [size, on ? 'bg-green-700 text-white' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'].join(' ');
+      ? 'min-h-9 px-2.5 py-1.5 text-xl leading-none rounded-lg transition-all'
+      : 'px-1.5 py-1 text-base leading-none rounded-md transition-all';
+    return [size, on
+      ? 'opacity-100 ring-2 ring-green-600 ring-offset-1 scale-110'
+      : 'opacity-40 hover:opacity-70'].join(' ');
   }
 
   set(code: AppLang): void {

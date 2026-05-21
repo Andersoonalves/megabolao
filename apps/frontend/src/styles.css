@@ -130,7 +130,7 @@ html.dark .bg-red-50        { background-color: rgba(225, 100, 100, 0.12); }
 html.dark .border-red-200   { border-color: rgba(225, 100, 100, 0.30); }
 html.dark .text-red-700     { color: #fb8c8c; }
 
-html.dark .bg-amber-50      { background-color: rgba(245, 158, 11, 0.12); }
+html.dark .bg-amber-50      { background-color: #2a1f00; }
 html.dark .bg-gold-50       { background-color: rgba(251, 191, 36, 0.10); }
 html.dark .bg-gold-100      { background-color: rgba(251, 191, 36, 0.18); }
 html.dark .text-gold-700    { color: #fbbf24; }
@@ -149,6 +149,50 @@ html.dark textarea {
 }
 html.dark input::placeholder,
 html.dark textarea::placeholder { color: var(--text-subtle); }
+
+/* ── Amber / badges ──────────────────────────────────────────────────────── */
+html.dark .bg-amber-100     { background-color: rgba(245, 158, 11, 0.18); }
+html.dark .border-amber-100 { border-color: rgba(245, 158, 11, 0.25); }
+html.dark .border-amber-200 { border-color: rgba(245, 158, 11, 0.30); }
+html.dark .text-amber-700   { color: #fbbf24; }
+html.dark .text-amber-600   { color: #fcd34d; }
+html.dark .text-amber-800   { color: #f59e0b; }
+html.dark .text-amber-900   { color: #fde68a; }
+html.dark .bg-amber-400     { background-color: #d97706; }
+html.dark .text-amber-800\/90 { color: rgba(245, 158, 11, 0.9); }
+
+/* ── Green / marca ───────────────────────────────────────────────────────── */
+html.dark .text-green-900   { color: #6ee7b7; }
+html.dark .border-green-600 { border-color: #34d399; }
+html.dark .border-green-700 { border-color: #2ea87a; }
+html.dark .bg-green-700     { background-color: #1a6b4a; }
+html.dark .hover\:bg-green-700:hover { background-color: #1a6b4a; }
+html.dark .hover\:bg-green-800:hover { background-color: #145a3d; }
+html.dark .bg-green-600     { background-color: #1e7a54; }
+html.dark .border-green-300 { border-color: rgba(52, 211, 153, 0.35); }
+html.dark .text-green-600   { color: #34d399; }
+
+/* ── Opacity variants das surfaces (Tailwind gera classes separadas) ──────── */
+html.dark .bg-white\/10     { background-color: rgba(255,255,255,0.06); }
+html.dark .bg-white\/20     { background-color: rgba(255,255,255,0.10); }
+html.dark .bg-slate-50\/70  { background-color: rgba(255,255,255,0.03); }
+html.dark .bg-slate-50\/80  { background-color: rgba(255,255,255,0.04); }
+html.dark .bg-slate-50\/90  { background-color: var(--surface-2); }
+html.dark .bg-slate-50\/40  { background-color: rgba(255,255,255,0.02); }
+html.dark .bg-green-50\/60  { background-color: rgba(46,117,182,0.14); }
+html.dark .bg-green-50\/80  { background-color: rgba(46,117,182,0.20); }
+
+/* ── Tabela: header row mais visível ─────────────────────────────────────── */
+html.dark .bg-slate-50\/90,
+html.dark thead { background-color: var(--surface-2) !important; }
+
+/* ── Muted text adicionais ───────────────────────────────────────────────── */
+html.dark .text-slate-200   { color: #44484f; }
+
+/* ── Badge status: ATIVO / FINALIZADO / SUSPENSO ────────────────────────── */
+html.dark .bg-green-50      { background-color: rgba(52, 211, 153, 0.10); }
+html.dark .border-green-100 { border-color: rgba(52, 211, 153, 0.20); }
+html.dark .text-green-800   { color: #6ee7b7; }
 
 /* Backdrops de drawer/modal */
 html.dark .bg-black\/40     { background-color: var(--backdrop); }

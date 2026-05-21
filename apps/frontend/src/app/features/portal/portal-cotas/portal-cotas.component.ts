@@ -116,7 +116,7 @@ interface BolaoData {
                 </div>
                 <div class="text-[11.5px] text-slate-400 mt-1">
                   {{ bd.cotas.length === 1 ? ('portalCotas.quotaSingle' | translate) : ('portalCotas.quotaMany' | translate:{ n: bd.cotas.length }) }}
-                  · {{ bd.sorteios.length }}/{{ totalSorteiosBolao(bd.bolao) }} {{ 'portalCotas.draws' | translate }}
+                  · {{ bd.sorteios.length }} {{ 'portalCotas.draws' | translate }}
                 </div>
               </div>
               @if (ativo) {
@@ -190,10 +190,7 @@ interface BolaoData {
               </div>
 
               <!-- Botão Ver -->
-              <button class="flex items-center gap-1 rounded-xl px-3 text-[12px] font-semibold text-white flex-shrink-0"
-                      style="background: #1F4E79; border: 0">
-                Ver ›
-              </button>
+              <span class="text-[13px] font-semibold flex-shrink-0" style="color: #047857">Ver ›</span>
             </div>
           </a>
         }
@@ -263,8 +260,4 @@ export class PortalCotasComponent implements OnInit {
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────────
-  totalSorteiosBolao(bolao: PortalBolao): number {
-    // Estimativa: busca o campo sorteiosRegistrados se existir, senão usa o que tem
-    return bolao.sorteios.length || 6;
-  }
 }

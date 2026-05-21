@@ -1,4 +1,4 @@
-    <div style="background: linear-gradient(180deg, #065f46, #1a4436)" class="text-white">
+    <div style="background: linear-gradient(180deg, #065f46, #1a4436)" class="text-white flex-shrink-0">
       <div class="px-4 pt-4 pb-4 flex items-center gap-2">
         <a
           routerLink="/portal/cotas"
@@ -18,17 +18,36 @@
             <p class="text-white/65 text-[12.5px] mt-0.5">{{ statusLabel(bolao()!.status) }}</p>
           }
         </div>
+        @if (bolao()) {
+          <button
+            type="button"
+            (click)="bolao()!.linkWhatsappOrganizador ? copyWhatsappLink() : null"
+            class="shrink-0 w-10 h-10 flex items-center justify-center rounded-xl transition-colors text-xl leading-none"
+            [class]="bolao()!.linkWhatsappOrganizador
+              ? 'bg-white/10 hover:bg-white/20 text-white cursor-pointer'
+              : 'text-white/30 cursor-default'"
+            [title]="bolao()!.linkWhatsappOrganizador ? 'Copiar link do WhatsApp' : 'WhatsApp não configurado'"
+          >
+            @if (shareCopied()) {
+              ✓
+            } @else {
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/>
+              </svg>
+            }
+          </button>
+        }
       </div>
     </div>
 
     @if (loading()) {
-      <div class="px-4 py-5 flex flex-col gap-4">
+      <div class="px-4 py-5 flex flex-col gap-4 overflow-y-auto flex-1">
         <div class="h-10 bg-slate-100 rounded-xl animate-pulse"></div>
         <div class="h-40 bg-slate-100 rounded-2xl animate-pulse"></div>
         <div class="h-48 bg-slate-100 rounded-2xl animate-pulse"></div>
       </div>
     } @else if (notFound()) {
-      <div class="px-4 py-5">
+      <div class="px-4 py-5 overflow-y-auto flex-1">
         <div class="bg-white rounded-2xl p-6 text-center shadow-sm border border-slate-100">
           <p class="text-slate-600 text-sm">{{ 'portalBolaoDetalhe.notFound' | translate }}</p>
           <a routerLink="/portal/cotas" class="inline-block mt-4 min-h-12 px-5 py-3 bg-green-700 text-white font-semibold rounded-[10px] no-underline text-sm">
@@ -37,13 +56,13 @@
         </div>
       </div>
     } @else if (error()) {
-      <div class="px-4 py-5">
+      <div class="px-4 py-5 overflow-y-auto flex-1">
         <div class="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700">{{ error() }}</div>
       </div>
     } @else if (bolao()) {
 
       <!-- ── TABS BAR ─────────────────────────────────────────────────────── -->
-      <div class="flex border-b border-slate-200 bg-white sticky top-0 z-10 px-1">
+      <div class="flex border-b border-slate-200 bg-white sticky top-0 z-10 px-1 flex-shrink-0">
         @for (tab of [
           { id: 'cotas',    label: 'portalBolaoDetalhe.tabCotas' },
           { id: 'ranking',  label: 'portalBolaoDetalhe.tabRanking' },
@@ -64,31 +83,9 @@
         }
       </div>
 
-      <!-- ── TAB CONTENT ─────────────────────────────────────────────────── -->
-      <div class="px-4 py-5 flex flex-col gap-4">
-
-        <!-- TAB: Cotas -->
-        @if (activeTab() === 'cotas') {
-          <!-- WhatsApp organizador (compacto) -->
-          @if (bolao()!.linkWhatsappOrganizador) {
-            <div class="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-slate-200 bg-white">
-              <span class="text-base leading-none shrink-0" aria-hidden="true">💬</span>
-              <span class="text-[12.5px] text-slate-500 flex-1 leading-snug">
-                {{ 'portalBolaoDetalhe.shareTitle' | translate }}
-              </span>
-              <div class="flex gap-2 flex-shrink-0">
-                <button type="button" (click)="copyWhatsappLink()"
-                  class="h-8 px-3 rounded-lg text-[12px] font-semibold text-green-700 border border-green-200 bg-green-50 hover:bg-green-100 transition-colors">
-                  {{ shareCopied() ? '✓' : ('portalBolaoDetalhe.copyLink' | translate) }}
-                </button>
-                <button type="button" (click)="openWhatsapp()"
-                  class="h-8 px-3 rounded-lg text-[12px] font-semibold text-white bg-green-700 hover:bg-green-800 transition-colors">
-                  {{ 'portalBolaoDetalhe.openWhatsapp' | translate }}
-                </button>
-              </div>
-            </div>
-          }
-
+      <!-- ── TAB: Cotas (scroll normal) ─────────────────────────────────── -->
+      @if (activeTab() === 'cotas') {
+        <div class="px-4 py-5 flex flex-col gap-4 overflow-y-auto flex-1">
           <!-- Minhas cotas -->
           @if (bolao()!.cotas.length === 0) {
             <p class="text-slate-500 text-sm">{{ 'portalBolaoDetalhe.emptyQuotas' | translate }}</p>
@@ -131,11 +128,11 @@
                     @if (allDrawn().length > 0) {
                       <div class="flex gap-3 mt-2.5 text-[11px] text-slate-400">
                         <span class="flex items-center gap-1">
-                          <span class="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block"></span>
+                          <span class="w-2.5 h-2.5 rounded-full bg-green-700 inline-block"></span>
                           {{ 'portalCotas.legendHit' | translate }}
                         </span>
                         <span class="flex items-center gap-1">
-                          <span class="w-2.5 h-2.5 rounded-full bg-green-700 inline-block"></span>
+                          <span class="w-2.5 h-2.5 rounded-full bg-white border border-slate-300 inline-block"></span>
                           {{ 'portalCotas.legendDrawn' | translate }}
                         </span>
                       </div>
@@ -166,19 +163,21 @@
               }
             </div>
           }
-        }
+        </div>
+      }
 
-        <!-- TAB: Ranking -->
-        @if (activeTab() === 'ranking') {
+      <!-- ── TAB: Ranking (flex-fill + virtual scroll) ────────────────────── -->
+      @if (activeTab() === 'ranking') {
+        <div class="px-4 pt-4 pb-3 flex flex-col gap-3 flex-1 min-h-0 overflow-hidden">
           @if (rankingError()) {
             <div class="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-700">{{ rankingError() }}</div>
           } @else {
-            <!-- Minhas cotas (sempre visíveis no topo) -->
+            <!-- Minhas cotas (sempre visíveis no topo, flex-shrink-0) -->
             @if (minhasCotasRanking().length > 0) {
-              <div class="flex flex-col gap-2">
+              <div class="flex flex-col gap-2 flex-shrink-0">
                 @for (mc of minhasCotasRanking(); track mc.cota.id) {
-                  <div class="flex items-center gap-3 px-4 py-3.5 rounded-2xl border border-green-200 bg-green-50/60 shadow-sm">
-                    <div class="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-[12px] flex-shrink-0"
+                  <div class="flex items-center gap-3 px-4 py-3 rounded-2xl border border-green-200 bg-green-50/60 shadow-sm">
+                    <div class="min-w-[28px] h-7 px-1.5 rounded-lg flex items-center justify-center font-bold text-[11px] flex-shrink-0 tabular"
                          [class]="mc.posicao === 1 ? 'bg-amber-400 text-white'
                                   : mc.posicao && mc.posicao <= 3 ? 'bg-amber-100 text-amber-700'
                                   : 'bg-green-700 text-white'">
@@ -198,17 +197,49 @@
               </div>
             }
 
-            <!-- Lista completa do ranking -->
+            <!-- Filtro (flex-shrink-0) -->
+            @if (ranking().length > 0) {
+              <div class="flex items-center gap-2 flex-shrink-0">
+                <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider flex-shrink-0">
+                  Acertos
+                </label>
+                <div class="relative flex-1 max-w-[140px]">
+                  <select
+                    class="w-full appearance-none rounded-lg border border-slate-200 bg-white px-3 py-2 text-[13px] font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-green-700/30 focus:border-green-700 cursor-pointer pr-7"
+                    [ngModel]="filtroAcertos()"
+                    (ngModelChange)="filtroAcertos.set(+$event)">
+                    <option [value]="0">Todos</option>
+                    @for (v of filtroOpcoes(); track v) {
+                      @if (v > 0) {
+                        <option [value]="v">{{ v }} acertos</option>
+                      }
+                    }
+                  </select>
+                  <span class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 text-xs">▾</span>
+                </div>
+                <span class="text-[11.5px] text-slate-400 flex-1 text-right">
+                  {{ rankingFiltradoArr().length }}/{{ ranking().length }}
+                </span>
+              </div>
+            }
+
+            <!-- Lista virtual scroll (flex-1 preenche espaço restante) -->
             @if (ranking().length === 0) {
-              <div class="text-center py-12 text-slate-400 text-sm bg-white rounded-2xl border border-slate-100">
+              <div class="text-center py-12 text-slate-400 text-sm bg-white rounded-2xl border border-slate-100 flex-shrink-0">
                 {{ 'portalRanking.empty' | translate }}
               </div>
+            } @else if (rankingFiltradoArr().length === 0) {
+              <div class="text-center py-8 text-slate-400 text-sm bg-white rounded-2xl border border-slate-100 flex-shrink-0">
+                Nenhuma cota com {{ filtroAcertos() }} acertos.
+              </div>
             } @else {
-              <div class="bg-white rounded-2xl overflow-hidden shadow-sm border border-slate-100">
-                @for (r of ranking(); track r.cotaId) {
-                  <div class="flex items-center gap-3 px-4 py-3.5 border-b border-slate-100 last:border-0"
+              <div class="flex-1 min-h-0 flex flex-col bg-white rounded-2xl overflow-hidden shadow-sm border border-slate-100">
+                <cdk-virtual-scroll-viewport itemSize="56" class="w-full flex-1 min-h-0">
+                  <div *cdkVirtualFor="let r of rankingFiltradoArr(); trackBy: trackRanking"
+                       class="flex items-center gap-3 px-4 border-b border-slate-100"
+                       style="height: 56px"
                        [class]="rankingRowClass(r)">
-                    <div class="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-[12px] flex-shrink-0"
+                    <div class="min-w-[28px] h-7 px-1.5 rounded-lg flex items-center justify-center font-bold text-[11px] flex-shrink-0 tabular"
                          [class]="r.posicao === 1 ? 'bg-amber-400 text-white'
                                   : r.posicao <= 3 ? 'bg-amber-100 text-amber-700'
                                   : 'bg-slate-100 text-slate-400'">
@@ -224,14 +255,16 @@
                       {{ acertosRanking(r) }}<span class="text-slate-300 text-[11px] font-normal">/{{ r.maxPalpites }}</span>
                     </div>
                   </div>
-                }
+                </cdk-virtual-scroll-viewport>
               </div>
             }
           }
-        }
+        </div>
+      }
 
-        <!-- TAB: Sorteios -->
-        @if (activeTab() === 'sorteios') {
+      <!-- ── TAB: Sorteios (scroll normal) ─────────────────────────────── -->
+      @if (activeTab() === 'sorteios') {
+        <div class="px-4 py-5 flex flex-col gap-4 overflow-y-auto flex-1">
           @if (sorteiosProcessados().length === 0) {
             <div class="text-center py-12 text-slate-400 text-sm bg-white rounded-2xl border border-slate-100">
               {{ 'portalBolaoDetalhe.emptyDraws' | translate }}
@@ -240,7 +273,6 @@
             <div class="flex flex-col gap-2.5">
               @for (s of sorteiosProcessados(); track s.id; let i = $index) {
                 <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                  <!-- Header sorteio -->
                   <div class="flex items-center justify-between px-4 py-3 border-b border-slate-100">
                     <div>
                       <div class="font-semibold text-[13px]">
@@ -250,7 +282,6 @@
                     </div>
                     <span class="text-green-700 text-lg leading-none">✓</span>
                   </div>
-                  <!-- Bolas sorteadas -->
                   <div class="flex gap-1.5 px-4 py-3">
                     @for (n of s.bolasSorteadas; track n) {
                       <span class="w-9 h-9 rounded-[9px] flex items-center justify-center font-mono font-bold text-[12px] bg-green-700 text-white flex-shrink-0">
@@ -258,7 +289,6 @@
                       </span>
                     }
                   </div>
-                  <!-- Acertos por cota -->
                   @if (bolao()!.cotas.length > 0) {
                     <div class="border-t border-dashed border-slate-100 px-4 py-2.5 flex flex-col gap-1.5">
                       @for (cota of bolao()!.cotas; track cota.id) {
@@ -278,7 +308,7 @@
               }
             </div>
           }
-        }
+        </div>
+      }
 
-      </div>
     }

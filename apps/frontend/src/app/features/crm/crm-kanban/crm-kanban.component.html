@@ -45,26 +45,27 @@
       </div>
     } @else {
       <!-- Kanban board -->
-      <div class="flex gap-4 p-4 lg:p-6 overflow-x-auto min-h-[calc(100vh-120px)]"
+      <div class="flex gap-4 p-4 lg:p-6 overflow-x-auto h-[calc(100svh-116px)]"
            cdkDropListGroup>
         @for (etapa of etapas(); track etapa.id) {
-          <div class="flex-shrink-0 w-72 flex flex-col">
+          <div class="flex-shrink-0 w-72 flex flex-col h-full">
             <!-- Column header -->
-            <div class="flex items-center gap-2 mb-3 px-1">
+            <div class="flex items-center gap-2 mb-3 px-1 flex-shrink-0">
               <span class="w-3 h-3 rounded-full flex-shrink-0" [style.background]="etapa.cor"></span>
               <span class="font-semibold text-[13px] text-slate-700 truncate flex-1">{{ etapa.nome }}</span>
               <span class="text-[11px] text-slate-400 font-mono">{{ (contatosPorEtapa()[etapa.id] ?? []).length }}</span>
             </div>
 
-            <!-- Drop list -->
+            <!-- Drop list (scrollável com lazy) -->
             <div cdkDropList
                  [id]="etapa.id"
                  [cdkDropListData]="contatosPorEtapa()[etapa.id] ?? []"
                  [cdkDropListConnectedTo]="listaIds()"
                  (cdkDropListDropped)="onDrop($event, etapa.id)"
-                 class="flex flex-col gap-2 flex-1 min-h-[200px] rounded-xl p-2 bg-slate-50/70 border border-dashed border-slate-200 cdk-drop-list transition-colors">
+                 (scroll)="onColumnScroll($event, etapa.id)"
+                 class="flex flex-col gap-2 flex-1 min-h-[200px] rounded-xl p-2 bg-slate-50/70 border border-dashed border-slate-200 cdk-drop-list transition-colors overflow-y-auto">
 
-              @for (c of (contatosPorEtapa()[etapa.id] ?? []); track c.id) {
+              @for (c of (contatosVisiveis()[etapa.id] ?? []); track c.id) {
                 <div cdkDrag
                      class="bg-white border border-slate-200 rounded-xl p-3.5 cursor-grab active:cursor-grabbing shadow-sm hover:shadow-md hover:border-slate-300 transition-all group"
                      (dblclick)="abrirConversa(c.celular)">
@@ -112,38 +113,55 @@
                   {{ 'crm.emptyColumn' | translate }}
                 </div>
               }
+
+              <!-- Mostrar mais -->
+              @if (temMais(etapa.id)) {
+                <button type="button"
+                  (click)="mostrarMais(etapa.id)"
+                  class="w-full py-2 text-[12px] font-semibold text-slate-400 hover:text-slate-700 hover:bg-white rounded-lg transition-colors border border-dashed border-slate-200 mt-1">
+                  Mostrar mais ({{ (contatosPorEtapa()[etapa.id] ?? []).length - (contatosVisiveis()[etapa.id] ?? []).length }} restantes)
+                </button>
+              }
             </div>
           </div>
         }
 
-        <!-- Sem etapa column -->
-        <div class="flex-shrink-0 w-72 flex flex-col">
-          <div class="flex items-center gap-2 mb-3 px-1">
-            <span class="w-3 h-3 rounded-full bg-slate-300 flex-shrink-0"></span>
-            <span class="font-semibold text-[13px] text-slate-400 flex-1">{{ 'crm.noStage' | translate }}</span>
-            <span class="text-[11px] text-slate-400 font-mono">{{ (contatosPorEtapa()['__sem_etapa__'] ?? []).length }}</span>
-          </div>
-          <div cdkDropList
-               id="__sem_etapa__"
-               [cdkDropListData]="contatosPorEtapa()['__sem_etapa__'] ?? []"
-               [cdkDropListConnectedTo]="listaIds()"
-               (cdkDropListDropped)="onDrop($event, null)"
-               class="flex flex-col gap-2 flex-1 min-h-[200px] rounded-xl p-2 bg-slate-50/40 border border-dashed border-slate-200 cdk-drop-list">
-            @for (c of (contatosPorEtapa()['__sem_etapa__'] ?? []); track c.id) {
-              <div cdkDrag class="bg-white border border-slate-200 rounded-xl p-3.5 cursor-grab shadow-sm group"
-                   (dblclick)="abrirConversa(c.celular)">
-                <div class="flex items-center justify-between gap-2">
-                  <div class="min-w-0">
-                    <div class="font-semibold text-[13.5px] truncate">{{ nomeDisplay(c) }}</div>
-                    <div class="text-[11.5px] text-slate-400 font-mono">{{ c.celular }}</div>
-                  </div>
-                  <button (click)="abrirConversa(c.celular)"
-                          class="opacity-0 group-hover:opacity-100 w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-500">💬</button>
-                </div>
+        <!-- ── Nova etapa inline ── -->
+        <div class="flex-shrink-0 w-72 flex flex-col h-full">
+          @if (!adicionandoEtapa()) {
+            <button type="button" (click)="adicionandoEtapa.set(true)"
+              class="w-full h-full min-h-[200px] rounded-xl border border-dashed border-slate-200 bg-slate-50/40 hover:bg-slate-100/60 flex flex-col items-center justify-center gap-2 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer">
+              <span class="text-2xl leading-none">＋</span>
+              <span class="text-[12px] font-semibold">Nova etapa</span>
+            </button>
+          } @else {
+            <div class="rounded-xl border border-green-300 bg-white p-4 flex flex-col gap-3 shadow-sm">
+              <div class="font-semibold text-[13px] text-slate-700">Nova etapa</div>
+              <input [(ngModel)]="novaEtapaNome" placeholder="Nome da etapa"
+                class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-green-700"
+                (keydown.enter)="criarEtapaInline()" (keydown.escape)="adicionandoEtapa.set(false)" />
+              <div class="flex gap-1 flex-wrap">
+                @for (cor of coresEtapa; track cor) {
+                  <button type="button" (click)="novaEtapaCor = cor"
+                    class="w-6 h-6 rounded-full transition-transform"
+                    [style.background]="cor"
+                    [class]="novaEtapaCor === cor ? 'ring-2 ring-offset-1 ring-slate-700 scale-110' : 'hover:scale-110'"></button>
+                }
               </div>
-            }
-          </div>
+              <div class="flex gap-2">
+                <button type="button" (click)="adicionandoEtapa.set(false)"
+                  class="flex-1 py-1.5 text-[12px] font-semibold border border-slate-200 rounded-lg hover:bg-slate-50">
+                  Cancelar
+                </button>
+                <button type="button" (click)="criarEtapaInline()" [disabled]="!novaEtapaNome.trim() || criandoEtapa()"
+                  class="flex-1 py-1.5 text-[12px] font-semibold bg-green-700 hover:bg-green-800 disabled:opacity-50 text-white rounded-lg">
+                  {{ criandoEtapa() ? '…' : 'Criar' }}
+                </button>
+              </div>
+            </div>
+          }
         </div>
+
       </div>
     }
 

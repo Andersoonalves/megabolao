@@ -63,6 +63,11 @@ export class CrmKanbanComponent implements OnInit {
   importando  = signal(false);
   importMsg   = signal('');
 
+  private readonly PAGE_SIZE = 30;
+
+  /** Quantos itens mostrar por coluna. Cresce ao clicar "Mostrar mais". */
+  paginacao = signal<Record<string, number>>({});
+
   contatosPorEtapa = computed(() => {
     const b = this.busca().toLowerCase();
     const todos = this.contatos().filter(c =>
@@ -70,18 +75,71 @@ export class CrmKanbanComponent implements OnInit {
     );
     const map: Record<string, Contato[]> = {};
     for (const e of this.etapas()) map[e.id] = [];
-    map['__sem_etapa__'] = [];
     for (const c of todos) {
-      const key = c.etapaId ?? '__sem_etapa__';
-      (map[key] ??= []).push(c);
+      if (c.etapaId) (map[c.etapaId] ??= []).push(c);
     }
     return map;
   });
 
-  listaIds = computed(() => [
-    ...this.etapas().map(e => e.id),
-    '__sem_etapa__',
-  ]);
+  /** Contatos visíveis (paginados) por coluna. */
+  contatosVisiveis = computed(() => {
+    const todos = this.contatosPorEtapa();
+    const pag   = this.paginacao();
+    const result: Record<string, Contato[]> = {};
+    for (const key of Object.keys(todos)) {
+      const limite = pag[key] ?? this.PAGE_SIZE;
+      result[key] = todos[key].slice(0, limite);
+    }
+    return result;
+  });
+
+  listaIds = computed(() => this.etapas().map(e => e.id));
+
+  mostrarMais(etapaId: string): void {
+    this.paginacao.update(p => ({
+      ...p,
+      [etapaId]: (p[etapaId] ?? this.PAGE_SIZE) + this.PAGE_SIZE,
+    }));
+  }
+
+  temMais(etapaId: string): boolean {
+    const total   = (this.contatosPorEtapa()[etapaId] ?? []).length;
+    const visivel = (this.paginacao()[etapaId] ?? this.PAGE_SIZE);
+    return total > visivel;
+  }
+
+  onColumnScroll(event: Event, etapaId: string): void {
+    const el = event.target as HTMLElement;
+    const nearBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 120;
+    if (nearBottom && this.temMais(etapaId)) this.mostrarMais(etapaId);
+  }
+
+  // ── Criar etapa inline ─────────────────────────────────────────────────────
+  adicionandoEtapa = signal(false);
+  novaEtapaNome    = '';
+  novaEtapaCor     = '#3b82f6';
+  criandoEtapa     = signal(false);
+
+  readonly coresEtapa = ['#64748b','#3b82f6','#f59e0b','#ef4444','#22c55e','#8b5cf6','#ec4899','#14b8a6'];
+
+  async criarEtapaInline(): Promise<void> {
+    if (!this.novaEtapaNome.trim() || this.criandoEtapa()) return;
+    this.criandoEtapa.set(true);
+    try {
+      await firstValueFrom(this.api.post('/crm/etapas', {
+        nome: this.novaEtapaNome.trim(),
+        cor:  this.novaEtapaCor,
+      }));
+      this.novaEtapaNome = '';
+      this.novaEtapaCor  = '#3b82f6';
+      this.adicionandoEtapa.set(false);
+      await this.load();
+    } catch {
+      this.error.set(this.translate.instant('crm.errSave'));
+    } finally {
+      this.criandoEtapa.set(false);
+    }
+  }
 
   ngOnInit(): void { this.load(); }
 

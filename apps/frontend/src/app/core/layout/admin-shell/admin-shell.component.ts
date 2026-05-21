@@ -194,36 +194,46 @@ const MASTER_COM_TENANT_NAV: NavItem[] = [
       }
 
       <!-- Nav links -->
-      <nav class="flex flex-col gap-0.5 px-2 flex-1 pt-2 lg:pt-0">
+      <nav class="flex flex-col px-3 flex-1 pt-2 lg:pt-1 pb-2 gap-px">
         @for (item of navItems(); track item.sectionKey ?? item.id ?? $index) {
           @if (item.sectionKey) {
-            <div class="text-[10.5px] font-semibold text-slate-400 uppercase tracking-widest px-2.5 pt-3.5 pb-1.5">{{ item.sectionKey | translate }}</div>
+            <!-- Section header -->
+            <div class="flex items-center gap-2 px-2 pt-4 pb-1.5">
+              <span class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.08em]">{{ item.sectionKey | translate }}</span>
+              <div class="flex-1 h-px bg-slate-100"></div>
+            </div>
           } @else if (item.children?.length) {
-            <div class="flex flex-col gap-0.5">
+            <!-- Parent item with children -->
+            <div class="flex flex-col">
               <a [routerLink]="item.route"
-                 routerLinkActive="bg-green-50 text-green-800 font-semibold"
+                 routerLinkActive="bg-green-100 text-green-900 font-semibold border-l-[3px] border-green-700"
                  [routerLinkActiveOptions]="{ exact: item.route === '/dashboard' || item.route === '/dashboard-master' || item.route === '/whatsapp' || item.route === '/minha-conta' }"
                  (click)="shell.closeDrawer()"
-                 class="flex items-center gap-2.5 px-2.5 py-3 lg:py-2 rounded-md text-slate-500 text-[13px] font-medium hover:bg-slate-100 hover:text-slate-900 transition-all duration-100 no-underline">
-                <span class="text-base leading-none w-4 text-center flex-shrink-0">{{ item.icon }}</span>
-                <span>{{ item.labelKey! | translate }}</span>
+                 class="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-slate-600 text-[13px] font-medium hover:bg-slate-100 hover:text-slate-900 transition-colors no-underline border-l-[3px] border-transparent">
+                <span class="text-[15px] leading-none w-5 text-center flex-shrink-0">{{ item.icon }}</span>
+                <span class="flex-1">{{ item.labelKey! | translate }}</span>
               </a>
-              @for (sub of item.children; track sub.id) {
-                <a [routerLink]="sub.route"
-                   routerLinkActive="bg-green-50 text-green-800 font-semibold"
-                   (click)="shell.closeDrawer()"
-                   class="flex items-center gap-2 pl-8 pr-2.5 py-2.5 lg:py-2 rounded-md text-slate-500 text-[12.5px] font-medium hover:bg-slate-100 hover:text-slate-900 transition-all duration-100 no-underline">
-                  <span class="truncate">{{ sub.labelKey! | translate }}</span>
-                </a>
-              }
+              <!-- Sub-items with vertical connector -->
+              <div class="ml-4 pl-3 flex flex-col gap-px border-l border-slate-200 mt-px mb-0.5">
+                @for (sub of item.children; track sub.id) {
+                  <a [routerLink]="sub.route"
+                     routerLinkActive="text-green-800 font-semibold bg-green-100"
+                     (click)="shell.closeDrawer()"
+                     class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-slate-500 text-[12.5px] font-medium hover:bg-slate-100 hover:text-slate-800 transition-colors no-underline">
+                    <span class="w-1 h-1 rounded-full bg-current opacity-40 flex-shrink-0"></span>
+                    <span class="truncate">{{ sub.labelKey! | translate }}</span>
+                  </a>
+                }
+              </div>
             </div>
           } @else {
+            <!-- Leaf item -->
             <a [routerLink]="item.route"
-               routerLinkActive="bg-green-50 text-green-800 font-semibold"
+               routerLinkActive="bg-green-100 text-green-900 font-semibold border-l-[3px] border-green-700"
                [routerLinkActiveOptions]="{ exact: item.route === '/dashboard' || item.route === '/dashboard-master' || item.route === '/minha-conta' }"
                (click)="shell.closeDrawer()"
-               class="flex items-center gap-2.5 px-2.5 py-3 lg:py-2 rounded-md text-slate-500 text-[13px] font-medium hover:bg-slate-100 hover:text-slate-900 transition-all duration-100 no-underline">
-              <span class="text-base leading-none w-4 text-center flex-shrink-0">{{ item.icon }}</span>
+               class="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-slate-600 text-[13px] font-medium hover:bg-slate-100 hover:text-slate-900 transition-colors no-underline border-l-[3px] border-transparent">
+              <span class="text-[15px] leading-none w-5 text-center flex-shrink-0">{{ item.icon }}</span>
               <span>{{ item.labelKey! | translate }}</span>
             </a>
           }
@@ -257,19 +267,16 @@ const MASTER_COM_TENANT_NAV: NavItem[] = [
                class="block px-3 py-2.5 text-[13px] font-semibold text-slate-800 hover:bg-slate-50 rounded-lg mx-1 transition-colors min-h-10 no-underline">
               {{ 'nav.myAccount' | translate }}
             </a>
-            <div class="px-3 py-1.5 text-[10px] font-semibold text-slate-500 uppercase tracking-wide border-t border-b border-slate-100 mt-0.5">
-              {{ 'shell.language' | translate }}
-            </div>
-            <div class="flex gap-1 p-2">
-              <button type="button" role="menuitem"
+            <div class="flex gap-1 px-3 py-2 border-t border-slate-100 mt-0.5">
+              <button type="button" role="menuitem" title="Português"
                       (click)="setLang('pt')"
                       [class]="langBtnClass('pt')">
-                PT
+                🇧🇷
               </button>
-              <button type="button" role="menuitem"
+              <button type="button" role="menuitem" title="English"
                       (click)="setLang('en')"
                       [class]="langBtnClass('en')">
-                EN
+                🇺🇸
               </button>
             </div>
             <div class="border-t border-slate-100 mt-0.5 pt-0.5">
@@ -309,10 +316,10 @@ export class AdminShellComponent {
 
   langBtnClass(code: AppLang): string {
     const on = this.i18n.lang() === code;
-    const base = 'flex-1 min-h-10 px-2 text-xs font-bold rounded-lg border transition-colors';
+    const base = 'text-xl leading-none px-2 py-1 rounded-lg transition-all';
     return on
-      ? `${base} bg-green-700 text-white border-green-700`
-      : `${base} bg-white text-slate-600 border-slate-200 hover:bg-slate-50`;
+      ? `${base} opacity-100 ring-2 ring-green-600 ring-offset-1 scale-110`
+      : `${base} opacity-40 hover:opacity-70`;
   }
 
   async setLang(code: AppLang): Promise<void> {
