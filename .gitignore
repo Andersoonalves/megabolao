@@ -28,3 +28,4 @@ secrets/*
 !secrets/.gitkeep
 !secrets/*.example.json
 !secrets/*.example
+.vercel

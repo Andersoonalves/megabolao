@@ -1,5 +1,6 @@
-import { Controller, Param, ParseUUIDPipe, Post } from '@nestjs/common';
+import { Controller, Param, ParseUUIDPipe, Post, Res } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Response } from 'express';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RequerPermissoes } from '../auth/decorators/permissions.decorator';
 import { TenantId } from '../auth/decorators/tenant-id.decorator';
@@ -24,11 +25,20 @@ export class RelatorioController {
 
   @Post('pdf')
   @RequerPermissoes('relatorio.gerar')
-  @ApiOperation({ summary: 'Gerar PDF completo (prêmios + ranking até 200 cotas → URL assinada 24h)' })
-  gerarPdf(
+  @ApiOperation({ summary: 'Gerar PDF completo do bolão — stream direto (sem storage)' })
+  async gerarPdf(
     @TenantId() tenantId: string | null,
     @Param('bolaoId', ParseUUIDPipe) bolaoId: string,
-  ) {
-    return this.relatorioService.gerarPdf(tenantId, bolaoId);
+    @Res() res: Response,
+  ): Promise<void> {
+    const { buffer, filename } = await this.relatorioService.gerarPdfBuffer(tenantId, bolaoId);
+
+    res.set({
+      'Content-Type':        'application/pdf',
+      'Content-Disposition': `attachment; filename="${filename}"`,
+      'Content-Length':      buffer.length,
+      'Cache-Control':       'no-store',
+    });
+    res.end(buffer);
   }
 }

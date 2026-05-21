@@ -47,4 +47,12 @@ export class ApiService {
   postFormData<T>(path: string, formData: FormData): Observable<T> {
     return this.http.post<T>(this.url(path), formData, { headers: this.tenantHeaders() });
   }
+
+  /** POST que retorna Blob (para download de PDF/XLSX direto do servidor). */
+  postBlob(path: string, body: unknown = {}): Observable<Blob> {
+    return this.http.post(this.url(path), body, {
+      headers:      this.tenantHeaders(),
+      responseType: 'blob',
+    });
+  }
 }

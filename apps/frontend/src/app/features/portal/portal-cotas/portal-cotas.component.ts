@@ -26,15 +26,6 @@ interface BolaoData {
   template: `
     <!-- ── HEADER verde ──────────────────────────────────────────────────── -->
     <div class="flex-shrink-0 text-white" style="background: linear-gradient(160deg, #065f46, #064e3b); padding: 12px 16px 18px">
-      <div class="flex justify-between items-center mb-3.5">
-        <div class="text-[11px] opacity-70 font-semibold tracking-widest uppercase">
-          {{ tenantLabel() }}
-        </div>
-        <div class="w-9 h-9 rounded-full flex items-center justify-center text-[12px] font-bold"
-             style="background: rgba(255,255,255,0.15)">
-          {{ iniciais() }}
-        </div>
-      </div>
       <div class="text-[11.5px] opacity-70 mb-0.5">Olá, {{ nomeDisplay() }}</div>
       <div class="font-display text-[22px] font-semibold" style="letter-spacing: -0.015em">
         {{ 'portalCotas.title' | translate }}

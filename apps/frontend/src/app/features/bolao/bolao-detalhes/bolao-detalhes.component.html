@@ -1,66 +1,115 @@
     <!-- Topbar -->
-    <div class="bg-white border-b border-slate-200 px-4 lg:px-7 py-3 flex items-center gap-3 sticky top-14 lg:top-0 z-10">
+    <div class="bg-white border-b border-slate-200 px-4 lg:px-7 py-3 flex items-center gap-2 sticky top-14 lg:top-0 z-10">
       <nb-back-button />
+
+      <!-- Breadcrumb -->
       <div class="min-w-0 flex-1 flex items-center gap-2">
-        <div class="hidden sm:flex items-center gap-2 text-[12.5px] min-w-0">
-          <a routerLink="/boloes" class="text-slate-400 hover:text-slate-600 transition-colors shrink-0">{{ 'bolaoDetalhes.breadcrumbPools' | translate }}</a>
+        <div class="hidden sm:flex items-center gap-1.5 text-[12.5px] min-w-0 text-slate-400">
+          <a routerLink="/boloes" class="hover:text-slate-600 transition-colors shrink-0">{{ 'bolaoDetalhes.breadcrumbPools' | translate }}</a>
           @if (data()?.bolao) {
-            <span class="text-slate-300 shrink-0">›</span>
-            <span class="font-semibold truncate max-w-[200px]">{{ data()!.bolao.nome }}</span>
+            <span class="shrink-0">›</span>
+            <span class="text-slate-700 font-semibold truncate max-w-[180px]">{{ data()!.bolao.nome }}</span>
           }
-          <span class="text-slate-300 shrink-0">›</span>
-          <span class="text-slate-400 shrink-0">{{ 'bolaoDetalhes.breadcrumbDetails' | translate }}</span>
         </div>
-        <span class="font-display font-semibold text-[14px] sm:hidden truncate">{{ 'bolaoDetalhes.breadcrumbDetails' | translate }}</span>
+        <span class="font-display font-semibold text-[14px] sm:hidden truncate">{{ data()?.bolao?.nome ?? ('bolaoDetalhes.breadcrumbDetails' | translate) }}</span>
       </div>
+
+      <!-- Ações -->
       <div class="flex items-center gap-2 shrink-0">
+
+        <!-- Cotas (sempre visível) -->
         <a [routerLink]="['/bolao', id(), 'cotas']"
-           class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-sm font-semibold rounded-[10px] no-underline text-slate-900 transition-colors min-h-9">
+           class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-[13px] font-semibold rounded-[10px] no-underline text-slate-700 transition-colors min-h-9">
           {{ 'common.viewQuotas' | translate }}
         </a>
-        <a [routerLink]="['/bolao', id(), 'whatsapp']"
-           class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-sm font-semibold rounded-[10px] no-underline text-slate-900 transition-colors min-h-9">
-          💬 WhatsApp
-        </a>
-        @if (sheetsUrl()) {
-          <a [href]="sheetsUrl()!" target="_blank" rel="noopener noreferrer"
-             class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 hover:bg-green-50 hover:border-green-300 text-sm font-semibold rounded-[10px] no-underline text-slate-900 hover:text-green-700 transition-colors min-h-9"
-             title="{{ 'bolaoDetalhes.openSheetsTitle' | translate }}">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="flex-shrink-0">
-              <rect x="3" y="3" width="18" height="18" rx="2" fill="#34a853" opacity="0.15"/>
-              <path d="M8 8h8M8 12h8M8 16h5" stroke="#34a853" stroke-width="1.8" stroke-linecap="round"/>
-              <rect x="3" y="3" width="18" height="18" rx="2" stroke="#34a853" stroke-width="1.5"/>
-            </svg>
-            {{ 'bolaoDetalhes.openSheets' | translate }}
-          </a>
-        } @else {
-          <a [routerLink]="['/bolao', id(), 'google-drive']"
-             class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-sm font-semibold rounded-[10px] no-underline text-slate-400 hover:text-slate-600 transition-colors min-h-9"
-             title="{{ 'bolaoDetalhes.linkSheetsTitle' | translate }}">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="flex-shrink-0 opacity-50">
-              <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.5"/>
-              <path d="M8 8h8M8 12h8M8 16h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-            </svg>
-            Sheets
-          </a>
-        }
-        <a [routerLink]="['/bolao', id(), 'editar']"
-           class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-sm font-semibold rounded-[10px] no-underline text-slate-900 transition-colors min-h-9">
-          ✎ {{ 'bolaoDetalhes.editBtn' | translate }}
-        </a>
-        <button (click)="clonar()"
-                class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-sm font-semibold rounded-[10px] text-slate-900 transition-colors min-h-9">
-          ⎘ {{ 'bolaoDetalhes.cloneBtn' | translate }}
-        </button>
-        @if (podeDeletar()) {
-          <button (click)="confirmandoExclusao.set(true)"
-                  class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-red-200 hover:bg-red-50 text-sm font-semibold rounded-[10px] text-red-600 transition-colors min-h-9">
-            🗑 {{ 'bolaoDetalhes.deleteBtn' | translate }}
+
+        <!-- Menu ⋯ com ações secundárias -->
+        <div class="relative">
+          <button type="button"
+                  (click)="acaoMenuOpen.set(!acaoMenuOpen())"
+                  class="w-9 h-9 flex items-center justify-center border border-slate-200 bg-white hover:bg-slate-50 rounded-[10px] text-slate-600 text-base font-bold transition-colors">
+            ⋯
           </button>
-        }
+
+          @if (acaoMenuOpen()) {
+            <!-- Backdrop -->
+            <div class="fixed inset-0 z-10" (click)="acaoMenuOpen.set(false)"></div>
+
+            <!-- Dropdown -->
+            <div class="absolute right-0 top-full mt-1.5 w-52 bg-white border border-slate-200 rounded-xl shadow-lg z-20 py-1 overflow-hidden">
+
+              <a [routerLink]="['/bolao', id(), 'whatsapp']"
+                 (click)="acaoMenuOpen.set(false)"
+                 class="flex items-center gap-2.5 px-3.5 py-2.5 text-[13px] text-slate-700 hover:bg-slate-50 no-underline transition-colors">
+                <span class="text-base leading-none w-5 text-center">💬</span>
+                WhatsApp
+              </a>
+
+              <button type="button"
+                      (click)="acaoMenuOpen.set(false); exportarPdf()"
+                      [disabled]="gerandoPdf()"
+                      class="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-[13px] text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50 text-left">
+                @if (gerandoPdf()) {
+                  <svg class="animate-spin w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                } @else {
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="flex-shrink-0 text-slate-500"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                }
+                {{ gerandoPdf() ? 'Gerando PDF…' : 'Exportar PDF' }}
+              </button>
+
+              <!-- Sheets -->
+              @if (sheetsUrl()) {
+                <a [href]="sheetsUrl()!" target="_blank" rel="noopener noreferrer"
+                   (click)="acaoMenuOpen.set(false)"
+                   class="flex items-center gap-2.5 px-3.5 py-2.5 text-[13px] text-slate-700 hover:bg-slate-50 no-underline transition-colors">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" class="flex-shrink-0">
+                    <rect x="3" y="3" width="18" height="18" rx="2" fill="#34a853" opacity="0.15"/>
+                    <path d="M8 8h8M8 12h8M8 16h5" stroke="#34a853" stroke-width="1.8" stroke-linecap="round"/>
+                    <rect x="3" y="3" width="18" height="18" rx="2" stroke="#34a853" stroke-width="1.5"/>
+                  </svg>
+                  Abrir Sheets
+                </a>
+              } @else {
+                <a [routerLink]="['/bolao', id(), 'google-drive']"
+                   (click)="acaoMenuOpen.set(false)"
+                   class="flex items-center gap-2.5 px-3.5 py-2.5 text-[13px] text-slate-500 hover:bg-slate-50 no-underline transition-colors">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" class="flex-shrink-0 opacity-40"><rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M8 8h8M8 12h8M8 16h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                  Vincular Sheets
+                </a>
+              }
+
+              <div class="border-t border-slate-100 my-1"></div>
+
+              <a [routerLink]="['/bolao', id(), 'editar']"
+                 (click)="acaoMenuOpen.set(false)"
+                 class="flex items-center gap-2.5 px-3.5 py-2.5 text-[13px] text-slate-700 hover:bg-slate-50 no-underline transition-colors">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="flex-shrink-0 text-slate-400"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                {{ 'bolaoDetalhes.editBtn' | translate }}
+              </a>
+
+              <button type="button" (click)="acaoMenuOpen.set(false); clonar()"
+                      class="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-[13px] text-slate-700 hover:bg-slate-50 transition-colors text-left">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="flex-shrink-0 text-slate-400"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                {{ 'bolaoDetalhes.cloneBtn' | translate }}
+              </button>
+
+              @if (podeDeletar()) {
+                <div class="border-t border-slate-100 my-1"></div>
+                <button type="button" (click)="acaoMenuOpen.set(false); confirmandoExclusao.set(true)"
+                        class="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-[13px] text-red-600 hover:bg-red-50 transition-colors text-left">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="flex-shrink-0"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                  {{ 'bolaoDetalhes.deleteBtn' | translate }}
+                </button>
+              }
+            </div>
+          }
+        </div>
+
+        <!-- CTA Principal -->
         <a routerLink="/sorteios"
-           class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-800 text-white text-sm font-semibold rounded-[10px] no-underline transition-colors shadow-sm min-h-9">
-          ✦ <span class="hidden sm:inline">{{ 'bolaoDetalhes.registerDraw' | translate }}</span><span class="sm:hidden">{{ 'bolaoDetalhes.registerDrawShort' | translate }}</span>
+           class="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-green-700 hover:bg-green-800 text-white text-[13px] font-semibold rounded-[10px] no-underline transition-colors shadow-sm min-h-9">
+          <span class="hidden sm:inline">✦ {{ 'bolaoDetalhes.registerDraw' | translate }}</span>
+          <span class="sm:hidden">✦</span>
         </a>
       </div>
     </div>

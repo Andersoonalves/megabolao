@@ -1,0 +1,11 @@
+node_modules
+dist
+.nx
+.git
+.github
+apps/frontend
+*.md
+*.log
+.env*
+supabase/.branches
+supabase/.temp

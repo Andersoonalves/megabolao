@@ -72,6 +72,33 @@ export class BolaoDetalhesComponent implements OnInit {
   confirmandoExclusao = signal(false);
   deletando           = signal(false);
   deleteError         = signal('');
+  acaoMenuOpen        = signal(false);
+
+  gerandoPdf = signal(false);
+  pdfError   = signal('');
+
+  async exportarPdf(): Promise<void> {
+    const bolaoId = this.id();
+    if (!bolaoId || this.gerandoPdf()) return;
+    this.gerandoPdf.set(true);
+    this.pdfError.set('');
+    try {
+      const blob = await firstValueFrom(
+        this.api.postBlob(`/boloes/${bolaoId}/relatorios/pdf`, {}),
+      );
+      const url  = URL.createObjectURL(blob);
+      const nome = this.data()?.bolao.nome ?? 'bolao';
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = `relatorio-${nome.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 40)}.pdf`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+    } catch {
+      this.pdfError.set('Erro ao gerar PDF. Tente novamente.');
+    } finally {
+      this.gerandoPdf.set(false);
+    }
+  }
 
   podeDeletar(): boolean {
     const s = this.data()?.bolao.status;

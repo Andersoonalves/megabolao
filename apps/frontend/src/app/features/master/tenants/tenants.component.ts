@@ -1,7 +1,7 @@
 import {
   Component, signal, computed, OnInit, ChangeDetectionStrategy, inject,
 } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { RouterLink, ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
@@ -34,8 +34,9 @@ function hexToRgba(hex: string, alpha: number): string {
   templateUrl: './tenants.component.html',
 })
 export class TenantsComponent implements OnInit {
-  private readonly api = inject(ApiService);
+  private readonly api    = inject(ApiService);
   private readonly translate = inject(TranslateService);
+  private readonly route  = inject(ActivatedRoute);
 
   // ── List state ──────────────────────────────────────────────────────────────
   tenants    = signal<TenantResponse[]>([]);
@@ -64,7 +65,16 @@ export class TenantsComponent implements OnInit {
   editAdminCelular = signal('');
   editAdminInfoLoading = signal(false);
 
-  ngOnInit(): void { this.load(); }
+  ngOnInit(): void {
+    this.load().then(() => {
+      // Abre edição diretamente se vier via queryParam ?editar=<id>
+      const editarId = this.route.snapshot.queryParamMap.get('editar');
+      if (editarId) {
+        const t = this.tenants().find(x => x.id === editarId);
+        if (t) this.editando.set(t);
+      }
+    });
+  }
 
   async load(): Promise<void> {
     this.loading.set(true);

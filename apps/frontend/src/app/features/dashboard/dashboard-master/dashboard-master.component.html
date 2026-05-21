@@ -151,8 +151,14 @@
                     <!-- Actions -->
                     <td class="px-4 py-3">
                       <div class="flex gap-1 justify-end">
-                        <button type="button" class="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-green-700 hover:bg-green-50 rounded-lg transition-colors text-sm" [attr.title]="'dashboardMaster.titleDetails' | translate">👁</button>
-                        <button type="button" class="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors text-sm" [attr.title]="'dashboardMaster.titleMore' | translate">⋯</button>
+                        <a routerLink="/tenants"
+                           [queryParams]="{ ver: t.id }"
+                           class="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-green-700 hover:bg-green-50 rounded-lg transition-colors text-sm no-underline"
+                           [attr.title]="'dashboardMaster.titleDetails' | translate">👁</a>
+                        <a routerLink="/tenants"
+                           [queryParams]="{ editar: t.id }"
+                           class="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors text-sm no-underline"
+                           [attr.title]="'dashboardMaster.titleMore' | translate">⋯</a>
                       </div>
                     </td>
                   </tr>
