@@ -12,6 +12,12 @@ import { CreateCotaDto } from './dto/create-cota.dto';
 import { UpdateCotaDto } from './dto/update-cota.dto';
 import { ListCotasDto } from './dto/list-cotas.dto';
 
+export interface ImportCSVResult {
+  total:   number;
+  criadas: number;
+  erros:   { linha: number; campo: string; erro: string }[];
+}
+
 export interface CotaResponse {
   id: string;
   tenantId: string;
@@ -225,6 +231,121 @@ export class ParticipanteService {
 
     if (result.count > 0) this.triggerSheetsSync(bolaoId, tenantId, 'COTA');
     return { atualizadas: result.count };
+  }
+
+  async importarCotasCSV(
+    tenantId: string | null,
+    bolaoId: string,
+    fileBuffer: Buffer,
+    ignorarErros = true,
+  ): Promise<ImportCSVResult> {
+    this.assertTenantId(tenantId);
+    await this.tenantService.assertTenantPermiteCadastros(tenantId);
+
+    const bolao = await this.findBolaoOrFail(tenantId, bolaoId);
+    if (bolao.status === 'FINALIZADO') {
+      throw new BusinessException('BOLAO_FINALIZADO', 'Não é possível importar cotas para bolão FINALIZADO');
+    }
+
+    const rows = this.parseCSVBuffer(fileBuffer);
+    const erros: ImportCSVResult['erros'] = [];
+    let criadas = 0;
+
+    for (let i = 0; i < rows.length; i++) {
+      const { nome, celular, palpites } = rows[i];
+      const linha = i + 2; // 1-indexed + header row
+
+      if (!nome) {
+        erros.push({ linha, campo: 'nome', erro: 'Nome obrigatório' });
+        if (!ignorarErros) break;
+        continue;
+      }
+
+      if (!validarPalpites(palpites)) {
+        erros.push({
+          linha, campo: 'palpites',
+          erro: `10 números únicos 1-60 obrigatórios (recebido: ${palpites.join(',') || 'vazio'})`,
+        });
+        if (!ignorarErros) break;
+        continue;
+      }
+
+      try {
+        let participanteId: string | null = null;
+        if (celular) {
+          participanteId = await this.bancoParticipante.upsertParaCota(tenantId, nome, celular);
+        }
+
+        await this.prisma.$transaction(async (tx) => {
+          const { _max } = await tx.cota.aggregate({
+            where: { bolaoId, tenantId: tenantId! },
+            _max: { numeroSequencial: true },
+          });
+          await tx.cota.create({
+            data: {
+              tenantId:          tenantId!,
+              bolaoId,
+              participanteId,
+              nomeIdentificacao: nome.toUpperCase(),
+              numeroCelular:     celular ?? null,
+              numeroSequencial:  (_max.numeroSequencial ?? 0) + 1,
+              palpites,
+            },
+          });
+        });
+
+        criadas++;
+      } catch (err) {
+        erros.push({ linha, campo: 'geral', erro: err instanceof Error ? err.message : String(err) });
+        if (!ignorarErros) break;
+      }
+    }
+
+    if (criadas > 0) this.triggerSheetsSync(bolaoId, tenantId, 'COTA');
+    return { total: rows.length, criadas, erros };
+  }
+
+  // ── CSV parsing (sem dependência externa) ─────────────────────────────────
+
+  private parseCSVBuffer(buffer: Buffer): { nome: string; celular?: string; palpites: number[] }[] {
+    const text  = buffer.toString('utf-8').replace(/^﻿/, ''); // remove BOM
+    const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    if (lines.length === 0) return [];
+
+    const sep = lines[0].includes(';') ? ';' : ',';
+    const result: { nome: string; celular?: string; palpites: number[] }[] = [];
+
+    for (const line of lines) {
+      const cols = this.splitCSVLine(line, sep);
+      const nome = (cols[0] ?? '').trim();
+      if (!nome || /^nome$/i.test(nome)) continue; // skip header or empty
+
+      const celularRaw = (cols[1] ?? '').replace(/\D/g, '');
+      const celular    = celularRaw.length >= 10 ? celularRaw : undefined;
+      const palpites   = cols.slice(2, 12).map(c => parseInt(c.trim(), 10)).filter(n => !isNaN(n));
+
+      result.push({ nome, celular, palpites });
+    }
+    return result;
+  }
+
+  private splitCSVLine(line: string, sep: string): string[] {
+    const cols: string[] = [];
+    let cur = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') {
+        inQuotes = !inQuotes;
+      } else if (ch === sep && !inQuotes) {
+        cols.push(cur.trim());
+        cur = '';
+      } else {
+        cur += ch;
+      }
+    }
+    cols.push(cur.trim());
+    return cols;
   }
 
   async inativar(tenantId: string | null, bolaoId: string, id: string): Promise<CotaResponse> {

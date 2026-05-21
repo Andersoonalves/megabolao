@@ -12,6 +12,20 @@ import { BrlPipe, LocalNumPipe } from '../../../shared/pipes/locale-pipes';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+interface ImportRowPreview {
+  nome:     string;
+  celular:  string;
+  palpites: number[];
+  valido:   boolean;
+  erros:    string[];
+}
+
+interface ImportResult {
+  total:   number;
+  criadas: number;
+  erros:   { linha: number; campo: string; erro: string }[];
+}
+
 interface CotaResponse {
   id: string;
   bolaoId: string;
@@ -288,6 +302,110 @@ export class GestaoCotasComponent implements OnInit {
     } finally {
       this.confirmandoTodas.set(false);
     }
+  }
+
+  // ── Import CSV modal ──────────────────────────────────────────────────────────
+  showImportModal  = signal(false);
+  importEstado     = signal<'idle' | 'preview' | 'importing' | 'done'>('idle');
+  importFile       = signal<File | null>(null);
+  importPreview    = signal<ImportRowPreview[]>([]);
+  importResult     = signal<ImportResult | null>(null);
+  importDragOver   = signal(false);
+
+  importValidCount = computed(() => this.importPreview().filter(r => r.valido).length);
+  importErrCount   = computed(() => this.importPreview().filter(r => !r.valido).length);
+
+  openImportModal(): void {
+    this.importEstado.set('idle');
+    this.importFile.set(null);
+    this.importPreview.set([]);
+    this.importResult.set(null);
+    this.showImportModal.set(true);
+  }
+
+  closeImportModal(): void {
+    this.showImportModal.set(false);
+  }
+
+  onImportDrop(event: DragEvent): void {
+    event.preventDefault();
+    this.importDragOver.set(false);
+    const file = event.dataTransfer?.files?.[0];
+    if (file) this.processImportFile(file);
+  }
+
+  onImportFileChange(event: Event): void {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (file) this.processImportFile(file);
+    (event.target as HTMLInputElement).value = '';
+  }
+
+  private processImportFile(file: File): void {
+    this.importFile.set(file);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = (e.target?.result as string) ?? '';
+      this.importPreview.set(this.parseCSVPreview(text));
+      this.importEstado.set('preview');
+    };
+    reader.readAsText(file, 'utf-8');
+  }
+
+  private parseCSVPreview(text: string): ImportRowPreview[] {
+    const cleaned = text.replace(/^﻿/, '');
+    const lines   = cleaned.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    if (!lines.length) return [];
+
+    const sep  = lines[0].includes(';') ? ';' : ',';
+    const rows: ImportRowPreview[] = [];
+
+    for (const line of lines) {
+      const cols    = line.split(sep).map(c => c.replace(/^"|"$/g, '').trim());
+      const nome    = cols[0] ?? '';
+      if (!nome || /^nome$/i.test(nome)) continue;
+
+      const celular  = (cols[1] ?? '').replace(/\D/g, '');
+      const palpites = cols.slice(2, 12).map(c => parseInt(c, 10)).filter(n => !isNaN(n));
+
+      const erros: string[] = [];
+      if (!nome)                                   erros.push('Nome obrigatório');
+      if (palpites.length !== 10)                  erros.push(`${palpites.length}/10 palpites`);
+      if (new Set(palpites).size !== palpites.length) erros.push('Palpites duplicados');
+      if (palpites.some(n => n < 1 || n > 60))    erros.push('Número fora de 1–60');
+
+      rows.push({ nome, celular, palpites, valido: erros.length === 0, erros });
+    }
+    return rows;
+  }
+
+  async executarImport(): Promise<void> {
+    const file = this.importFile();
+    if (!file || this.importEstado() === 'importing') return;
+    this.importEstado.set('importing');
+    try {
+      const fd = new FormData();
+      fd.append('arquivo', file);
+      const res = await firstValueFrom(
+        this.api.postFormData<ImportResult>(`/boloes/${this.bolaoId}/cotas/importar-csv`, fd),
+      );
+      this.importResult.set(res);
+      this.importEstado.set('done');
+      if (res.criadas > 0) {
+        this.showSuccess(this.translate.instant('gestaoCotas.importSuccess', { n: res.criadas }));
+        await this.loadCotas();
+      }
+    } catch {
+      this.importEstado.set('preview');
+      this.error.set(this.translate.instant('gestaoCotas.errImport'));
+    }
+  }
+
+  downloadTemplate(): void {
+    const csv = 'Nome,Celular,N1,N2,N3,N4,N5,N6,N7,N8,N9,N10\nJOSE DA SILVA,11999990001,1,2,3,4,5,6,7,8,9,10\n';
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+    const a   = document.createElement('a');
+    a.href = url; a.download = 'template-cotas.csv'; a.click();
+    URL.revokeObjectURL(url);
   }
 
   private successTimer: ReturnType<typeof setTimeout> | null = null;

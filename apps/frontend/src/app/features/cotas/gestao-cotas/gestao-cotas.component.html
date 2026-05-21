@@ -95,7 +95,8 @@
             @if (confirmandoTodas()) {
               <span class="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-[12.5px] text-slate-400">{{ 'common.ellipsis' | translate }}</span>
             }
-            <button class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-[12.5px] font-semibold rounded-[10px] text-slate-700 transition-colors">
+            <button (click)="openImportModal()"
+                    class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-[12.5px] font-semibold rounded-[10px] text-slate-700 transition-colors">
               {{ 'gestaoCotas.import' | translate }}
             </button>
             <button class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-[12.5px] font-semibold rounded-[10px] text-slate-700 transition-colors">
@@ -299,6 +300,200 @@
         </div>
       </div>
     </div>
+
+    <!-- ── Modal: Importar CSV ──────────────────────────────────────────────── -->
+    @if (showImportModal()) {
+      <div class="fixed inset-0 bg-black/40 z-40" (click)="closeImportModal()"></div>
+      <div class="fixed right-0 top-0 h-full w-full sm:w-[520px] bg-white shadow-xl z-50 flex flex-col overflow-hidden">
+
+        <!-- Header -->
+        <div class="px-6 py-5 border-b border-slate-200 flex items-center justify-between flex-shrink-0">
+          <div>
+            <h2 class="font-display font-semibold text-lg">{{ 'gestaoCotas.importModalTitle' | translate }}</h2>
+            <p class="text-slate-400 text-xs mt-0.5">{{ 'gestaoCotas.importModalHint' | translate }}</p>
+          </div>
+          <button (click)="closeImportModal()" class="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg">✕</button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-6 flex flex-col gap-5">
+
+          <!-- IDLE: drop zone -->
+          @if (importEstado() === 'idle') {
+            <!-- Drop area -->
+            <div class="border-2 border-dashed rounded-xl p-8 text-center transition-colors cursor-pointer"
+                 [class]="importDragOver() ? 'border-green-400 bg-green-50' : 'border-slate-200 hover:border-slate-300 bg-slate-50'"
+                 (dragover)="$event.preventDefault(); importDragOver.set(true)"
+                 (dragleave)="importDragOver.set(false)"
+                 (drop)="onImportDrop($event)"
+                 (click)="fileInput.click()">
+              <div class="text-3xl mb-2">📂</div>
+              <p class="font-semibold text-slate-700 text-sm">{{ 'gestaoCotas.importDrop' | translate }}</p>
+              <p class="text-slate-400 text-xs mt-1">{{ 'gestaoCotas.importDropHint' | translate }}</p>
+            </div>
+            <input #fileInput type="file" accept=".csv,text/csv" class="hidden" (change)="onImportFileChange($event)" />
+
+            <!-- Formato + exemplo visual -->
+            <div class="flex flex-col gap-3">
+              <div class="flex items-center justify-between">
+                <p class="text-[12.5px] font-semibold text-slate-600">{{ 'gestaoCotas.importFormat' | translate }}</p>
+                <button (click)="downloadTemplate()"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-700 hover:bg-green-800 text-white text-[12px] font-semibold rounded-lg transition-colors shadow-sm">
+                  ↓ {{ 'gestaoCotas.importDownloadTemplate' | translate }}
+                </button>
+              </div>
+
+              <!-- Tabela de exemplo -->
+              <div class="overflow-x-auto rounded-xl border border-slate-200">
+                <table class="w-full text-[11px] min-w-[520px]">
+                  <thead>
+                    <tr class="bg-slate-700 text-white">
+                      <th class="text-left px-3 py-2 font-semibold">Nome</th>
+                      <th class="text-left px-3 py-2 font-semibold">Celular</th>
+                      @for (n of [1,2,3,4,5,6,7,8,9,10]; track n) {
+                        <th class="px-2 py-2 font-semibold text-center">N{{ n }}</th>
+                      }
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr class="bg-white border-t border-slate-100">
+                      <td class="px-3 py-2 font-semibold text-slate-800">JOSE DA SILVA</td>
+                      <td class="px-3 py-2 font-mono text-slate-500">11999990001</td>
+                      @for (n of [1,7,13,24,36,42,48,51,55,59]; track n) {
+                        <td class="px-2 py-2 text-center font-mono text-green-700 font-semibold">{{ n }}</td>
+                      }
+                    </tr>
+                    <tr class="bg-slate-50 border-t border-slate-100">
+                      <td class="px-3 py-2 font-semibold text-slate-800">MARIA SANTOS</td>
+                      <td class="px-3 py-2 font-mono text-slate-500">11988880002</td>
+                      @for (n of [2,8,15,22,31,38,45,52,57,60]; track n) {
+                        <td class="px-2 py-2 text-center font-mono text-green-700 font-semibold">{{ n }}</td>
+                      }
+                    </tr>
+                    <tr class="bg-white border-t border-slate-100">
+                      <td class="px-3 py-2 text-slate-400 italic text-[10px]">…</td>
+                      <td colspan="11" class="px-3 py-2 text-slate-300 text-[10px]">{{ 'gestaoCotas.importExampleMore' | translate }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <p class="text-[11px] text-slate-400">{{ 'gestaoCotas.importFormatNote' | translate }}</p>
+            </div>
+          }
+
+          <!-- PREVIEW -->
+          @if (importEstado() === 'preview') {
+            <div class="flex items-center gap-3 text-sm">
+              <span class="font-semibold text-green-800 bg-green-50 border border-green-200 px-2.5 py-1 rounded-full">
+                ✓ {{ importValidCount() }} {{ 'gestaoCotas.importValid' | translate }}
+              </span>
+              @if (importErrCount() > 0) {
+                <span class="font-semibold text-red-700 bg-red-50 border border-red-200 px-2.5 py-1 rounded-full">
+                  ✗ {{ importErrCount() }} {{ 'gestaoCotas.importInvalid' | translate }}
+                </span>
+              }
+              <button (click)="importEstado.set('idle')"
+                      class="ml-auto text-slate-400 hover:text-slate-600 text-xs underline">
+                {{ 'gestaoCotas.importChangeFile' | translate }}
+              </button>
+            </div>
+
+            <!-- Preview table -->
+            <div class="border border-slate-200 rounded-xl overflow-hidden">
+              <table class="w-full text-[12px]">
+                <thead class="bg-slate-50">
+                  <tr>
+                    <th class="text-left px-3 py-2 text-slate-400 font-semibold uppercase text-[10px]">Nome</th>
+                    <th class="text-left px-3 py-2 text-slate-400 font-semibold uppercase text-[10px]">Celular</th>
+                    <th class="text-left px-3 py-2 text-slate-400 font-semibold uppercase text-[10px]">Palpites</th>
+                    <th class="px-3 py-2 w-8"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (row of importPreview().slice(0, 10); track $index) {
+                    <tr class="border-t border-slate-100"
+                        [class]="row.valido ? '' : 'bg-red-50'">
+                      <td class="px-3 py-2 font-semibold truncate max-w-[140px]">{{ row.nome }}</td>
+                      <td class="px-3 py-2 font-mono text-slate-400 text-[11px]">{{ row.celular || '—' }}</td>
+                      <td class="px-3 py-2 font-mono text-slate-500 text-[11px]">
+                        @if (row.valido) { {{ row.palpites.join(', ') }} }
+                        @else { <span class="text-red-500 text-[10px]">{{ row.erros.join(' · ') }}</span> }
+                      </td>
+                      <td class="px-3 py-2 text-center">
+                        {{ row.valido ? '✓' : '✗' }}
+                      </td>
+                    </tr>
+                  }
+                  @if (importPreview().length > 10) {
+                    <tr class="border-t border-slate-100 bg-slate-50">
+                      <td colspan="4" class="px-3 py-2 text-center text-slate-400 text-[11px]">
+                        {{ 'gestaoCotas.importMoreRows' | translate: { n: importPreview().length - 10 } }}
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+
+          <!-- IMPORTING -->
+          @if (importEstado() === 'importing') {
+            <div class="flex flex-col items-center justify-center py-12 gap-4">
+              <div class="w-10 h-10 border-4 border-green-200 border-t-green-700 rounded-full animate-spin"></div>
+              <p class="text-slate-500 text-sm">{{ 'gestaoCotas.importProgress' | translate }}</p>
+            </div>
+          }
+
+          <!-- DONE -->
+          @if (importEstado() === 'done' && importResult()) {
+            <div class="flex flex-col gap-4">
+              <div class="p-4 bg-green-50 border border-green-200 rounded-xl">
+                <p class="font-semibold text-green-800">{{ 'gestaoCotas.importDoneTitle' | translate }}</p>
+                <p class="text-green-700 text-sm mt-1">
+                  {{ 'gestaoCotas.importDoneBody' | translate: { criadas: importResult()!.criadas, total: importResult()!.total } }}
+                </p>
+              </div>
+              @if (importResult()!.erros.length > 0) {
+                <div class="border border-red-200 rounded-xl overflow-hidden">
+                  <div class="px-4 py-2 bg-red-50 text-[11px] font-semibold text-red-700 uppercase tracking-wide">
+                    {{ 'gestaoCotas.importDoneErros' | translate: { n: importResult()!.erros.length } }}
+                  </div>
+                  @for (e of importResult()!.erros.slice(0, 20); track $index) {
+                    <div class="px-4 py-2 text-[12px] border-t border-red-100 flex gap-2">
+                      <span class="text-red-400 font-mono shrink-0">L{{ e.linha }}</span>
+                      <span class="text-red-600">{{ e.erro }}</span>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          }
+
+        </div>
+
+        <!-- Footer -->
+        <div class="px-6 py-4 border-t border-slate-200 flex gap-2.5 flex-shrink-0">
+          @if (importEstado() === 'done') {
+            <button (click)="closeImportModal()"
+                    class="flex-1 py-2.5 bg-green-700 hover:bg-green-800 text-white font-semibold text-sm rounded-[10px] transition-colors">
+              {{ 'common.close' | translate }}
+            </button>
+          } @else {
+            <button (click)="closeImportModal()"
+                    class="flex-1 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 font-semibold text-sm rounded-[10px] transition-colors">
+              {{ 'common.cancel' | translate }}
+            </button>
+            @if (importEstado() === 'preview') {
+              <button (click)="executarImport()"
+                      [disabled]="importValidCount() === 0 || importEstado() === 'importing'"
+                      class="flex-1 py-2.5 bg-green-700 hover:bg-green-800 disabled:opacity-40 text-white font-semibold text-sm rounded-[10px] transition-colors shadow-sm">
+                {{ 'gestaoCotas.importBtn' | translate: { n: importValidCount() } }}
+              </button>
+            }
+          }
+        </div>
+
+      </div>
+    }
 
     <!-- ── Modal: Confirmar Todas Pendentes ─────────────────────────────────── -->
     @if (showConfirmTodas()) {

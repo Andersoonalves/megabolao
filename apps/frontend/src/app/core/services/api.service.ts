@@ -42,4 +42,9 @@ export class ApiService {
   delete<T>(path: string): Observable<T> {
     return this.http.delete<T>(this.url(path), { headers: this.tenantHeaders() });
   }
+
+  /** Envia FormData (multipart). Não define Content-Type — o browser seta com o boundary correto. */
+  postFormData<T>(path: string, formData: FormData): Observable<T> {
+    return this.http.post<T>(this.url(path), formData, { headers: this.tenantHeaders() });
+  }
 }

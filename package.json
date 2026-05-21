@@ -85,6 +85,7 @@
     "@tailwindcss/postcss": "^4.2.4",
     "@types/express": "^5.0.0",
     "@types/jest": "^29.5.14",
+    "@types/multer": "^2.1.0",
     "@types/node": "^22.10.0",
     "@types/pdfkit": "^0.17.6",
     "@types/qrcode": "^1.5.6",

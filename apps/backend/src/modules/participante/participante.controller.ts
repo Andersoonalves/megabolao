@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -10,8 +11,12 @@ import {
   Patch,
   Post,
   Query,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
+import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RequerPermissoes } from '../auth/decorators/permissions.decorator';
 import { TenantId } from '../auth/decorators/tenant-id.decorator';
@@ -27,6 +32,33 @@ import { ParticipanteService } from './participante.service';
 @Controller('boloes/:bolaoId/cotas')
 export class ParticipanteController {
   constructor(private readonly participanteService: ParticipanteService) {}
+
+  @Post('importar-csv')
+  @UseInterceptors(FileInterceptor('arquivo', {
+    storage: memoryStorage(),
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
+    fileFilter: (_, file, cb) =>
+      (file.mimetype === 'text/csv' || file.originalname.toLowerCase().endsWith('.csv'))
+        ? cb(null, true)
+        : cb(new BadRequestException('Apenas arquivos .csv são aceitos'), false),
+  }))
+  @RequerPermissoes('cota.editar')
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Importar cotas via CSV (colunas: Nome, Celular, N1…N10)' })
+  importarCSV(
+    @TenantId() tenantId: string | null,
+    @Param('bolaoId', ParseUUIDPipe) bolaoId: string,
+    @UploadedFile() arquivo: Express.Multer.File,
+    @Query('ignorarErros') ignorarErros?: string,
+  ) {
+    if (!arquivo?.buffer?.length) throw new BadRequestException('Arquivo CSV obrigatório');
+    return this.participanteService.importarCotasCSV(
+      tenantId,
+      bolaoId,
+      arquivo.buffer,
+      ignorarErros !== 'false',
+    );
+  }
 
   @Post()
   @RequerPermissoes('cota.editar')
