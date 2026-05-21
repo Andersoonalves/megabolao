@@ -5,6 +5,11 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { WhatsAppClientManager } from '../whatsapp-client-manager.service';
 import { ENVIAR_MENSAGEM_WA_QUEUE_NAME, EnviarMensagemJobData } from './enviar-mensagem.types';
 
+// Delays anti-ban — ver docs/runbooks/whatsapp-anti-ban.md
+const JITTER_MIN_MS  = 3_000;
+const JITTER_MAX_MS  = 8_000;
+const BAN_PAUSE_MS   = 60_000; // pausa extra antes de re-throw quando sinal de ban detectado
+
 @Injectable()
 export class EnviarMensagemProcessor implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(EnviarMensagemProcessor.name);
@@ -22,7 +27,8 @@ export class EnviarMensagemProcessor implements OnModuleInit, OnModuleDestroy {
     this.worker = new Worker(
       ENVIAR_MENSAGEM_WA_QUEUE_NAME,
       (job) => this.processJob(job),
-      { connection: { url: redisUrl }, concurrency: 1 }, // 1: evita flood no WhatsApp
+      // concurrency: 1 — nunca enviar mensagens em paralelo por instância
+      { connection: { url: redisUrl }, concurrency: 1 },
     );
 
     this.worker.on('failed', (job, err) =>
@@ -51,8 +57,17 @@ export class EnviarMensagemProcessor implements OnModuleInit, OnModuleDestroy {
       return;
     }
 
+    // Anti-ban: jitter antes de cada envio para simular comportamento humano
+    const jitter = JITTER_MIN_MS + Math.floor(Math.random() * (JITTER_MAX_MS - JITTER_MIN_MS));
+    this.logger.debug(`[ANTI-BAN] jitter=${jitter}ms tentativa=${job.attemptsMade + 1}`);
+    await this.sleep(jitter);
+
     try {
-      await this.clientManager.enviarParaGrupo(tenantId, mensagem.grupoId!, mensagem.conteudo);
+      // Anti-ban: varia conteúdo com zero-width spaces — Evolution/Baileys
+      // detecta mensagens 100% idênticas enviadas em sequência como spam
+      const conteudo = this.varyContent(mensagem.conteudo);
+
+      await this.clientManager.enviarParaGrupo(tenantId, mensagem.grupoId!, conteudo);
 
       await this.prisma.mensagemWhatsapp.update({
         where: { id: mensagemId },
@@ -62,17 +77,50 @@ export class EnviarMensagemProcessor implements OnModuleInit, OnModuleDestroy {
       this.logger.log(`Mensagem ${mensagemId} enviada ao grupo ${mensagem.grupoId}`);
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);
+      const isBan  = this.isBanSignal(errMsg);
+
+      if (isBan) {
+        // Pausa antes de re-throw: reduz velocidade de retry quando WhatsApp sinaliza bloqueio
+        this.logger.warn(`[ANTI-BAN] sinal de bloqueio detectado — pausando ${BAN_PAUSE_MS}ms antes de retry`);
+        await this.sleep(BAN_PAUSE_MS);
+      }
 
       await this.prisma.mensagemWhatsapp.update({
         where: { id: mensagemId },
         data: {
           status: 'FALHA',
           tentativas: { increment: 1 },
-          erro: errMsg,
+          erro: isBan ? `[BAN_SIGNAL] ${errMsg}` : errMsg,
         },
       });
 
-      throw err; // Re-throw para BullMQ executar retry com backoff
+      throw err; // BullMQ aplica backoff exponencial (30s→60s→120s)
     }
+  }
+
+  // ── Helpers anti-ban ──────────────────────────────────────────
+
+  private sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  /** Zero-width spaces únicos por envio — quebra fingerprint de conteúdo idêntico. */
+  private varyContent(text: string): string {
+    const n = 1 + Math.floor(Math.random() * 3); // 1–3 ZWS
+    return text + '​'.repeat(n);
+  }
+
+  /** Detecta sinais de rate limit / ban na resposta da Evolution API. */
+  private isBanSignal(msg: string): boolean {
+    const lower = msg.toLowerCase();
+    return (
+      lower.includes('429')      ||
+      lower.includes('rate')     ||
+      lower.includes('blocked')  ||
+      lower.includes('banned')   ||
+      lower.includes('spam')     ||
+      lower.includes('broadcast')||
+      lower.includes('too many')
+    );
   }
 }

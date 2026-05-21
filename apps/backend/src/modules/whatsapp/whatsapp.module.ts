@@ -24,7 +24,7 @@ import { ENVIAR_MENSAGEM_WA_QUEUE, ENVIAR_MENSAGEM_WA_QUEUE_NAME } from './jobs/
       useFactory: (config: ConfigService) =>
         new Queue(ENVIAR_MENSAGEM_WA_QUEUE_NAME, {
           connection: { url: config.get<string>('REDIS_URL', 'redis://localhost:6379') },
-          defaultJobOptions: { attempts: 3, backoff: { type: 'exponential', delay: 10000 } },
+          defaultJobOptions: { attempts: 3, backoff: { type: 'exponential', delay: 30_000 } },
         }),
       inject: [ConfigService],
     },

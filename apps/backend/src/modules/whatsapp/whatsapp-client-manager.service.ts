@@ -43,6 +43,10 @@ export class WhatsAppClientManager {
   private readonly lastConnectAt = new Map<string, number>();
   private static readonly CONNECT_COOLDOWN_MS = 12_000;
 
+  // Anti-ban: throttle de envio por tenant — ver docs/runbooks/whatsapp-anti-ban.md
+  private readonly lastSentAt = new Map<string, number>();
+  private static readonly MIN_SEND_INTERVAL_MS = 3_000; // mínimo 3s entre envios do mesmo tenant
+
   private readonly baseUrl: string;
   private readonly apiKey: string;
 
@@ -446,7 +450,20 @@ export class WhatsAppClientManager {
 
   private async enviarMensagem(tenantId: string, number: string, text: string): Promise<void> {
     await this.assertConectado(tenantId);
+    await this.throttleSend(tenantId);
     await this.post(`/message/sendText/${tenantId}`, { number, text });
+  }
+
+  /** Garante intervalo mínimo entre envios do mesmo tenant (anti-flood da Evolution API). */
+  private async throttleSend(tenantId: string): Promise<void> {
+    const now   = Date.now();
+    const last  = this.lastSentAt.get(tenantId) ?? 0;
+    const wait  = WhatsAppClientManager.MIN_SEND_INTERVAL_MS - (now - last);
+    if (wait > 0) {
+      this.logger.debug(`[ANTI-BAN] throttle tenant=${tenantId.slice(0, 8)}… wait=${wait}ms`);
+      await this.delay(wait);
+    }
+    this.lastSentAt.set(tenantId, Date.now());
   }
 
   /** Busca base64 da mídia completa via Evolution API. Retorna undefined em falha. */

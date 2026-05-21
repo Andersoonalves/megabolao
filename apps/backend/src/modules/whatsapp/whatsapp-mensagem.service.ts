@@ -48,7 +48,7 @@ export class WhatsAppMensagemService {
       { mensagemId: mensagem.id, tenantId } satisfies EnviarMensagemJobData,
       {
         attempts: 3,
-        backoff: { type: 'exponential', delay: 10000 },
+        backoff: { type: 'exponential', delay: 30_000 }, // 30s→60s→120s — ver docs/runbooks/whatsapp-anti-ban.md
         removeOnComplete: { age: 60 * 60 * 24 },
         removeOnFail: { age: 60 * 60 * 24 * 7 },
       },
@@ -118,7 +118,7 @@ export class WhatsAppMensagemService {
       {
         jobId: `retry-${id}-${Date.now()}`,
         attempts: 3,
-        backoff: { type: 'exponential', delay: 10000 },
+        backoff: { type: 'exponential', delay: 30_000 }, // 30s→60s→120s — ver docs/runbooks/whatsapp-anti-ban.md
       },
     );
 
