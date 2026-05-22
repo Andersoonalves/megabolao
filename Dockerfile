@@ -25,9 +25,6 @@ COPY --from=builder /app/node_modules  ./node_modules
 COPY --from=builder /app/dist/apps/backend ./dist
 COPY --from=builder /app/prisma        ./prisma
 
-# Gera Prisma client no runtime image
-RUN npx prisma generate
-
 EXPOSE 3000
 
 # Roda migrations antes de subir o servidor
