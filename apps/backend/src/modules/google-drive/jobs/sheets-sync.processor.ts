@@ -67,6 +67,7 @@ export class SheetsSyncProcessor implements OnModuleInit, OnModuleDestroy {
       await this.prisma.bolao.update({
         where: { id: bolaoId },
         data: { sheetsUltimoErro: msg },
+      // eslint-disable-next-line @typescript-eslint/no-empty-function
       }).catch(() => {});
       throw err; // propaga para BullMQ fazer retry
     }

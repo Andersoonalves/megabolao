@@ -269,7 +269,7 @@ export class GoogleDriveService {
       const valida     = validarPalpites(palpites, bolao.qtdNumerosCota);
       const erro       = valida ? null : `Palpites inválidos: ${palpites.join(', ')}`;
 
-      valida ? validas++ : invalidas++;
+      if (valida) { validas++; } else { invalidas++; }
       preview.push({ linha, nome, celular, palpites, valida, erro });
     }
 

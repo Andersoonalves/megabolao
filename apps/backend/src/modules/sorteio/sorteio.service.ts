@@ -612,6 +612,7 @@ export class SorteioService {
       jobId: `${bolaoId}-${trigger}-${Date.now()}`,
       removeOnComplete: 100,
       removeOnFail: 50,
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
     }).catch(() => {});
   }
 

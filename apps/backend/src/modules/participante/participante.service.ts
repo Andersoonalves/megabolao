@@ -309,7 +309,7 @@ export class ParticipanteService {
   // ── CSV parsing (sem dependência externa) ─────────────────────────────────
 
   private parseCSVBuffer(buffer: Buffer, qtd = 10): { nome: string; celular?: string; palpites: number[] }[] {
-    const text  = buffer.toString('utf-8').replace(/^﻿/, ''); // remove BOM
+    const text  = buffer.toString('utf-8').replace(/^/, ''); // remove BOM
     const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
     if (lines.length === 0) return [];
 
@@ -386,6 +386,7 @@ export class ParticipanteService {
       jobId: `${bolaoId}-${trigger}-${Date.now()}`,
       removeOnComplete: 100,
       removeOnFail: 50,
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
     }).catch(() => {}); // fire-and-forget
   }
 

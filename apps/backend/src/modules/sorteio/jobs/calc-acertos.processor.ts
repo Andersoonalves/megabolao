@@ -92,6 +92,7 @@ export class CalcAcertosProcessor implements OnModuleInit, OnModuleDestroy {
       totalProcessadas += cotas.length;
       cursor = cotas[cotas.length - 1].id;
       if (cotas.length < BATCH_SIZE) break;
+    // eslint-disable-next-line no-constant-condition
     } while (true);
 
     // FROM + pre-aggregate evita correlated subquery (era 8515 loops → agora 1 HashAggregate)
@@ -128,6 +129,7 @@ export class CalcAcertosProcessor implements OnModuleInit, OnModuleDestroy {
         jobId: `${bolaoId}-RANKING-${Date.now()}`,
         removeOnComplete: 100,
         removeOnFail: 50,
+      // eslint-disable-next-line @typescript-eslint/no-empty-function
       }).catch(() => {});
     }
   }

@@ -20,7 +20,7 @@ export class MasterTenantService {
   select(t: TenantOption): void {
     const prevId = this._tenant()?.id ?? null;
     this._tenant.set(t);
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(t)); } catch {}
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(t)); } catch { /* storage indisponível */ }
     if (prevId !== t.id) {
       this.reloadApp();
     }
@@ -29,7 +29,7 @@ export class MasterTenantService {
   clear(): void {
     const had = this._tenant() !== null;
     this._tenant.set(null);
-    try { localStorage.removeItem(STORAGE_KEY); } catch {}
+    try { localStorage.removeItem(STORAGE_KEY); } catch { /* storage indisponível */ }
     if (had) {
       this.reloadApp();
     }
