@@ -28,4 +28,4 @@ COPY --from=builder /app/prisma        ./prisma
 EXPOSE 3000
 
 # Roda migrations antes de subir o servidor
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/apps/backend/apps/backend/src/main.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/apps/backend/src/main.js"]
