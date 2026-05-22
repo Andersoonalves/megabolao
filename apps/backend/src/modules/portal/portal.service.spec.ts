@@ -57,20 +57,26 @@ describe('PortalService', () => {
       expect(result).toEqual({ ok: true });
     });
 
-    it('lança NotFoundException quando celular não possui cotas', async () => {
+    it('retorna ok quando celular não possui cotas (previne enumeração)', async () => {
       // Arrange
       mockPrisma.cota.findMany.mockResolvedValue([]);
 
-      // Act / Assert
-      await expect(service.solicitarOtp(CELULAR)).rejects.toBeInstanceOf(NotFoundException);
+      // Act
+      const result = await service.solicitarOtp(CELULAR);
+
+      // Assert
+      expect(result).toEqual({ ok: true });
     });
 
-    it('lança ConflictException quando celular aparece em múltiplos tenants', async () => {
+    it('retorna ok quando celular aparece em múltiplos tenants (previne enumeração)', async () => {
       // Arrange
       mockPrisma.cota.findMany.mockResolvedValue([{ tenantId: TENANT_ID }, { tenantId: 'tenant-2' }]);
 
-      // Act / Assert
-      await expect(service.solicitarOtp(CELULAR)).rejects.toBeInstanceOf(ConflictException);
+      // Act
+      const result = await service.solicitarOtp(CELULAR);
+
+      // Assert
+      expect(result).toEqual({ ok: true });
     });
   });
 
@@ -129,6 +135,7 @@ describe('PortalService', () => {
         tenantId: TENANT_ID,
         celular: CELULAR,
         permissoes: [],
+        mfaEnrolled: false,
       });
 
       // Assert
@@ -174,6 +181,7 @@ describe('PortalService', () => {
         tenantId: TENANT_ID,
         celular: CELULAR,
         permissoes: [],
+        mfaEnrolled: false,
       });
 
       expect(result.boloes[0].linkWhatsappOrganizador).toContain('https://wa.me/5583988887777');
@@ -216,6 +224,7 @@ describe('PortalService', () => {
         tenantId: TENANT_ID,
         celular: CELULAR,
         permissoes: [],
+        mfaEnrolled: false,
       });
 
       expect(result.boloes[0].linkWhatsappOrganizador).toContain('https://wa.me/5583999123456');
@@ -277,6 +286,7 @@ describe('PortalService', () => {
           tenantId: TENANT_ID,
           celular: CELULAR,
           permissoes: [],
+        mfaEnrolled: false,
         }, BOLAO_ID),
       ).rejects.toBeInstanceOf(ForbiddenException);
     });

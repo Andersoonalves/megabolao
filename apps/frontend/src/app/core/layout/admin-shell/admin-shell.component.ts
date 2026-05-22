@@ -144,7 +144,9 @@ const MASTER_COM_TENANT_NAV: NavItem[] = [
       @if (shell.drawerOpen()) {
         <!-- Backdrop -->
         <div class="fixed inset-0 bg-black/40 z-40 lg:hidden"
-             (click)="shell.closeDrawer()"></div>
+             tabindex="0"
+             (click)="shell.closeDrawer()"
+             (keydown.escape)="shell.closeDrawer()"></div>
 
         <!-- Drawer -->
         <aside class="fixed left-0 top-0 h-full w-64 bg-white z-50 lg:hidden flex flex-col shadow-xl overflow-y-auto">

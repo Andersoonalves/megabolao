@@ -40,6 +40,32 @@ const mockPrisma = {
     update: jest.fn(),
     aggregate: jest.fn(),
   },
+  megaResultado: {
+    findMany: jest.fn().mockResolvedValue([
+      {
+        numeroConcurso: 100,
+        dataSorteio: new Date('2026-05-10'),
+        bolasSorteadas: [10, 20, 30, 40, 50, 60],
+        ganhadores: 2,
+        acumulado: false,
+        valorArrecadado: 5000000,
+        estimativaProximo: 6000000,
+        dataProximoConcurso: '13/05/2026',
+        numeroConcursoProximo: 101,
+      },
+      {
+        numeroConcurso: 99,
+        dataSorteio: new Date('2026-05-08'),
+        bolasSorteadas: [10, 20, 30, 40, 50, 60],
+        ganhadores: 0,
+        acumulado: true,
+        valorArrecadado: 4000000,
+        estimativaProximo: 5000000,
+        dataProximoConcurso: '10/05/2026',
+        numeroConcursoProximo: 100,
+      },
+    ]),
+  },
   $transaction: jest.fn(),
 };
 
@@ -52,6 +78,31 @@ describe('SorteioService', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+
+    mockPrisma.megaResultado.findMany.mockResolvedValue([
+      {
+        numeroConcurso: 100,
+        dataSorteio: new Date('2026-05-10'),
+        bolasSorteadas: [10, 20, 30, 40, 50, 60],
+        ganhadores: 2,
+        acumulado: false,
+        valorArrecadado: 5000000,
+        estimativaProximo: 6000000,
+        dataProximoConcurso: '13/05/2026',
+        numeroConcursoProximo: 101,
+      },
+      {
+        numeroConcurso: 99,
+        dataSorteio: new Date('2026-05-08'),
+        bolasSorteadas: [10, 20, 30, 40, 50, 60],
+        ganhadores: 0,
+        acumulado: true,
+        valorArrecadado: 4000000,
+        estimativaProximo: 5000000,
+        dataProximoConcurso: '10/05/2026',
+        numeroConcursoProximo: 100,
+      },
+    ]);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -233,23 +284,7 @@ describe('SorteioService', () => {
   });
 
   describe('buscarMegaSenaPainel', () => {
-    it('combina resposta da Caixa com aplicações do tenant', async () => {
-      const makeCaixa = (num: number) => ({
-        numero: num,
-        dataApuracao: '10/05/2026',
-        listaDezenas: ['10', '20', '30', '40', '50', '60'],
-        acumulado: false,
-        valorArrecadado: 5_000_000,
-        valorEstimadoProximoConcurso: 6_000_000,
-        dataProximoConcurso: '13/05/2026',
-        numeroConcursoProximo: num + 1,
-        listaRateioPremio: [{ faixa: 1, descricaoFaixa: '6 acertos', numeroDeGanhadores: 2, valorPremio: 1000 }],
-      });
-
-      const fetchSpy = jest.spyOn(global, 'fetch');
-      fetchSpy.mockResolvedValueOnce({ ok: true, json: async () => makeCaixa(100) } as Response);
-      fetchSpy.mockResolvedValueOnce({ ok: true, json: async () => makeCaixa(99) } as Response);
-
+    it('combina cache local com aplicações do tenant', async () => {
       mockPrisma.sorteio.findMany.mockResolvedValue([
         {
           id: 'sort-1',
@@ -270,8 +305,6 @@ describe('SorteioService', () => {
       expect(r.itens[1].aplicacoes).toHaveLength(0);
       expect(r.resumo.aplicadosNoPeriodo).toBe(1);
       expect(r.bolaoAtivoNome).toBe('Bolão Ativo');
-
-      fetchSpy.mockRestore();
     });
   });
 });

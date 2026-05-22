@@ -21,7 +21,7 @@ const BOLAO_ID  = 'bolao-uuid-1';
 const SHEET_ID  = 'sheet-id-abc';
 
 const makeBolao = (status = 'EM_ANDAMENTO') => ({
-  id: BOLAO_ID, tenantId: TENANT_ID, nome: 'Bolão', status,
+  id: BOLAO_ID, tenantId: TENANT_ID, nome: 'Bolão', status, valorCota: 30, qtdNumerosCota: 10,
 });
 
 const makeRowValida = (nome = 'JOÃO', offset = 0): (string | number)[] => [

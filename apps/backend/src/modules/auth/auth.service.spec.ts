@@ -76,6 +76,7 @@ describe('AuthService', () => {
         papel: 'ADMIN',
         tenantId: 'tenant-uuid-456',
         celular: null,
+      mfaEnrolled: false,
         permissoes: ['bolao.ler', 'bolao.criar'],
       });
     });
@@ -176,6 +177,7 @@ describe('AuthService', () => {
       papel: 'ADMIN',
       tenantId: 'tenant-abc',
       celular: null,
+      mfaEnrolled: false,
       permissoes: [],
     };
 
@@ -185,6 +187,7 @@ describe('AuthService', () => {
       papel: 'MASTER',
       tenantId: null,
       celular: null,
+      mfaEnrolled: false,
       permissoes: ['*'],
     };
 

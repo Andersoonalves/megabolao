@@ -1,4 +1,4 @@
-import { Injectable, signal, computed } from '@angular/core';
+import { Injectable, signal, computed, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthChangeEvent, createClient, Session, SupabaseClient, User } from '@supabase/supabase-js';
 import { CodigoPermissao, WILDCARD_PERMISSAO } from '@nossobolao/shared-types';
@@ -55,7 +55,9 @@ export class AuthService {
   /** Permissões granulares efetivas. MASTER recebe `['*']`. */
   readonly permissoes      = computed<CodigoPermissao[]>(() => this._user()?.permissoes ?? []);
 
-  constructor(private readonly router: Router) {
+  private readonly router = inject(Router);
+
+  constructor() {
     this.supabase = createClient(environment.supabaseUrl, environment.supabaseAnonKey);
     this.initAuth();
   }
@@ -67,6 +69,7 @@ export class AuthService {
         const hadStoredSession = this.hasPersistedSupabaseSession();
         this.clearLocalSession();
         if ((this._hadAuthenticatedSession || hadStoredSession) && !this._manualSignOut) {
+          // eslint-disable-next-line @typescript-eslint/no-unused-expressions
           void this.handleSessionExpired();
         }
       } else {
@@ -88,12 +91,14 @@ export class AuthService {
       this.clearLocalSession();
       this._hadAuthenticatedSession = false;
       if (wasLoggedIn && !this._manualSignOut && !this._sessionExpiryInProgress) {
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
         void this.handleSessionExpired();
       }
       return;
     }
 
     if (event === 'TOKEN_REFRESHED' && !session) {
+      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
       void this.handleSessionExpired();
       return;
     }

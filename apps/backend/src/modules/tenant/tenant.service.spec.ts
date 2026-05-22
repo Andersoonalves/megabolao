@@ -29,11 +29,25 @@ const mockPrisma = {
     findFirst: jest.fn(),
     update: jest.fn(),
     count: jest.fn(),
+    delete: jest.fn().mockResolvedValue({}),
   },
-  $transaction: jest.fn(),
+  modulo: { findMany: jest.fn().mockResolvedValue([]) },
+  moduloTenant: { createMany: jest.fn().mockResolvedValue({}) },
+  perfil: {
+    upsert: jest.fn().mockResolvedValue({ id: 'perfil-1', tenantId: 'tenant-uuid-1', nome: 'Administrador' }),
+  },
+  permissao: {
+    findMany: jest.fn().mockResolvedValue([]),
+    createMany: jest.fn().mockResolvedValue({}),
+  },
+  perfilPermissao: { createMany: jest.fn().mockResolvedValue({}) },
   userProfile: {
     create: jest.fn().mockResolvedValue({}),
+    findFirst: jest.fn().mockResolvedValue(null),
+    update: jest.fn().mockResolvedValue({}),
   },
+  usuarioPerfil: { create: jest.fn().mockResolvedValue({}) },
+  $transaction: jest.fn(),
 };
 
 const mockSupabase = {
@@ -41,6 +55,7 @@ const mockSupabase = {
     auth: {
       admin: {
         createUser: jest.fn().mockResolvedValue({ data: { user: { id: 'admin-user-1' } }, error: null }),
+        updateUserById: jest.fn().mockResolvedValue({ data: {}, error: null }),
       },
     },
   },
@@ -53,6 +68,21 @@ describe('TenantService', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+
+    // Re-apply defaults cleared by clearAllMocks
+    mockPrisma.tenant.delete.mockResolvedValue({});
+    mockPrisma.modulo.findMany.mockResolvedValue([]);
+    mockPrisma.moduloTenant.createMany.mockResolvedValue({});
+    mockPrisma.perfil.upsert.mockResolvedValue({ id: 'perfil-1', tenantId: 'tenant-uuid-1', nome: 'Administrador' });
+    mockPrisma.permissao.findMany.mockResolvedValue([]);
+    mockPrisma.permissao.createMany.mockResolvedValue({});
+    mockPrisma.perfilPermissao.createMany.mockResolvedValue({});
+    mockPrisma.userProfile.create.mockResolvedValue({});
+    mockPrisma.userProfile.findFirst.mockResolvedValue(null);
+    mockPrisma.userProfile.update.mockResolvedValue({});
+    mockPrisma.usuarioPerfil.create.mockResolvedValue({});
+    mockSupabase.admin.auth.admin.createUser.mockResolvedValue({ data: { user: { id: 'admin-user-1' } }, error: null });
+    mockSupabase.admin.auth.admin.updateUserById.mockResolvedValue({ data: {}, error: null });
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [

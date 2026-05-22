@@ -18,6 +18,7 @@ const ADMIN: AuthenticatedUser = {
   papel: 'ADMIN',
   tenantId: TENANT_ID,
   celular: null,
+      mfaEnrolled: false,
   permissoes: ['usuario.criar', 'usuario.editar'],
 };
 
@@ -118,6 +119,7 @@ describe('UsuarioService', () => {
       // Arrange
       mockPrisma.userProfile.findFirst.mockResolvedValue({
         id: TARGET_USER, tenantId: TENANT_ID, papel: 'ADMIN', celular: null,
+      mfaEnrolled: false,
         criadoEm: new Date(), atualizadoEm: new Date(),
       });
 
@@ -179,6 +181,7 @@ describe('UsuarioService', () => {
       // Arrange
       mockPrisma.userProfile.findFirst.mockResolvedValue({
         id: TARGET_USER, tenantId: TENANT_ID, papel: 'ADMIN', celular: null,
+      mfaEnrolled: false,
         criadoEm: new Date(), atualizadoEm: new Date(),
       });
       // Atribuição atual: [perfil-A]; nova: [perfil-B]
@@ -244,6 +247,7 @@ describe('UsuarioService', () => {
       // Arrange
       mockPrisma.userProfile.findFirst.mockResolvedValue({
         id: TARGET_USER, tenantId: TENANT_ID, papel: 'ADMIN', celular: null,
+      mfaEnrolled: false,
         criadoEm: new Date(), atualizadoEm: new Date(),
       });
 

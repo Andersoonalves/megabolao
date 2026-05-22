@@ -16,6 +16,7 @@ const ADMIN_USER: AuthenticatedUser = {
   papel: 'ADMIN',
   tenantId: TENANT_ID,
   celular: null,
+      mfaEnrolled: false,
   permissoes: ['perfil.criar', 'perfil.editar', 'bolao.ler', 'bolao.criar', 'relatorio.gerar'],
 };
 
@@ -25,6 +26,7 @@ const MASTER_USER: AuthenticatedUser = {
   papel: 'MASTER',
   tenantId: null,
   celular: null,
+      mfaEnrolled: false,
   permissoes: ['*'],
 };
 

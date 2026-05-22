@@ -62,6 +62,10 @@ describe('EnviarMensagemProcessor', () => {
 
     processor = module.get<EnviarMensagemProcessor>(EnviarMensagemProcessor);
     processor.onModuleInit();
+
+    // Bypass anti-ban jitter so tests don't time out
+    jest.spyOn(processor as unknown as { sleep(ms: number): Promise<void> }, 'sleep')
+      .mockResolvedValue(undefined);
   });
 
   it('envia mensagem e atualiza status para ENVIADO', async () => {

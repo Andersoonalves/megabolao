@@ -107,7 +107,7 @@ export class EnviarMensagemProcessor implements OnModuleInit, OnModuleDestroy {
   /** Zero-width spaces únicos por envio — quebra fingerprint de conteúdo idêntico. */
   private varyContent(text: string): string {
     const n = 1 + Math.floor(Math.random() * 3); // 1–3 ZWS
-    return text + '​'.repeat(n);
+    return text + ''.repeat(n);
   }
 
   /** Detecta sinais de rate limit / ban na resposta da Evolution API. */
