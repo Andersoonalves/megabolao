@@ -40,10 +40,24 @@ const mockPrisma = {
     findFirst: jest.fn(),
     update: jest.fn(),
   },
-  cota: { findMany: jest.fn() },
+  bolao: {
+    findFirst: jest.fn(),
+    update: jest.fn(),
+  },
+  cota: {
+    findMany: jest.fn(),
+    findFirst: jest.fn(),
+  },
   acertoSorteio: { createMany: jest.fn() },
   $executeRaw: jest.fn(),
 };
+
+// Bolão padrão sem ganhador (verificarPremiacaoPrincipal retorna cedo)
+const makeBolaoAtivo = () => ({
+  status: 'EM_ANDAMENTO',
+  whatsappGrupos: [],
+  qtdNumerosCota: 10,
+});
 
 const mockConfig = { get: jest.fn().mockReturnValue('redis://localhost:6379') };
 
@@ -111,6 +125,8 @@ describe('CalcAcertosProcessor', () => {
     mockPrisma.acertoSorteio.createMany.mockResolvedValue({ count: 3 });
     mockPrisma.$executeRaw.mockResolvedValue(3);
     mockPrisma.sorteio.update.mockResolvedValue(makeSorteio(true));
+    mockPrisma.bolao.findFirst.mockResolvedValue(makeBolaoAtivo());
+    mockPrisma.cota.findFirst.mockResolvedValue(null); // sem ganhador
 
     // Act
     await processor.processJob(makeJob({ sorteioId: SORTEIO_ID, tenantId: TENANT_ID, bolaoId: BOLAO_ID }) as Job<CalcAcertosJobData>);
@@ -132,6 +148,8 @@ describe('CalcAcertosProcessor', () => {
     mockPrisma.acertoSorteio.createMany.mockResolvedValue({ count: 2 });
     mockPrisma.$executeRaw.mockResolvedValue(2);
     mockPrisma.sorteio.update.mockResolvedValue({});
+    mockPrisma.bolao.findFirst.mockResolvedValue(makeBolaoAtivo());
+    mockPrisma.cota.findFirst.mockResolvedValue(null); // sem ganhador
 
     // Act
     await processor.processJob(makeJob({ sorteioId: SORTEIO_ID, tenantId: TENANT_ID, bolaoId: BOLAO_ID }) as Job<CalcAcertosJobData>);
@@ -152,6 +170,8 @@ describe('CalcAcertosProcessor', () => {
     mockPrisma.acertoSorteio.createMany.mockResolvedValue({ count: 1 });
     mockPrisma.$executeRaw.mockResolvedValue(1);
     mockPrisma.sorteio.update.mockResolvedValue({});
+    mockPrisma.bolao.findFirst.mockResolvedValue(makeBolaoAtivo());
+    mockPrisma.cota.findFirst.mockResolvedValue(null); // sem ganhador
 
     // Act
     await processor.processJob(makeJob({ sorteioId: SORTEIO_ID, tenantId: TENANT_ID, bolaoId: BOLAO_ID }) as Job<CalcAcertosJobData>);
@@ -159,5 +179,43 @@ describe('CalcAcertosProcessor', () => {
     // Assert — acertos = 3 (bolas 1, 23, 55)
     const createManyData = (mockPrisma.acertoSorteio.createMany.mock.calls[0][0] as { data: { acertos: number }[] }).data;
     expect(createManyData[0].acertos).toBe(3);
+  });
+
+  // ── Premiação principal ────────────────────────────────────────────────────
+
+  it('marca bolão como PREMIADO quando cota atinge qtdNumerosCota acertos', async () => {
+    // Arrange
+    mockPrisma.sorteio.findFirst.mockResolvedValue(makeSorteio(false));
+    mockPrisma.cota.findMany.mockResolvedValueOnce(makeCotas(1)).mockResolvedValueOnce([]);
+    mockPrisma.acertoSorteio.createMany.mockResolvedValue({ count: 1 });
+    mockPrisma.$executeRaw.mockResolvedValue(1);
+    mockPrisma.sorteio.update.mockResolvedValue({});
+    mockPrisma.bolao.findFirst.mockResolvedValue(makeBolaoAtivo());
+    mockPrisma.cota.findFirst.mockResolvedValue({ id: 'cota-ganhador' }); // ganhador detectado
+    mockPrisma.bolao.update.mockResolvedValue({});
+
+    // Act
+    await processor.processJob(makeJob({ sorteioId: SORTEIO_ID, tenantId: TENANT_ID, bolaoId: BOLAO_ID }) as Job<CalcAcertosJobData>);
+
+    // Assert — bolão atualizado para PREMIADO
+    expect(mockPrisma.bolao.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ status: 'PREMIADO' }) }),
+    );
+  });
+
+  it('não marca PREMIADO se bolão já está PREMIADO (idempotência)', async () => {
+    // Arrange
+    mockPrisma.sorteio.findFirst.mockResolvedValue(makeSorteio(false));
+    mockPrisma.cota.findMany.mockResolvedValueOnce(makeCotas(1)).mockResolvedValueOnce([]);
+    mockPrisma.acertoSorteio.createMany.mockResolvedValue({ count: 1 });
+    mockPrisma.$executeRaw.mockResolvedValue(1);
+    mockPrisma.sorteio.update.mockResolvedValue({});
+    mockPrisma.bolao.findFirst.mockResolvedValue({ ...makeBolaoAtivo(), status: 'PREMIADO' });
+
+    // Act
+    await processor.processJob(makeJob({ sorteioId: SORTEIO_ID, tenantId: TENANT_ID, bolaoId: BOLAO_ID }) as Job<CalcAcertosJobData>);
+
+    // Assert — bolão.update NÃO chamado
+    expect(mockPrisma.bolao.update).not.toHaveBeenCalled();
   });
 });
