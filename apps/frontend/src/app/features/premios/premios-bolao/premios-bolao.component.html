@@ -111,15 +111,33 @@
 
       <!-- Estado: premios carregados — cards por categoria -->
       } @else {
-        <div class="flex flex-col gap-4">
+        <div class="flex flex-wrap items-center justify-end gap-2 mb-3">
+          <button type="button" (click)="expandAll()"
+                  class="inline-flex items-center min-h-9 px-3 py-2 text-[12.5px] font-semibold text-slate-600 bg-white border border-slate-200 rounded-[10px] hover:bg-slate-50 transition-colors">
+            {{ 'premios.expandAll' | translate }}
+          </button>
+          <button type="button" (click)="collapseAll()"
+                  class="inline-flex items-center min-h-9 px-3 py-2 text-[12.5px] font-semibold text-slate-600 bg-white border border-slate-200 rounded-[10px] hover:bg-slate-50 transition-colors">
+            {{ 'premios.collapseAll' | translate }}
+          </button>
+        </div>
+        <div class="flex flex-col gap-3">
           @for (cv of categoriasView(); track cv.cat.id) {
             <div class="bg-white border border-slate-200 rounded-lg overflow-hidden"
                  [class]="cv.cat.tipo === 'TAXA_ADMINISTRATIVA' ? 'opacity-75' : ''">
 
-              <!-- Card header -->
-              <div class="flex items-start gap-4 p-5 border-b border-slate-100 flex-wrap">
+              <!-- Card header (colapsável) -->
+              <button type="button"
+                      (click)="toggleExpanded(cv.cat.id)"
+                      [attr.aria-expanded]="isExpanded(cv.cat.id)"
+                      class="w-full flex items-start gap-4 p-4 sm:p-5 text-left hover:bg-slate-50/80 transition-colors min-h-12"
+                      [class.border-b]="isExpanded(cv.cat.id)"
+                      [class.border-slate-100]="isExpanded(cv.cat.id)">
+                <span class="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center flex-shrink-0 text-slate-400 text-lg transition-transform duration-200"
+                      [class.rotate-90]="isExpanded(cv.cat.id)"
+                      aria-hidden="true">›</span>
                 <!-- Ícone -->
-                <div class="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 text-xl"
+                <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center flex-shrink-0 text-xl"
                      [style]="catIconStyle(cv)">
                   {{ catIcon(cv) }}
                 </div>
@@ -127,96 +145,147 @@
                 <!-- Info -->
                 <div class="flex-1 min-w-0">
                   <div class="flex items-center gap-2 flex-wrap">
-                    <h3 class="font-display font-semibold text-[16px]">{{ cv.cat.nome }}</h3>
+                    <h3 class="font-display font-semibold text-[15px] sm:text-[16px]">{{ cv.cat.nome }}</h3>
                     @if (cv.cat.acumulaSemGanhador && cv.premios.length === 0) {
                       <span class="inline-flex items-center px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-100 text-[10.5px] font-semibold rounded-full uppercase tracking-wide">
                         {{ 'premios.chipRollNext' | translate }}
                       </span>
+                    }
+                    @if (!isExpanded(cv.cat.id) && cv.premios.length > 0) {
+                      <span class="inline-flex items-center px-2 py-0.5 bg-slate-100 text-slate-600 text-[10.5px] font-semibold rounded-full">
+                        {{ 'premios.winnersCount' | translate: { n: cv.premios.length } }}
+                      </span>
+                      @if (pendentesNaCategoria(cv.premios) > 0) {
+                        <span class="inline-flex items-center px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-100 text-[10.5px] font-semibold rounded-full">
+                          {{ 'premios.pendingCount' | translate: { n: pendentesNaCategoria(cv.premios) } }}
+                        </span>
+                      }
                     }
                   </div>
                   <p class="text-slate-400 text-[12px] mt-0.5">{{ tipoDesc(cv.cat) }} · {{ 'premios.pctOfGross' | translate: { p: cv.cat.percentual } }}</p>
                 </div>
 
                 <!-- Valores -->
-                <div class="flex gap-6 items-center flex-shrink-0">
+                <div class="flex gap-4 sm:gap-6 items-center flex-shrink-0">
                   <div class="text-right">
                     <div class="text-[11px] text-slate-400">{{ 'premios.catValue' | translate }}</div>
-                    <div class="font-display font-semibold text-[18px] tabular">{{ cv.valorTotal | pBrl }}</div>
+                    <div class="font-display font-semibold text-[16px] sm:text-[18px] tabular">{{ cv.valorTotal | pBrl }}</div>
                   </div>
                   @if (cv.cat.tipo !== 'TAXA_ADMINISTRATIVA') {
                     <div class="text-right">
                       <div class="text-[11px] text-slate-400">
                         {{ cv.premios.length === 0 ? ('premios.winnersLabel' | translate) : ('premios.perWinner' | translate) }}
                       </div>
-                      <div class="font-display font-semibold text-[18px] tabular">
+                      <div class="font-display font-semibold text-[16px] sm:text-[18px] tabular">
                         {{ cv.premios.length === 0 ? ('common.emDash' | translate) : (cv.valorPorGanhador | pBrl) }}
                       </div>
                     </div>
                   } @else {
-                    <div class="text-right">
+                    <div class="text-right hidden sm:block">
                       <div class="text-[11px] text-slate-400">{{ 'premios.destination' | translate }}</div>
-                      <div class="font-display font-semibold text-[18px]">{{ tenantNome() || ('premios.destinationTenant' | translate) }}</div>
+                      <div class="font-display font-semibold text-[16px] sm:text-[18px]">{{ tenantNome() || ('premios.destinationTenant' | translate) }}</div>
                     </div>
                   }
                 </div>
-              </div>
+              </button>
 
+              @if (isExpanded(cv.cat.id)) {
               <!-- Ganhadores (table) -->
               @if (cv.premios.length > 0) {
-                <div class="overflow-x-auto">
-                  <table class="w-full text-[13px]">
-                    <thead class="bg-slate-50">
-                      <tr>
-                        <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">{{ 'premios.thQuota' | translate }}</th>
-                        <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">{{ 'premios.thParticipant' | translate }}</th>
-                        <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">{{ 'premios.thValue' | translate }}</th>
-                        <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">{{ 'premios.thStatus' | translate }}</th>
-                        <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5 hidden sm:table-cell">{{ 'premios.thPaidAt' | translate }}</th>
-                        <th class="px-4 py-2.5 w-32"></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      @for (p of cv.premios.slice(0, showAll()[cv.cat.id] ? 999 : 3); track p.id) {
-                        <tr class="border-b border-slate-100 hover:bg-slate-50 last:border-0">
-                          <td class="px-4 py-3 font-mono font-semibold text-[12.5px]">#{{ p.cotaSequencial }}</td>
-                          <td class="px-4 py-3 font-semibold">{{ p.cotaNome }}</td>
-                          <td class="px-4 py-3 font-mono font-semibold tabular text-amber-700">{{ p.valorPorGanhador | pBrl }}</td>
-                          <td class="px-4 py-3">
-                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-semibold tracking-wide uppercase border"
-                                  [class]="p.statusPagamento === 'PAGO' ? 'bg-green-50 text-green-800 border-green-200' : 'bg-amber-50 text-amber-700 border-amber-100'">
-                              <span class="w-1.5 h-1.5 rounded-full bg-current"></span>
-                              @switch (p.statusPagamento) {
-                                @case ('PAGO') { {{ 'premios.payPAGO' | translate }} }
-                                @case ('PENDENTE') { {{ 'premios.payPENDENTE' | translate }} }
-                                @default { {{ p.statusPagamento }} }
-                              }
-                            </span>
-                          </td>
-                          <td class="px-4 py-3 text-slate-400 text-[12px] hidden sm:table-cell">
-                            {{ p.dataPagamento ? fmtDate(p.dataPagamento) : ('common.emDash' | translate) }}
-                          </td>
-                          <td class="px-4 py-3">
-                            @if (p.statusPagamento === 'PENDENTE') {
-                              <button (click)="pagarPremio(p.id)"
-                                      [disabled]="pagandoId() === p.id"
-                                      class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-green-700 hover:bg-green-800 disabled:opacity-50 text-white text-[12px] font-semibold rounded-lg transition-colors min-h-8">
-                                {{ pagandoId() === p.id ? ('common.ellipsis' | translate) : ('premios.pay' | translate) }}
-                              </button>
-                            } @else {
-                              <button class="w-7 h-7 flex items-center justify-center text-slate-300 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors text-sm">⋯</button>
-                            }
-                          </td>
-                        </tr>
-                      }
-                    </tbody>
-                  </table>
+                <div class="border-t border-slate-100">
+                  <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3 px-4 py-3 bg-slate-50/80 border-b border-slate-100">
+                    <div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2 flex-1 min-w-0">
+                      <label class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide shrink-0">
+                        {{ 'premios.filterStatus' | translate }}
+                      </label>
+                      <select class="w-full sm:w-40 min-h-9 px-3 py-2 border border-slate-200 rounded-[10px] text-[13px] bg-white focus:outline-none focus:border-green-700"
+                              [ngModel]="catTablePrefsFor(cv.cat.id).statusFilter"
+                              (ngModelChange)="onStatusFilterChange(cv.cat.id, $event)">
+                        <option value="TODOS">{{ 'premios.filterAll' | translate }}</option>
+                        <option value="PENDENTE">{{ 'premios.payPENDENTE' | translate }}</option>
+                        <option value="PAGO">{{ 'premios.payPAGO' | translate }}</option>
+                        <option value="INATIVO">{{ 'premios.payINATIVO' | translate }}</option>
+                      </select>
+                    </div>
+                    <div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2 flex-1 min-w-0">
+                      <label class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide shrink-0">
+                        {{ 'premios.sortBy' | translate }}
+                      </label>
+                      <select class="w-full sm:flex-1 min-h-9 px-3 py-2 border border-slate-200 rounded-[10px] text-[13px] bg-white focus:outline-none focus:border-green-700"
+                              [ngModel]="catTablePrefsFor(cv.cat.id).sort"
+                              (ngModelChange)="onSortChange(cv.cat.id, $event)">
+                        <option value="cota-asc">{{ 'premios.sortCotaAsc' | translate }}</option>
+                        <option value="cota-desc">{{ 'premios.sortCotaDesc' | translate }}</option>
+                        <option value="participante-asc">{{ 'premios.sortParticipantAsc' | translate }}</option>
+                        <option value="participante-desc">{{ 'premios.sortParticipantDesc' | translate }}</option>
+                        <option value="valor-desc">{{ 'premios.sortValueDesc' | translate }}</option>
+                        <option value="valor-asc">{{ 'premios.sortValueAsc' | translate }}</option>
+                        <option value="status-asc">{{ 'premios.sortStatusAsc' | translate }}</option>
+                        <option value="status-desc">{{ 'premios.sortStatusDesc' | translate }}</option>
+                        <option value="pagoEm-desc">{{ 'premios.sortPaidDesc' | translate }}</option>
+                        <option value="pagoEm-asc">{{ 'premios.sortPaidAsc' | translate }}</option>
+                      </select>
+                    </div>
+                    <span class="text-[12px] text-slate-500 tabular shrink-0 sm:ml-auto">
+                      {{ 'premios.rowsShown' | translate: { n: premiosFiltrados(cv.cat.id, cv.premios).length, total: cv.premios.length } }}
+                    </span>
+                  </div>
+                  <div class="max-h-[500px] overflow-y-auto overflow-x-auto">
+                    @if (premiosFiltrados(cv.cat.id, cv.premios).length === 0) {
+                      <p class="px-4 py-8 text-center text-[13px] text-slate-400">
+                        {{ 'premios.noRowsFilter' | translate }}
+                      </p>
+                    } @else {
+                      <table class="w-full text-[13px]">
+                        <thead class="bg-slate-50 sticky top-0 z-[1] shadow-[0_1px_0_0_rgb(226_232_240)]">
+                          <tr>
+                            <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">{{ 'premios.thQuota' | translate }}</th>
+                            <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">{{ 'premios.thParticipant' | translate }}</th>
+                            <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">{{ 'premios.thValue' | translate }}</th>
+                            <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5">{{ 'premios.thStatus' | translate }}</th>
+                            <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-4 py-2.5 hidden sm:table-cell">{{ 'premios.thPaidAt' | translate }}</th>
+                            <th class="px-4 py-2.5 w-32"></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          @for (p of premiosFiltrados(cv.cat.id, cv.premios); track p.id) {
+                            <tr class="border-b border-slate-100 hover:bg-slate-50 last:border-0">
+                              <td class="px-4 py-3 font-mono font-semibold text-[12.5px]">#{{ p.cotaSequencial }}</td>
+                              <td class="px-4 py-3 font-semibold">{{ p.cotaNome }}</td>
+                              <td class="px-4 py-3 font-mono font-semibold tabular text-amber-700">{{ p.valorPorGanhador | pBrl }}</td>
+                              <td class="px-4 py-3">
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-semibold tracking-wide uppercase border"
+                                      [class]="p.statusPagamento === 'PAGO' ? 'bg-green-50 text-green-800 border-green-200' : p.statusPagamento === 'INATIVO' ? 'bg-slate-100 text-slate-500 border-slate-200' : 'bg-amber-50 text-amber-700 border-amber-100'">
+                                  <span class="w-1.5 h-1.5 rounded-full bg-current"></span>
+                                  @switch (p.statusPagamento) {
+                                    @case ('PAGO') { {{ 'premios.payPAGO' | translate }} }
+                                    @case ('PENDENTE') { {{ 'premios.payPENDENTE' | translate }} }
+                                    @case ('INATIVO') { {{ 'premios.payINATIVO' | translate }} }
+                                    @default { {{ p.statusPagamento }} }
+                                  }
+                                </span>
+                              </td>
+                              <td class="px-4 py-3 text-slate-400 text-[12px] hidden sm:table-cell">
+                                {{ p.dataPagamento ? fmtDate(p.dataPagamento) : ('common.emDash' | translate) }}
+                              </td>
+                              <td class="px-4 py-3">
+                                @if (p.statusPagamento === 'PENDENTE') {
+                                  <button (click)="pagarPremio(p.id)"
+                                          [disabled]="pagandoId() === p.id"
+                                          class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-green-700 hover:bg-green-800 disabled:opacity-50 text-white text-[12px] font-semibold rounded-lg transition-colors min-h-8">
+                                    {{ pagandoId() === p.id ? ('common.ellipsis' | translate) : ('premios.pay' | translate) }}
+                                  </button>
+                                } @else {
+                                  <button class="w-7 h-7 flex items-center justify-center text-slate-300 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors text-sm">⋯</button>
+                                }
+                              </td>
+                            </tr>
+                          }
+                        </tbody>
+                      </table>
+                    }
+                  </div>
                 </div>
-                @if (cv.premios.length > 3 && !showAll()[cv.cat.id]) {
-                  <button (click)="toggleShowAll(cv.cat.id)"
-                          class="w-full py-3 text-center text-[12.5px] text-slate-500 hover:text-slate-700 border-t border-slate-100 transition-colors">
-                    {{ 'premios.moreWinners' | translate: { n: cv.premios.length - 3 } }}
-                  </button>
-                }
 
               <!-- Sem ganhadores / acumulado -->
               } @else if (cv.cat.tipo !== 'TAXA_ADMINISTRATIVA') {
@@ -227,6 +296,7 @@
                     {{ 'premios.noWinners' | translate }}
                   }
                 </div>
+              }
               }
             </div>
           }

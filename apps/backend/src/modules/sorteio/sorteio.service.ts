@@ -561,6 +561,14 @@ export class SorteioService {
 
     if (jaAplicado) return { hasPendente: false, resultado: null, autoApply: tenant.sorteioAutoApply };
 
+    // Sem bolões EM_ANDAMENTO → não há onde aplicar
+    const temBolaoAtivo = await this.prisma.bolao.findFirst({
+      where: { tenantId, status: 'EM_ANDAMENTO' },
+      select: { id: true },
+    });
+
+    if (!temBolaoAtivo) return { hasPendente: false, resultado: null, autoApply: tenant.sorteioAutoApply };
+
     return {
       hasPendente: true,
       resultado: {

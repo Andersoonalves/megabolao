@@ -3,6 +3,7 @@ import {
   Pipe, PipeTransform,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { ApiService } from '../../../core/services/api.service';
@@ -66,12 +67,30 @@ interface CategoriaView {
   valorPorGanhador: number;
 }
 
+type PremioStatusFilter = 'TODOS' | PremioResponse['statusPagamento'];
+type PremioSortOption =
+  | 'cota-asc' | 'cota-desc'
+  | 'participante-asc' | 'participante-desc'
+  | 'valor-desc' | 'valor-asc'
+  | 'status-asc' | 'status-desc'
+  | 'pagoEm-desc' | 'pagoEm-asc';
+
+interface CatTablePrefs {
+  statusFilter: PremioStatusFilter;
+  sort: PremioSortOption;
+}
+
+const DEFAULT_CAT_TABLE_PREFS: CatTablePrefs = {
+  statusFilter: 'TODOS',
+  sort: 'cota-asc',
+};
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 @Component({
   selector: 'nb-premios-bolao',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [BackButtonComponent, RouterLink, PBrlPipe, TranslatePipe],
+  imports: [BackButtonComponent, RouterLink, PBrlPipe, TranslatePipe, FormsModule],
   templateUrl: './premios-bolao.component.html',
 })
 export class PremiosBolaoComponent implements OnInit {
@@ -91,7 +110,8 @@ export class PremiosBolaoComponent implements OnInit {
   pagandoId  = signal('');
   error      = signal('');
   erroCalculo = signal('');
-  showAll    = signal<Record<string, boolean>>({});
+  catTablePrefs = signal<Record<string, CatTablePrefs>>({});
+  expandedCats  = signal<Record<string, boolean>>({});
 
   // ── Computed ───────────────────────────────────────────────────────────────
   categoriasView = computed<CategoriaView[]>(() => {
@@ -206,8 +226,80 @@ export class PremiosBolaoComponent implements OnInit {
     }
   }
 
-  toggleShowAll(catId: string): void {
-    this.showAll.update(s => ({ ...s, [catId]: !s[catId] }));
+  isExpanded(catId: string): boolean {
+    return !!this.expandedCats()[catId];
+  }
+
+  toggleExpanded(catId: string): void {
+    this.expandedCats.update(m => ({ ...m, [catId]: !this.isExpanded(catId) }));
+  }
+
+  expandAll(): void {
+    const next: Record<string, boolean> = {};
+    for (const cv of this.categoriasView()) {
+      next[cv.cat.id] = true;
+    }
+    this.expandedCats.set(next);
+  }
+
+  collapseAll(): void {
+    this.expandedCats.set({});
+  }
+
+  pendentesNaCategoria(premios: PremioResponse[]): number {
+    return premios.filter(p => p.statusPagamento === 'PENDENTE').length;
+  }
+
+  catTablePrefsFor(catId: string): CatTablePrefs {
+    return this.catTablePrefs()[catId] ?? DEFAULT_CAT_TABLE_PREFS;
+  }
+
+  onStatusFilterChange(catId: string, value: PremioStatusFilter): void {
+    this.catTablePrefs.update(p => ({
+      ...p,
+      [catId]: { ...this.catTablePrefsFor(catId), statusFilter: value },
+    }));
+  }
+
+  onSortChange(catId: string, value: PremioSortOption): void {
+    this.catTablePrefs.update(p => ({
+      ...p,
+      [catId]: { ...this.catTablePrefsFor(catId), sort: value },
+    }));
+  }
+
+  premiosFiltrados(catId: string, premios: PremioResponse[]): PremioResponse[] {
+    const { statusFilter, sort } = this.catTablePrefsFor(catId);
+    let list = premios;
+    if (statusFilter !== 'TODOS') {
+      list = list.filter(p => p.statusPagamento === statusFilter);
+    }
+    const desc = sort.endsWith('-desc');
+    const key = sort.replace(/-(asc|desc)$/, '');
+    return [...list].sort((a, b) => {
+      let cmp = 0;
+      switch (key) {
+        case 'cota':
+          cmp = a.cotaSequencial - b.cotaSequencial;
+          break;
+        case 'participante':
+          cmp = a.cotaNome.localeCompare(b.cotaNome, 'pt-BR');
+          break;
+        case 'valor':
+          cmp = a.valorPorGanhador - b.valorPorGanhador;
+          break;
+        case 'status':
+          cmp = a.statusPagamento.localeCompare(b.statusPagamento);
+          break;
+        case 'pagoEm': {
+          const ta = a.dataPagamento ? new Date(a.dataPagamento).getTime() : 0;
+          const tb = b.dataPagamento ? new Date(b.dataPagamento).getTime() : 0;
+          cmp = ta - tb;
+          break;
+        }
+      }
+      return desc ? -cmp : cmp;
+    });
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────────

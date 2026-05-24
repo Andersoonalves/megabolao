@@ -296,7 +296,9 @@
                   <!-- quick actions -->
                   <div class="px-4 sm:px-6 py-3 bg-slate-50 border-t border-slate-100 flex flex-wrap gap-2">
                     <a [routerLink]="['/bolao', b.id, 'cotas']" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-semibold text-slate-600 hover:bg-white border border-transparent hover:border-slate-200 no-underline min-h-10">🎫 {{ 'listaBoloes.qCotas' | translate }}</a>
-                    <a routerLink="/sorteios" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-semibold text-slate-600 hover:bg-white border border-transparent hover:border-slate-200 no-underline min-h-10">✦ {{ 'listaBoloes.qSorteios' | translate }}</a>
+                    @if (atv) {
+                      <a routerLink="/sorteios" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-semibold text-slate-600 hover:bg-white border border-transparent hover:border-slate-200 no-underline min-h-10">✦ {{ 'listaBoloes.qSorteios' | translate }}</a>
+                    }
                     <a [routerLink]="['/bolao', b.id, 'premios']" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-semibold text-slate-600 hover:bg-white border border-transparent hover:border-slate-200 no-underline min-h-10">🏆 {{ 'listaBoloes.qPremios' | translate }}</a>
                     <a [routerLink]="['/bolao', b.id, 'whatsapp']" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-semibold text-slate-600 hover:bg-white border border-transparent hover:border-slate-200 no-underline min-h-10">💬 {{ 'listaBoloes.qWa' | translate }}</a>
                     <a [routerLink]="['/bolao', b.id, 'google-drive']" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-semibold text-slate-600 hover:bg-white border border-transparent hover:border-slate-200 no-underline min-h-10">📊 {{ 'listaBoloes.sheetLink' | translate }}</a>
