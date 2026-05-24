@@ -104,6 +104,7 @@ export class DashboardAdminComponent implements OnInit {
 
   // ── Computed ───────────────────────────────────────────────────────────────
   emAndamento     = computed(() => this.bolaoes().filter(b => b.status === 'EM_ANDAMENTO').length);
+  premiados       = computed(() => this.bolaoes().filter(b => b.status === 'PREMIADO').length);
   aIniciar        = computed(() => this.bolaoes().filter(b => b.status === 'A_SER_INICIADO').length);
   finalizados     = computed(() => this.bolaoes().filter(b => b.status === 'FINALIZADO').length);
   totalCotas      = computed(() => this.bolaoes().reduce((s, b) => s + b.totalCotasAtivas, 0));

@@ -9,6 +9,7 @@ import { CALC_ACERTOS_QUEUE, CALC_ACERTOS_QUEUE_NAME } from './jobs/calc-acertos
 import { CheckMegaSenaProcessor } from './jobs/check-mega-sena.processor';
 import { CHECK_MEGA_SENA_QUEUE, CHECK_MEGA_SENA_QUEUE_NAME } from './jobs/check-mega-sena.types';
 import { GoogleDriveModule } from '../google-drive/google-drive.module';
+import { WhatsAppModule } from '../whatsapp/whatsapp.module';
 
 function makeBullQueue(name: string) {
   return {
@@ -23,7 +24,7 @@ function makeBullQueue(name: string) {
 }
 
 @Module({
-  imports: [GoogleDriveModule],
+  imports: [GoogleDriveModule, WhatsAppModule],
   controllers: [SorteioController, SorteioGlobalController],
   providers: [
     makeBullQueue(CALC_ACERTOS_QUEUE_NAME),

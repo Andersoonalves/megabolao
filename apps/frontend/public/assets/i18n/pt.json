@@ -270,6 +270,7 @@
     "status": {
       "EM_ANDAMENTO": "Ativo",
       "A_SER_INICIADO": "A iniciar",
+      "PREMIADO": "Premiado",
       "FINALIZADO": "Finalizado",
       "SUSPENSO": "Suspenso"
     },
@@ -435,6 +436,7 @@
     "kpiPrizesHint": "Em breve: totais distribuídos",
     "tabAll": "Todos",
     "tabRunning": "Em andamento",
+    "tabPremiado": "Premiados",
     "tabPending": "A iniciar",
     "tabFinished": "Finalizados",
     "tabSuspended": "Suspensos",
@@ -452,6 +454,7 @@
     "status": {
       "EM_ANDAMENTO": "Em andamento",
       "A_SER_INICIADO": "A iniciar",
+      "PREMIADO": "Premiado",
       "FINALIZADO": "Finalizado",
       "SUSPENSO": "Suspenso"
     },
@@ -459,6 +462,7 @@
     "categoriesShort": "categorias",
     "btnRegisterDraw": "Registrar sorteio",
     "btnStartPool": "Iniciar bolão",
+    "btnViewPrizes": "Ver prêmios",
     "btnFinalReport": "Relatório final",
     "btnOpen": "Abrir",
     "paidQuotas": "Cotas pagas",
@@ -823,6 +827,7 @@
     "poolStatus": {
       "FINALIZADO": "finalizado",
       "EM_ANDAMENTO": "em andamento",
+      "PREMIADO": "premiado",
       "A_SER_INICIADO": "aguardando início",
       "SUSPENSO": "suspenso"
     }

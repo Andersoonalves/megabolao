@@ -165,7 +165,14 @@
           <div class="flex items-center gap-2 mb-1">
             <h1 class="font-display text-[26px] font-semibold tracking-tight">{{ d.bolao.nome }}</h1>
             <span class="px-2 py-0.5 rounded-full text-[11px] font-bold uppercase"
-                  [class]="d.bolao.status === 'EM_ANDAMENTO' ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-500'">
+                  [class.bg-green-100]="d.bolao.status === 'EM_ANDAMENTO'"
+                  [class.text-green-800]="d.bolao.status === 'EM_ANDAMENTO'"
+                  [class.bg-amber-100]="d.bolao.status === 'PREMIADO'"
+                  [class.text-amber-700]="d.bolao.status === 'PREMIADO'"
+                  [class.border]="d.bolao.status === 'PREMIADO'"
+                  [class.border-amber-300]="d.bolao.status === 'PREMIADO'"
+                  [class.bg-slate-100]="d.bolao.status !== 'EM_ANDAMENTO' && d.bolao.status !== 'PREMIADO'"
+                  [class.text-slate-500]="d.bolao.status !== 'EM_ANDAMENTO' && d.bolao.status !== 'PREMIADO'">
               {{ ('dashboardAdmin.status.' + d.bolao.status) | translate }}
             </span>
           </div>

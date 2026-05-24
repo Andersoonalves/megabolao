@@ -20,6 +20,7 @@ enum TenantStatus {
 enum BolaoStatus {
   A_SER_INICIADO
   EM_ANDAMENTO
+  PREMIADO
   FINALIZADO
 
   @@map("bolao_status")

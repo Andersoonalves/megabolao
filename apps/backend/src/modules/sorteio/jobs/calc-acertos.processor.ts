@@ -5,6 +5,7 @@ import { calcularAcertos } from '@nossobolao/shared-utils';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CALC_ACERTOS_QUEUE_NAME, CalcAcertosJobData } from './calc-acertos.types';
 import { SHEETS_SYNC_QUEUE } from '../../google-drive/jobs/sheets-sync.types';
+import { WhatsAppMensagemService } from '../../whatsapp/whatsapp-mensagem.service';
 
 const BATCH_SIZE = 500;
 
@@ -17,6 +18,7 @@ export class CalcAcertosProcessor implements OnModuleInit, OnModuleDestroy {
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
     @Optional() @Inject(SHEETS_SYNC_QUEUE) private readonly syncQueue?: Queue,
+    @Optional() private readonly waMensagemService?: WhatsAppMensagemService,
   ) {}
 
   onModuleInit(): void {
@@ -123,6 +125,8 @@ export class CalcAcertosProcessor implements OnModuleInit, OnModuleDestroy {
       `Sorteio ${sorteioId} (concurso ${sorteio.numeroConcurso}): ${totalProcessadas} cotas processadas`,
     );
 
+    await this.verificarPremiacaoPrincipal(bolaoId, tenantId);
+
     // Trigger sheets sync after ranking is calculated
     if (this.syncQueue) {
       this.syncQueue.add('sync-ranking', { bolaoId, tenantId, trigger: 'RANKING' }, {
@@ -131,6 +135,45 @@ export class CalcAcertosProcessor implements OnModuleInit, OnModuleDestroy {
         removeOnFail: 50,
       // eslint-disable-next-line @typescript-eslint/no-empty-function
       }).catch(() => {});
+    }
+  }
+
+  private async verificarPremiacaoPrincipal(bolaoId: string, tenantId: string): Promise<void> {
+    const bolao = await this.prisma.bolao.findFirst({
+      where: { id: bolaoId, tenantId },
+      select: { status: true, whatsappGrupos: true, qtdNumerosCota: true },
+    });
+
+    if (!bolao || bolao.status === 'PREMIADO' || bolao.status === 'FINALIZADO') return;
+
+    const ganhador = await this.prisma.cota.findFirst({
+      where: {
+        bolaoId,
+        tenantId,
+        statusPagamento: 'PAGO',
+        totalAcertosAcumulados: { gte: bolao.qtdNumerosCota },
+      },
+      select: { id: true },
+    });
+
+    if (!ganhador) return;
+
+    await this.prisma.bolao.update({
+      where: { id: bolaoId },
+      data: { status: 'PREMIADO', atualizadoEm: new Date() },
+    });
+
+    this.logger.log(`Bolão ${bolaoId} marcado como PREMIADO — cota atingiu ${bolao.qtdNumerosCota} acertos`);
+
+    if (!this.waMensagemService) return;
+
+    const grupos = (bolao.whatsappGrupos as string[]) ?? [];
+    const conteudo = `*BOLÃO PREMIADO* 🏆\nUm ganhador principal foi detectado!\nAcesse o painel para visualizar e calcular os prêmios.`;
+
+    for (const grupoId of grupos) {
+      await this.waMensagemService
+        .enfileirar(tenantId, { grupoId, tipo: 'AVISO_ADMIN', conteudo, bolaoId })
+        .catch((err: Error) => this.logger.warn(`Falha ao notificar grupo ${grupoId}: ${err.message}`));
     }
   }
 }

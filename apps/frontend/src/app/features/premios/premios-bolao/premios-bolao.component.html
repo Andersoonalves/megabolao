@@ -83,8 +83,8 @@
           }
         </div>
 
-      <!-- Estado: bolão não finalizado -->
-      } @else if (bolao() && bolao()!.status !== 'FINALIZADO') {
+      <!-- Estado: bolão não finalizado nem premiado -->
+      } @else if (bolao() && bolao()!.status !== 'FINALIZADO' && bolao()!.status !== 'PREMIADO') {
         <div class="bg-white border border-slate-200 rounded-xl p-8 text-center">
           <div class="text-4xl mb-4">🏆</div>
           <h3 class="font-display text-lg font-semibold mb-2">{{ 'premios.notCalculatedTitle' | translate }}</h3>
@@ -95,7 +95,7 @@
         </div>
 
       <!-- Estado: prêmios ainda não calculados -->
-      } @else if (bolao()?.status === 'FINALIZADO' && !loading() && premios().length === 0) {
+      } @else if ((bolao()?.status === 'FINALIZADO' || bolao()?.status === 'PREMIADO') && !loading() && premios().length === 0) {
         <div class="bg-white border border-slate-200 rounded-xl p-8 text-center">
           <div class="text-4xl mb-4">⚡</div>
           <h3 class="font-display text-lg font-semibold mb-2">{{ 'premios.needCalcTitle' | translate }}</h3>

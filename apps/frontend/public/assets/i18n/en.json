@@ -270,6 +270,7 @@
     "status": {
       "EM_ANDAMENTO": "Active",
       "A_SER_INICIADO": "Starting soon",
+      "PREMIADO": "Awarded",
       "FINALIZADO": "Finished",
       "SUSPENSO": "Suspended"
     },
@@ -435,6 +436,7 @@
     "kpiPrizesHint": "Coming soon: distributed totals",
     "tabAll": "All",
     "tabRunning": "Running",
+    "tabPremiado": "Awarded",
     "tabPending": "Starting soon",
     "tabFinished": "Finished",
     "tabSuspended": "Suspended",
@@ -452,6 +454,7 @@
     "status": {
       "EM_ANDAMENTO": "Running",
       "A_SER_INICIADO": "Starting soon",
+      "PREMIADO": "Awarded",
       "FINALIZADO": "Finished",
       "SUSPENSO": "Suspended"
     },
@@ -459,6 +462,7 @@
     "categoriesShort": "categories",
     "btnRegisterDraw": "Register draw",
     "btnStartPool": "Start pool",
+    "btnViewPrizes": "View prizes",
     "btnFinalReport": "Final report",
     "btnOpen": "Open",
     "paidQuotas": "Paid quotas",
@@ -823,6 +827,7 @@
     "poolStatus": {
       "FINALIZADO": "finalized",
       "EM_ANDAMENTO": "in progress",
+      "PREMIADO": "awarded",
       "A_SER_INICIADO": "waiting to start",
       "SUSPENSO": "suspended"
     }

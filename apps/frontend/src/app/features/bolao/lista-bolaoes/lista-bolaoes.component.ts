@@ -91,22 +91,27 @@ export class ListaBolaoesComponent implements OnInit {
     ListaBolaoesComponent.sortBoloes([...this.bolaoes()], this.ordenacao()),
   );
 
-  /** KPIs só da página atual (API paginada). */
-  kpiAtivosPagina = computed(() => this.bolaoes().filter((b) => b.status === 'EM_ANDAMENTO').length);
+  private static isAtivo(s: string): boolean {
+    return s === 'EM_ANDAMENTO' || s === 'PREMIADO';
+  }
+
+  /** KPIs só da página atual (API paginada). Inclui PREMIADO pois ainda está em execução. */
+  kpiAtivosPagina = computed(() => this.bolaoes().filter((b) => ListaBolaoesComponent.isAtivo(b.status)).length);
 
   kpiCotasPagina = computed(() => this.bolaoes()
-    .filter((b) => b.status === 'EM_ANDAMENTO')
+    .filter((b) => ListaBolaoesComponent.isAtivo(b.status))
     .reduce((s, b) => s + b.totalCotasAtivas, 0));
 
   kpiArrecPagina = computed(() => this.bolaoes()
-    .filter((b) => b.status === 'EM_ANDAMENTO')
+    .filter((b) => ListaBolaoesComponent.isAtivo(b.status))
     .reduce((s, b) => s + b.valorBrutoArrecadado, 0));
 
   readonly statusTabs = [
-    { status: '',            key: 'tabAll' },
-    { status: 'EM_ANDAMENTO', key: 'tabRunning' },
+    { status: '',              key: 'tabAll' },
+    { status: 'EM_ANDAMENTO',  key: 'tabRunning' },
+    { status: 'PREMIADO',      key: 'tabPremiado' },
     { status: 'A_SER_INICIADO', key: 'tabPending' },
-    { status: 'FINALIZADO',   key: 'tabFinished' },
+    { status: 'FINALIZADO',    key: 'tabFinished' },
   ] as const;
 
   readonly viewOptions = [
@@ -168,8 +173,9 @@ export class ListaBolaoesComponent implements OnInit {
 
   private static readonly statusRank: Record<string, number> = {
     EM_ANDAMENTO: 0,
-    A_SER_INICIADO: 1,
-    FINALIZADO: 2,
+    PREMIADO: 1,
+    A_SER_INICIADO: 2,
+    FINALIZADO: 3,
   };
 
   private static sortBoloes(rows: BolaoResponse[], ord: ListaBoloesOrdenacao): BolaoResponse[] {
@@ -416,8 +422,9 @@ export class ListaBolaoesComponent implements OnInit {
   statusClass(s: string): string {
     if (s === 'EM_ANDAMENTO')   return 'bg-green-50 text-green-800 border-green-200';
     if (s === 'A_SER_INICIADO') return 'bg-blue-50 text-blue-700 border-blue-200';
+    if (s === 'PREMIADO')       return 'bg-amber-50 text-amber-700 border-amber-300';
     if (s === 'FINALIZADO')     return 'bg-slate-100 text-slate-500 border-slate-200';
-    return 'bg-amber-50 text-amber-700 border-amber-100';
+    return 'bg-slate-50 text-slate-400 border-slate-200';
   }
 
   fmtDate(iso: string | null): string {

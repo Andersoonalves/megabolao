@@ -77,6 +77,7 @@ nossobolao/
 5. **Custo zero (Fase 0):** não introduzir nenhum serviço pago. Supabase Free + Fly.io Free + Vercel Free + Upstash Free.
 6. **TypeScript strict:** `any` proibido. Tipos vêm de `libs/shared-types/` (gerado do OpenAPI) ou são declarados explicitamente.
 7. **Testes junto com código:** todo arquivo de produção tem seu `.spec.ts` criado na mesma entrega.
+8. **NUNCA apagar dados locais:** proibido executar `supabase db reset`, `DROP TABLE`, `TRUNCATE` ou qualquer comando destrutivo no banco local sem confirmação explícita do usuário na mesma mensagem. Para aplicar migrations, usar apenas `supabase migration up` ou executar o SQL diretamente via Docker/psql.
 
 ---
 

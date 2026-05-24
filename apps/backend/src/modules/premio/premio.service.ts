@@ -61,8 +61,8 @@ export class PremioService {
     if (!bolao) {
       throw new NotFoundException({ statusCode: 404, error: 'BOLAO_NAO_ENCONTRADO', message: `Bolão ${bolaoId} não encontrado`, details: [] });
     }
-    if (bolao.status !== 'FINALIZADO') {
-      throw new BusinessException('BOLAO_NAO_FINALIZADO', 'Cálculo de prêmios requer bolão FINALIZADO');
+    if (bolao.status !== 'FINALIZADO' && bolao.status !== 'PREMIADO') {
+      throw new BusinessException('BOLAO_NAO_FINALIZADO', 'Cálculo de prêmios requer bolão FINALIZADO ou PREMIADO');
     }
 
     // 2. Validar sorteios

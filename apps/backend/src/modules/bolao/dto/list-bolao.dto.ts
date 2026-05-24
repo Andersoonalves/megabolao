@@ -15,7 +15,7 @@ export class ListBolaoDto {
   @IsString() @IsOptional()
   busca?: string;
 
-  @ApiPropertyOptional({ enum: ['A_SER_INICIADO', 'EM_ANDAMENTO', 'FINALIZADO', 'SUSPENSO'] })
-  @IsEnum(['A_SER_INICIADO', 'EM_ANDAMENTO', 'FINALIZADO', 'SUSPENSO']) @IsOptional()
+  @ApiPropertyOptional({ enum: ['A_SER_INICIADO', 'EM_ANDAMENTO', 'PREMIADO', 'FINALIZADO', 'SUSPENSO'] })
+  @IsEnum(['A_SER_INICIADO', 'EM_ANDAMENTO', 'PREMIADO', 'FINALIZADO', 'SUSPENSO']) @IsOptional()
   status?: string;
 }

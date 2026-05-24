@@ -454,10 +454,12 @@
           <!-- Bolões ativos -->
           <div class="divide-y divide-slate-100">
             @for (b of bolaoes().slice(0, 5); track b.id) {
-              @if (b.status === 'EM_ANDAMENTO' || b.status === 'A_SER_INICIADO') {
-                <div class="flex gap-3 px-5 py-3 items-center">
+              @if (b.status === 'EM_ANDAMENTO' || b.status === 'A_SER_INICIADO' || b.status === 'PREMIADO') {
+                <div class="flex gap-3 px-5 py-3 items-center"
+                     [class.bg-amber-50]="b.status === 'PREMIADO'">
                   <span class="w-2 h-2 rounded-full flex-shrink-0 mt-0.5"
                         [class.bg-green-500]="b.status === 'EM_ANDAMENTO'"
+                        [class.bg-amber-400]="b.status === 'PREMIADO'"
                         [class.bg-blue-400]="b.status === 'A_SER_INICIADO'"></span>
                   <div class="flex-1 min-w-0">
                     <div class="text-[13px] font-semibold truncate">{{ b.nome }}</div>
@@ -517,12 +519,16 @@
                   <div class="flex items-center gap-2 mb-0.5 flex-wrap">
                     <span class="w-2 h-2 rounded-full flex-shrink-0"
                           [class.bg-green-500]="b.status === 'EM_ANDAMENTO'"
+                          [class.bg-amber-400]="b.status === 'PREMIADO'"
                           [class.bg-blue-400]="b.status === 'A_SER_INICIADO'"
-                          [class.bg-slate-300]="b.status !== 'EM_ANDAMENTO' && b.status !== 'A_SER_INICIADO'"></span>
+                          [class.bg-slate-300]="b.status === 'FINALIZADO'"
+                          [class.bg-slate-200]="b.status !== 'EM_ANDAMENTO' && b.status !== 'PREMIADO' && b.status !== 'A_SER_INICIADO' && b.status !== 'FINALIZADO'"></span>
                     <span class="font-semibold text-[14px] truncate">{{ b.nome }}</span>
                     <span class="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded-full flex-shrink-0"
                           [class.bg-green-100]="b.status === 'EM_ANDAMENTO'"
                           [class.text-green-800]="b.status === 'EM_ANDAMENTO'"
+                          [class.bg-amber-100]="b.status === 'PREMIADO'"
+                          [class.text-amber-700]="b.status === 'PREMIADO'"
                           [class.bg-blue-50]="b.status === 'A_SER_INICIADO'"
                           [class.text-blue-700]="b.status === 'A_SER_INICIADO'"
                           [class.bg-slate-100]="b.status === 'FINALIZADO'"
