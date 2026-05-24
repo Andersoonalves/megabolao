@@ -66,66 +66,63 @@
       </div>
 
       <!-- Tabs + filtros -->
-      <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between mb-4">
-        <div class="flex flex-wrap gap-1 p-1 bg-white border border-slate-200 rounded-[10px] w-fit max-w-full">
-          @for (t of statusTabs; track t.status) {
-            <button type="button"
-                    (click)="definirTabStatus(t.status)"
-                    class="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-[12.5px] font-semibold transition-colors min-h-10 touch-manipulation"
-                    [class.bg-green-700]="statusFiltro() === t.status"
-                    [class.text-white]="statusFiltro() === t.status"
-                    [class.shadow-sm]="statusFiltro() === t.status"
-                    [class.text-slate-600]="statusFiltro() !== t.status"
-                    [class.hover:bg-slate-50]="statusFiltro() !== t.status">
-              {{ tabLabelKey(t.key) | translate }}
-              @if (statusFiltro() === t.status) {
-                <span class="tabular rounded-full px-2 py-0.5 text-[11px] font-bold"
-                      [class.bg-white/20]="statusFiltro() === t.status"
-                      [class.text-white]="statusFiltro() === t.status">{{ total() }}</span>
-              }
-            </button>
-          }
+      <div class="flex flex-col gap-3 mb-4 min-w-0">
+        <!-- Abas de status (scroll horizontal se não couber) -->
+        <div class="overflow-x-auto overscroll-x-contain -mx-4 px-4 lg:mx-0 lg:px-0">
+          <div class="inline-flex flex-nowrap gap-1 p-1 bg-white border border-slate-200 rounded-[10px] min-w-0"
+               role="tablist">
+            @for (t of statusTabs; track t.status) {
+              <button type="button"
+                      role="tab"
+                      [attr.aria-selected]="statusFiltro() === t.status"
+                      (click)="definirTabStatus(t.status)"
+                      class="inline-flex items-center gap-1.5 rounded-lg px-2.5 sm:px-3 py-2 text-[12px] sm:text-[12.5px] font-semibold whitespace-nowrap transition-colors min-h-10 touch-manipulation shrink-0"
+                      [class.bg-green-700]="statusFiltro() === t.status"
+                      [class.text-white]="statusFiltro() === t.status"
+                      [class.shadow-sm]="statusFiltro() === t.status"
+                      [class.text-slate-600]="statusFiltro() !== t.status"
+                      [class.hover:bg-slate-50]="statusFiltro() !== t.status">
+                {{ tabLabelKey(t.key) | translate }}
+                @if (statusFiltro() === t.status) {
+                  <span class="tabular rounded-full px-1.5 sm:px-2 py-0.5 text-[10.5px] sm:text-[11px] font-bold bg-white/20 text-white">{{ total() }}</span>
+                }
+              </button>
+            }
+          </div>
         </div>
 
-        <div class="flex flex-col gap-2 w-full min-w-0 lg:flex-1 lg:max-w-3xl">
-          <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2">
+        <!-- Busca, ordenação e visualização -->
+        <div class="flex flex-col gap-2 min-w-0 md:flex-row md:items-center md:gap-2">
           <div class="relative flex-1 min-w-0 w-full">
             <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[13px] pointer-events-none">⌕</span>
             <input [ngModel]="busca()" (ngModelChange)="onBuscaChange($event)"
                    class="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-[10px] text-[13px] focus:outline-none focus:border-green-700 min-h-10"
                    [placeholder]="'listaBoloes.searchPlaceholder' | translate" />
           </div>
-          <div class="flex items-center gap-2 w-full sm:w-auto shrink-0">
-          <select [ngModel]="ordenacao()" (ngModelChange)="mudarOrdenacao($event)"
-                  class="flex-1 min-w-0 min-h-10 px-3 py-2 border border-slate-200 rounded-[10px] text-[13px] bg-white focus:outline-none focus:border-green-700 sm:flex-none sm:w-40 md:w-44">
-            <option value="recent">{{ 'listaBoloes.sortRecent' | translate }}</option>
-            <option value="arrecada">{{ 'listaBoloes.sortRevenue' | translate }}</option>
-            <option value="cotas">{{ 'listaBoloes.sortQuotas' | translate }}</option>
-            <option value="nome">{{ 'listaBoloes.sortName' | translate }}</option>
-            <option value="status">{{ 'listaBoloes.sortStatus' | translate }}</option>
-          </select>
-          <div class="inline-flex p-0.5 gap-0.5 rounded-lg border border-slate-200 bg-slate-50 shrink-0" role="group"
-               [attr.aria-label]="'listaBoloes.viewToggleLabel' | translate">
-            @for (opt of viewOptions; track opt.mode) {
-              <button type="button"
-                      (click)="definirVisualizacao(opt.mode)"
-                      [attr.title]="(('listaBoloes.' + opt.titleKey) | translate)"
-                      class="px-3 py-2 rounded-md text-[15px] min-h-10 min-w-10 transition-colors touch-manipulation"
-                      [class.bg-green-700]="visualizacao() === opt.mode"
-                      [class.text-white]="visualizacao() === opt.mode"
-                      [class.shadow-sm]="visualizacao() === opt.mode"
-                      [class.text-slate-500]="visualizacao() !== opt.mode"
-                      [class.hover:bg-slate-100]="visualizacao() !== opt.mode">{{ opt.icon }}</button>
-            }
+          <div class="flex flex-wrap items-center gap-2 w-full md:w-auto md:flex-nowrap md:shrink-0">
+            <select [ngModel]="ordenacao()" (ngModelChange)="mudarOrdenacao($event)"
+                    class="flex-1 min-w-[9.5rem] max-w-full min-h-10 px-3 py-2 border border-slate-200 rounded-[10px] text-[13px] bg-white focus:outline-none focus:border-green-700 md:flex-none md:w-44">
+              <option value="recent">{{ 'listaBoloes.sortRecent' | translate }}</option>
+              <option value="arrecada">{{ 'listaBoloes.sortRevenue' | translate }}</option>
+              <option value="cotas">{{ 'listaBoloes.sortQuotas' | translate }}</option>
+              <option value="nome">{{ 'listaBoloes.sortName' | translate }}</option>
+              <option value="status">{{ 'listaBoloes.sortStatus' | translate }}</option>
+            </select>
+            <div class="inline-flex p-0.5 gap-0.5 rounded-lg border border-slate-200 bg-slate-50 shrink-0" role="group"
+                 [attr.aria-label]="'listaBoloes.viewToggleLabel' | translate">
+              @for (opt of viewOptions; track opt.mode) {
+                <button type="button"
+                        (click)="definirVisualizacao(opt.mode)"
+                        [attr.title]="(('listaBoloes.' + opt.titleKey) | translate)"
+                        class="px-3 py-2 rounded-md text-[15px] min-h-10 min-w-10 transition-colors touch-manipulation"
+                        [class.bg-green-700]="visualizacao() === opt.mode"
+                        [class.text-white]="visualizacao() === opt.mode"
+                        [class.shadow-sm]="visualizacao() === opt.mode"
+                        [class.text-slate-500]="visualizacao() !== opt.mode"
+                        [class.hover:bg-slate-100]="visualizacao() !== opt.mode">{{ opt.icon }}</button>
+              }
+            </div>
           </div>
-          </div>
-          </div>
-          @if (temFiltrosExtras()) {
-            <button type="button" (click)="limparFiltros()"
-                    class="self-start text-[13px] font-semibold text-slate-500 hover:text-green-700 min-h-10 px-2 touch-manipulation">
-              {{ 'listaBoloes.clearFilters' | translate }}
-            </button>
-          }
         </div>
       </div>
 

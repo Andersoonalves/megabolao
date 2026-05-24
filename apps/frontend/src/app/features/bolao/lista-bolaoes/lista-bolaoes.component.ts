@@ -223,17 +223,6 @@ export class ListaBolaoesComponent implements OnInit {
     this.debounceTimer = setTimeout(() => this.load(), 350);
   }
 
-  limparFiltros(): void {
-    this.busca.set('');
-    this.statusFiltro.set(DEFAULT_STATUS_FILTRO);
-    this.page.set(1);
-    this.load();
-  }
-
-  temFiltrosExtras(): boolean {
-    return !!this.busca() || this.statusFiltro() !== DEFAULT_STATUS_FILTRO;
-  }
-
   // ── Load ──────────────────────────────────────────────────────────────────────
   async load(): Promise<void> {
     this.loading.set(true);
