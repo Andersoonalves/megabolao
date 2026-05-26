@@ -1,11 +1,18 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID, MaxLength, ValidateIf } from 'class-validator';
 
 export class EnviarMensagemDto {
-  @ApiProperty({ example: '120363000000000000@g.us', description: 'ID do grupo WhatsApp (obtido em /whatsapp/sessao/grupos)' })
+  @ApiPropertyOptional({ example: '120363000000000000@g.us', description: 'ID do grupo WhatsApp — obrigatório se celular ausente (Evolution API)' })
   @IsString()
   @IsNotEmpty()
-  grupoId!: string;
+  @ValidateIf(o => !o.celular)
+  grupoId?: string;
+
+  @ApiPropertyOptional({ example: '11987654321', description: 'Celular do destinatário — obrigatório se grupoId ausente (Meta Cloud API)' })
+  @IsString()
+  @IsNotEmpty()
+  @ValidateIf(o => !o.grupoId)
+  celular?: string;
 
   @ApiProperty({ enum: ['RESULTADO_SORTEIO', 'RANKING_PARCIAL', 'PREMIADOS', 'AVISO_ADMIN', 'MANUAL'] })
   @IsEnum(['RESULTADO_SORTEIO', 'RANKING_PARCIAL', 'PREMIADOS', 'AVISO_ADMIN', 'MANUAL'])

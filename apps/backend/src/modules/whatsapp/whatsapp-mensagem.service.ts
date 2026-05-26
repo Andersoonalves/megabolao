@@ -32,13 +32,18 @@ export class WhatsAppMensagemService {
   async enfileirar(tenantId: string | null, dto: EnviarMensagemDto): Promise<MensagemResponse> {
     this.assertTenantId(tenantId);
 
+    if (!dto.grupoId && !dto.celular) {
+      throw new BusinessException('DESTINO_OBRIGATORIO', 'Informe grupoId (grupo) ou celular (individual).');
+    }
+
     const mensagem = await this.prisma.mensagemWhatsapp.create({
       data: {
         tenantId,
         bolaoId: dto.bolaoId ?? null,
         tipo: dto.tipo as Prisma.MensagemWhatsappCreateInput['tipo'],
         conteudo: dto.conteudo,
-        grupoId: dto.grupoId,
+        grupoId: dto.grupoId ?? null,
+        celular: dto.celular ?? null,
         status: 'PENDENTE',
       },
     });
