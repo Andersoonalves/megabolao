@@ -93,11 +93,20 @@ jobs:
           name: dist
           path: dist/
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+
       - name: Deploy to Vercel
         env:
-          VERCEL_TOKEN:      ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID:     ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VERCEL_TOKEN:        ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID:       ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID:   ${{ secrets.VERCEL_PROJECT_ID }}
+          SUPABASE_URL:        ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY:   ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
           npm i -g vercel@latest
           vercel pull --yes --environment=production --token=$VERCEL_TOKEN
