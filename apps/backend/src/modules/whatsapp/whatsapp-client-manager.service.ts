@@ -49,7 +49,7 @@ export class WhatsAppClientManager {
 
   // Cache de connectionState para não bater na Evolution API em cada poll do frontend
   private readonly connectionStateCache = new Map<string, { state: string; expiresAt: number }>();
-  private static readonly CONNECTION_STATE_TTL_MS = 5_000; // 5s
+  private static readonly CONNECTION_STATE_TTL_MS = 8_000; // 8s
 
   // Cooldown de renovarQr para evitar delete+create em série (ban por múltiplos registros)
   private readonly lastRenovarAt = new Map<string, number>();

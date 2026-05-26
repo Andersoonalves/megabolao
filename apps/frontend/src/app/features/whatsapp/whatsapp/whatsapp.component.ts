@@ -55,10 +55,11 @@ export class WhatsAppComponent implements OnInit, OnDestroy {
   readonly qrIsImage = computed(() => (this.session()?.qrCode ?? '').startsWith('data:image'));
   qrExpired   = computed(() => this.qrCountdown() === 0);
 
-  private pollInterval:      ReturnType<typeof setInterval> | null = null;
-  private countdownInterval: ReturnType<typeof setInterval> | null = null;
-  private lastQrCode = '';
+  private pollInterval:        ReturnType<typeof setInterval> | null = null;
+  private countdownInterval:   ReturnType<typeof setInterval> | null = null;
+  private lastQrCode           = '';
   private qrAutoRefreshInFlight = false;
+  private _lastCarregandoPoll: number | null = null;
   /** Evita chamar `loadGrupos` em loop quando a lista filtrada fica vazia (ex.: nenhum vínculo em bolões). */
   private gruposFetchDone = false;
 
@@ -83,10 +84,18 @@ export class WhatsAppComponent implements OnInit, OnDestroy {
     this.loadSession();
     this.loadMensagens();
 
-    // Polling a cada 3s quando CARREGANDO ou AGUARDANDO_QR
+    // Polling adaptativo: 3s esperando QR (usuário ativo), 8s carregando (backend inicializando)
     this.pollInterval = setInterval(() => {
       const s = this.session()?.status;
-      if (s === 'CARREGANDO' || s === 'AGUARDANDO_QR') this.loadSession();
+      if (s === 'AGUARDANDO_QR') {
+        void this.loadSession();
+      } else if (s === 'CARREGANDO') {
+        const now = Date.now();
+        if (!this._lastCarregandoPoll || now - this._lastCarregandoPoll >= 8_000) {
+          this._lastCarregandoPoll = now;
+          void this.loadSession();
+        }
+      }
     }, 3000);
 
     // Countdown do QR — decrementa 1s, reseta quando chega QR novo
