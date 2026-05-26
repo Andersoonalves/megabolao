@@ -32,6 +32,7 @@ export class CalcAcertosProcessor implements OnModuleInit, OnModuleDestroy {
         concurrency: 2,
       },
     );
+    // teste
 
     this.worker.on('completed', (job) =>
       this.logger.log(`Job ${job.id} concluído`),
