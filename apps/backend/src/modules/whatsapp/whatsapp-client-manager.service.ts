@@ -286,12 +286,15 @@ export class WhatsAppClientManager {
     }
 
     const state = await this.fetchConnectionState(tenantId);
-    this.logger.debug(`[SYNC] tenant=${tenantId.slice(0, 8)}… state=${state}`);
+    this.logger.debug(`[SYNC] tenant=${tenantId.slice(0, 8)}… state=${state} ensure=${ensure}`);
 
     if (state === 'absent') {
-      if (ensure) {
-        await this.recreateInstance(tenantId);
+      if (!ensure) {
+        // polling não reconecta automaticamente — evita ban por múltiplas sessões
+        this.cache.delete(tenantId);
+        return { status: 'DESCONECTADO' };
       }
+      await this.recreateInstance(tenantId);
       const afterCreate = this.cache.get(tenantId);
       if (afterCreate?.qrCode) {
         return { status: 'AGUARDANDO_QR', qrCode: afterCreate.qrCode };
@@ -311,28 +314,27 @@ export class WhatsAppClientManager {
       return { status: 'CONECTADO', numero: info.numero };
     }
 
+    // state = 'close' | 'connecting'
+    // requestConnectQr apenas em ação explícita do usuário (ensure=true) — nunca no polling
     const cached = this.cache.get(tenantId);
-    const qrFromConnect = await this.requestConnectQr(tenantId, false);
-    const qrCode = qrFromConnect ?? cached?.qrCode;
-    if (qrCode) {
-      this.cache.set(tenantId, { status: 'AGUARDANDO_QR', qrCode });
-      return { status: 'AGUARDANDO_QR', qrCode };
+    if (ensure) {
+      const qrFromConnect = await this.requestConnectQr(tenantId, false);
+      const qrCode = qrFromConnect ?? cached?.qrCode;
+      if (qrCode) {
+        this.cache.set(tenantId, { status: 'AGUARDANDO_QR', qrCode });
+        return { status: 'AGUARDANDO_QR', qrCode };
+      }
+    } else if (cached?.qrCode) {
+      return { status: 'AGUARDANDO_QR', qrCode: cached.qrCode };
     }
 
     if (state === 'connecting') {
-      const entry: SessionCache = qrCode
-        ? { status: 'AGUARDANDO_QR', qrCode }
-        : { status: 'AGUARDANDO_QR' };
-      this.cache.set(tenantId, entry);
-      return entry;
+      this.cache.set(tenantId, { status: 'AGUARDANDO_QR' });
+      return { status: 'AGUARDANDO_QR' };
     }
 
-    if (state === 'close') {
-      this.cache.set(tenantId, { status: 'CARREGANDO' });
-      return { status: 'CARREGANDO' };
-    }
-
-    return { status: 'DESCONECTADO' };
+    this.cache.set(tenantId, { status: 'CARREGANDO' });
+    return { status: 'CARREGANDO' };
   }
 
   /** Solicita novo QR via /connect (mantém a instância). */
