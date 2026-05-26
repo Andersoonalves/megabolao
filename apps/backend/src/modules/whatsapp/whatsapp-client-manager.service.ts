@@ -41,11 +41,19 @@ export class WhatsAppClientManager {
   /** Evita POST /webhook/set a cada poll (reinicia a sessão Baileys). */
   private readonly webhookConfigured = new Set<string>();
   private readonly lastConnectAt = new Map<string, number>();
-  private static readonly CONNECT_COOLDOWN_MS = 12_000;
+  private static readonly CONNECT_COOLDOWN_MS = 30_000;
 
   // Anti-ban: throttle de envio por tenant — ver docs/runbooks/whatsapp-anti-ban.md
   private readonly lastSentAt = new Map<string, number>();
   private static readonly MIN_SEND_INTERVAL_MS = 3_000; // mínimo 3s entre envios do mesmo tenant
+
+  // Cache de connectionState para não bater na Evolution API em cada poll do frontend
+  private readonly connectionStateCache = new Map<string, { state: string; expiresAt: number }>();
+  private static readonly CONNECTION_STATE_TTL_MS = 5_000; // 5s
+
+  // Cooldown de renovarQr para evitar delete+create em série (ban por múltiplos registros)
+  private readonly lastRenovarAt = new Map<string, number>();
+  private static readonly RENOVAR_COOLDOWN_MS = 60_000; // mínimo 60s entre renovações
 
   private readonly baseUrl: string;
   private readonly apiKey: string;
@@ -223,14 +231,24 @@ export class WhatsAppClientManager {
   }
 
   private async fetchConnectionState(tenantId: string): Promise<string> {
+    const now = Date.now();
+    const cached = this.connectionStateCache.get(tenantId);
+    if (cached && now < cached.expiresAt) {
+      return cached.state;
+    }
     try {
       // Evolution API v2: { instance: { instanceName, state } }
       const r = await this.get<{ instance?: { state?: string }; state?: string }>(
         `/instance/connectionState/${tenantId}`,
       );
-      return r?.instance?.state ?? r?.state ?? 'close';
+      const state = r?.instance?.state ?? r?.state ?? 'close';
+      this.connectionStateCache.set(tenantId, { state, expiresAt: now + WhatsAppClientManager.CONNECTION_STATE_TTL_MS });
+      return state;
     } catch (err) {
-      if (this.isNotFoundError(err)) return 'absent';
+      if (this.isNotFoundError(err)) {
+        this.connectionStateCache.set(tenantId, { state: 'absent', expiresAt: now + WhatsAppClientManager.CONNECTION_STATE_TTL_MS });
+        return 'absent';
+      }
       return 'close';
     }
   }
@@ -366,6 +384,16 @@ export class WhatsAppClientManager {
         'WhatsApp já está conectado. Para trocar o aparelho, use encerrar sessão.',
       );
     }
+    const now = Date.now();
+    const lastRenovar = this.lastRenovarAt.get(tenantId) ?? 0;
+    if (now - lastRenovar < WhatsAppClientManager.RENOVAR_COOLDOWN_MS) {
+      const waitSec = Math.ceil((WhatsAppClientManager.RENOVAR_COOLDOWN_MS - (now - lastRenovar)) / 1000);
+      throw new BusinessException(
+        'WA_RENOVACAO_COOLDOWN',
+        `Aguarde ${waitSec}s antes de renovar o QR novamente.`,
+      );
+    }
+    this.lastRenovarAt.set(tenantId, now);
     this.logger.log(`[RENOVAR_QR] tenant=${tenantId.slice(0, 8)}…`);
     await this.deleteInstance(tenantId);
     this.cache.delete(tenantId);
@@ -390,6 +418,7 @@ export class WhatsAppClientManager {
     this.cache.delete(tenantId);
     this.webhookConfigured.delete(tenantId);
     this.lastConnectAt.delete(tenantId);
+    this.connectionStateCache.delete(tenantId);
     this.logger.log(`Sessão WhatsApp encerrada para tenant ${tenantId}`);
   }
 
@@ -494,6 +523,7 @@ export class WhatsAppClientManager {
   // ── Webhook callbacks (chamados pelo WhatsAppWebhookController) ──
 
   onConnectionUpdate(tenantId: string, state: string, numero?: string): void {
+    this.connectionStateCache.delete(tenantId); // webhook tem verdade — invalida cache de poll
     this.logger.log(`[CACHE] onConnectionUpdate tenant=${tenantId.slice(0,8)}... state="${state}" numero=${numero ?? '-'}`);
     if (state === 'open') {
       this.cache.set(tenantId, { status: 'CONECTADO', numero });
