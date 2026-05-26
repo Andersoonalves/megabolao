@@ -1,9 +1,10 @@
 {
   "framework": null,
-  "buildCommand": "npm run build:frontend",
+  "buildCommand": "node scripts/set-env.js && npm run build:frontend",
   "outputDirectory": "dist/apps/frontend/browser",
   "installCommand": "npm ci",
   "rewrites": [
+    { "source": "/api/v1/:path*", "destination": "https://nossobolao-backend.fly.dev/api/v1/:path*" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [
