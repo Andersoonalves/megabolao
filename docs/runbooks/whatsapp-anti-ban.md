@@ -14,9 +14,11 @@ Módulo: `apps/backend/src/modules/whatsapp/`
 | BullMQ retry backoff | Exponencial após falha | **30s → 60s → 120s** |
 | Ban signal detectado | Pausa extra antes de re-throw | **+60s** adicional |
 | Polling `/status` | Nunca gera QR automaticamente | apenas ação explícita do usuário |
-| Cache de connectionState | TTL para não bater na Evolution por poll | **5s** |
+| Cache de connectionState | TTL para não bater na Evolution por poll | **8s** |
 | Cooldown de `renovarQr` | Impede delete+create em sequência | **60s** entre renovações |
 | Cooldown de `/instance/connect` | Impede spam de reconexão | **30s** por tentativa |
+| Frontend poll `AGUARDANDO_QR` | Intervalo de polling enquanto exibe QR | **3s** (Evolution chamada cada ~8s via cache) |
+| Frontend poll `CARREGANDO` | Intervalo de polling enquanto inicializa | **8s** (alinhado com cache TTL) |
 
 ---
 
@@ -131,6 +133,8 @@ ORDER BY atualizado_em DESC;
 - `CONNECT_COOLDOWN_MS = 30s` — impede spam de `/connect` durante polling
 - `GET /whatsapp/sessao/status` (polling) **nunca** chama `/instance/connect` — só retorna cache
 - `POST /whatsapp/sessao/qr/renovar` bloqueado por 60s entre usos (cooldown)
+- Frontend: polling adaptativo — 3s no estado `AGUARDANDO_QR`, 8s no estado `CARREGANDO`
+- Com cache backend de 8s TTL, Evolution API recebe no máximo 1 chamada a cada 8s mesmo com poll de 3s
 - Não usar o mesmo número em dois dispositivos/instâncias simultaneamente
 
 ---
@@ -158,8 +162,13 @@ const BAN_PAUSE_MS  = 60_000;  // pausa extra ao detectar ban signal
 // whatsapp-client-manager.service.ts
 MIN_SEND_INTERVAL_MS     = 3_000;   // throttle mínimo entre envios por tenant
 CONNECT_COOLDOWN_MS      = 30_000;  // cooldown entre chamadas /instance/connect
-CONNECTION_STATE_TTL_MS  = 5_000;   // cache de connectionState (TTL)
+CONNECTION_STATE_TTL_MS  = 8_000;   // cache de connectionState (TTL)
 RENOVAR_COOLDOWN_MS      = 60_000;  // cooldown entre renovarQr (delete+create)
+
+// whatsapp.component.ts (frontend)
+// AGUARDANDO_QR: setInterval 3s, mas cache backend 8s → Evolution chamada cada ~8s
+// CARREGANDO:    throttle interno 8s → alinhado com cache TTL
+// CONECTADO:     sem polling
 
 // whatsapp-mensagem.service.ts + whatsapp.module.ts
 backoff: { type: 'exponential', delay: 30_000 } // 30s→60s→120s
