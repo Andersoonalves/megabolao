@@ -29,6 +29,12 @@ COPY --from=builder /app/node_modules  ./node_modules
 COPY --from=builder /app/dist/apps/backend ./dist
 COPY --from=builder /app/prisma        ./prisma
 
+# Resolve @nossobolao/* path aliases: tsc compila libs em dist/libs/
+# mas Node.js não resolve aliases do tsconfig em runtime — symlink resolve
+RUN mkdir -p /app/node_modules/@nossobolao && \
+    ln -sf /app/dist/libs/shared-types/src /app/node_modules/@nossobolao/shared-types && \
+    ln -sf /app/dist/libs/shared-utils/src /app/node_modules/@nossobolao/shared-utils
+
 EXPOSE 3000
 
 # Roda migrations antes de subir o servidor
