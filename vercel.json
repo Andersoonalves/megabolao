@@ -1,6 +1,6 @@
 {
   "framework": null,
-  "buildCommand": "node scripts/set-env.js && npm run build:frontend",
+  "buildCommand": "node scripts/set-env.js && npx nx build frontend --skip-nx-cache",
   "outputDirectory": "dist/apps/frontend/browser",
   "installCommand": "npm ci",
   "rewrites": [
