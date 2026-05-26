@@ -13,7 +13,10 @@ Módulo: `apps/backend/src/modules/whatsapp/`
 | Client Manager (throttle) | Intervalo mínimo entre envios | **3s mínimo** por tenant |
 | BullMQ retry backoff | Exponencial após falha | **30s → 60s → 120s** |
 | Ban signal detectado | Pausa extra antes de re-throw | **+60s** adicional |
-| Polling de QR / connect | Cooldown de reconnect | **12s** por tentativa |
+| Polling `/status` | Nunca gera QR automaticamente | apenas ação explícita do usuário |
+| Cache de connectionState | TTL para não bater na Evolution por poll | **5s** |
+| Cooldown de `renovarQr` | Impede delete+create em sequência | **60s** entre renovações |
+| Cooldown de `/instance/connect` | Impede spam de reconexão | **30s** por tentativa |
 
 ---
 
@@ -125,7 +128,9 @@ ORDER BY atualizado_em DESC;
 
 ### Sessão Baileys
 - `LocalAuth` persistido — evita novo QR a cada restart (que aumenta suspeita)
-- `CONNECT_COOLDOWN_MS = 12s` — impede spam de `/connect` durante polling
+- `CONNECT_COOLDOWN_MS = 30s` — impede spam de `/connect` durante polling
+- `GET /whatsapp/sessao/status` (polling) **nunca** chama `/instance/connect` — só retorna cache
+- `POST /whatsapp/sessao/qr/renovar` bloqueado por 60s entre usos (cooldown)
 - Não usar o mesmo número em dois dispositivos/instâncias simultaneamente
 
 ---
@@ -151,7 +156,10 @@ const JITTER_MAX_MS = 8_000;   // delay máximo pré-envio
 const BAN_PAUSE_MS  = 60_000;  // pausa extra ao detectar ban signal
 
 // whatsapp-client-manager.service.ts
-MIN_SEND_INTERVAL_MS = 3_000;  // throttle mínimo entre envios por tenant
+MIN_SEND_INTERVAL_MS     = 3_000;   // throttle mínimo entre envios por tenant
+CONNECT_COOLDOWN_MS      = 30_000;  // cooldown entre chamadas /instance/connect
+CONNECTION_STATE_TTL_MS  = 5_000;   // cache de connectionState (TTL)
+RENOVAR_COOLDOWN_MS      = 60_000;  // cooldown entre renovarQr (delete+create)
 
 // whatsapp-mensagem.service.ts + whatsapp.module.ts
 backoff: { type: 'exponential', delay: 30_000 } // 30s→60s→120s
