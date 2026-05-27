@@ -7,6 +7,10 @@
       </div>
       <span class="font-display font-semibold text-[14px] sm:hidden">{{ 'dashboardMaster.breadcrumb' | translate }}</span>
       <div class="flex gap-2">
+        <a routerLink="/status"
+           class="inline-flex items-center px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-sm font-semibold rounded-[10px] no-underline text-slate-700 transition-colors min-h-9 hidden sm:inline-flex">
+          Status
+        </a>
         <a routerLink="/tenants"
            class="inline-flex items-center px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-sm font-semibold rounded-[10px] no-underline text-slate-700 transition-colors min-h-9 hidden sm:inline-flex">
           {{ 'dashboardMaster.viewAll' | translate }}

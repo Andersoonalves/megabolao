@@ -119,6 +119,11 @@ export const appRoutes: Route[] = [
         loadComponent: () => import('./features/master/novo-tenant/novo-tenant.component').then(m => m.NovoTenantComponent),
       },
       {
+        path: 'status',
+        canActivate: [masterGuard],
+        loadComponent: () => import('./features/master/status/status.component').then(m => m.StatusComponent),
+      },
+      {
         path: 'perfis',
         canActivate: [permissaoGuard('perfil.ler')],
         loadComponent: () => import('./features/rbac/perfis/perfis.component').then(m => m.PerfisComponent),
