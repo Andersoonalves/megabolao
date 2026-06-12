@@ -50,6 +50,9 @@ jobs:
       # - name: Lint frontend
       #   run: npx nx run frontend:lint
 
+      - name: Build shared libs
+        run: npx nx run-many -t build --projects=shared-types,shared-utils
+
       - name: Build backend
         run: npx tsc --project apps/backend/tsconfig.app.json
 
