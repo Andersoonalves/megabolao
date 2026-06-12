@@ -151,6 +151,12 @@
                       class="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-green-700 hover:bg-green-800 disabled:opacity-50 text-white text-sm font-semibold rounded-[10px] transition-colors">
                 {{ session()?.status === 'CARREGANDO' ? ('whatsapp.connecting' | translate) : ('whatsapp.connect' | translate) }}
               </button>
+              @if (session()?.status === 'CARREGANDO' || session()?.status === 'AGUARDANDO_QR') {
+                <button (click)="desconectar()" [disabled]="acao()"
+                        class="inline-flex items-center justify-center gap-1 px-3 py-2 bg-white border border-slate-200 hover:bg-red-50 hover:border-red-200 hover:text-red-700 disabled:opacity-50 text-sm font-semibold rounded-[10px] text-slate-600 transition-colors">
+                  {{ 'whatsapp.cancel' | translate }}
+                </button>
+              }
             }
           </div>
 

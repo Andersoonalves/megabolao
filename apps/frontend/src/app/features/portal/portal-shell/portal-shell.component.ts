@@ -11,6 +11,7 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { AuthService } from '../../../core/services/auth.service';
 import { I18nService, AppLang } from '../../../core/services/i18n.service';
 import { PwaBannerPortalComponent } from '../../../shared/components/pwa-banner/pwa-banner-portal.component';
+import { ThemeToggleComponent } from '../../../shared/components/theme-toggle/theme-toggle.component';
 import { PortalApiService } from '../portal-api.service';
 
 const NAV_ITEMS = [
@@ -22,7 +23,7 @@ const NAV_ITEMS = [
 @Component({
   selector: 'nb-portal-shell',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, TranslatePipe, PwaBannerPortalComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, TranslatePipe, PwaBannerPortalComponent, ThemeToggleComponent],
   template: `
     <div class="min-h-screen bg-slate-50 relative">
 
@@ -43,6 +44,7 @@ const NAV_ITEMS = [
                 <div class="font-display font-semibold text-[15.5px] tracking-tight">{{ 'app.name' | translate }}</div>
                 <div class="text-[10.5px] text-slate-400 font-medium -mt-0.5">{{ 'shell.platform' | translate }}</div>
               </div>
+              <nb-theme-toggle size="sm" />
             </div>
           </div>
 
@@ -95,9 +97,12 @@ const NAV_ITEMS = [
                 >
                   {{ 'shell.language' | translate }}
                 </div>
-                <div class="flex gap-1 p-2">
+                <div class="flex gap-1 p-2 items-center">
                   <button type="button" role="menuitem" title="Português" (click)="setLang('pt')" [class]="langBtnClass('pt')">🇧🇷</button>
                   <button type="button" role="menuitem" title="English" (click)="setLang('en')" [class]="langBtnClass('en')">🇺🇸</button>
+                  <div class="ml-auto">
+                    <nb-theme-toggle size="sm" />
+                  </div>
                 </div>
                 <div class="border-t border-slate-100 mt-0.5 pt-0.5">
                   <button
@@ -166,9 +171,12 @@ const NAV_ITEMS = [
                 >
                   {{ 'shell.language' | translate }}
                 </div>
-                <div class="flex gap-1 p-2">
+                <div class="flex gap-1 p-2 items-center">
                   <button type="button" role="menuitem" title="Português" (click)="setLang('pt')" [class]="langBtnClass('pt')">🇧🇷</button>
                   <button type="button" role="menuitem" title="English" (click)="setLang('en')" [class]="langBtnClass('en')">🇺🇸</button>
+                  <div class="ml-auto">
+                    <nb-theme-toggle size="sm" />
+                  </div>
                 </div>
                 <div class="border-t border-slate-100 mt-0.5 pt-0.5">
                   <button

@@ -15,7 +15,7 @@ const REPEAT_EVERY_MS = 60 * 60 * 1000; // 1 hora
 const DRAW_DAYS_BRT = new Set([2, 4, 6]); // 2=terça, 4=quinta, 6=sábado
 const DRAW_START_HOUR_BRT = 21;
 const DRAW_END_HOUR_BRT = 23;
-const CACHE_MIN_SIZE = 10;
+const CACHE_MIN_SIZE = 20;
 
 /** Retorna true se estamos dentro da janela de sorteio em horário de Brasília (UTC-3). */
 function isDrawWindow(): boolean {
@@ -63,7 +63,7 @@ export class CheckMegaSenaProcessor implements OnModuleInit {
       },
     );
 
-    this.logger.log('Check Mega-Sena agendado a cada 1h (ativo Ter/Qui/Sáb 21h–23h BRT)');
+    this.logger.log('Check Mega-Sena agendado a cada 1h (auto-apply ativo Ter/Qui/Sáb 21h–23h BRT)');
 
     // Boot: popula cache se vazio, independente da janela de sorteio
     await this.queue.add('check-boot', { boot: true }, { jobId: `check-mega-sena-boot-${Date.now()}` });
@@ -72,11 +72,6 @@ export class CheckMegaSenaProcessor implements OnModuleInit {
   private async process(job: Job<{ boot?: boolean }>): Promise<void> {
     const isBoot = job.data?.boot === true;
 
-    if (!isBoot && !isDrawWindow()) {
-      this.logger.debug('Fora da janela de sorteio — nenhuma chamada à Caixa');
-      return;
-    }
-
     const cacheCount = await this.prisma.megaResultado.count();
 
     if (isBoot && cacheCount >= CACHE_MIN_SIZE) {
@@ -84,34 +79,15 @@ export class CheckMegaSenaProcessor implements OnModuleInit {
       return;
     }
 
-    if (isBoot && cacheCount < CACHE_MIN_SIZE) {
+    if (cacheCount < CACHE_MIN_SIZE) {
       this.logger.log(`Cache com ${cacheCount} registros — populando com últimos ${CACHE_MIN_SIZE} concursos`);
-      await this.popularCache(CACHE_MIN_SIZE);
-      return;
+      await this.sorteioService.popularCache(CACHE_MIN_SIZE);
+      if (isBoot) return;
     }
 
-    // Janela de sorteio: verifica se há novo resultado
+    // Sempre verifica se há novo resultado (atualiza cache)
+    // A janela de sorteio controla apenas o auto-apply para tenants
     await this.verificarNovoResultado();
-  }
-
-  private async popularCache(qtd: number): Promise<void> {
-    let resultados: CaixaMeta[];
-    try {
-      resultados = await this.sorteioService.buscarMegaSenaComMeta(undefined, qtd);
-    } catch (err) {
-      this.logger.warn(`Falha ao popular cache: ${(err as Error).message}`);
-      return;
-    }
-
-    for (const r of resultados) {
-      await this.prisma.megaResultado.upsert({
-        where: { numeroConcurso: r.numeroConcurso },
-        create: this.toCreateData(r),
-        update: this.toCreateData(r),
-      });
-    }
-
-    this.logger.log(`Cache populado: ${resultados.length} concursos`);
   }
 
   private async verificarNovoResultado(): Promise<void> {
@@ -137,6 +113,12 @@ export class CheckMegaSenaProcessor implements OnModuleInit {
 
     await this.prisma.megaResultado.create({ data: this.toCreateData(resultado) });
     this.logger.log(`Novo resultado Mega-Sena: concurso ${resultado.numeroConcurso}`);
+
+    // Auto-apply apenas dentro da janela de sorteio
+    if (!isDrawWindow()) {
+      this.logger.debug('Fora da janela de sorteio — cache atualizado, sem auto-apply');
+      return;
+    }
 
     const tenantsAutoApply = await this.prisma.tenant.findMany({
       where: { status: 'ATIVO', sorteioAutoApply: true },

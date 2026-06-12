@@ -55,6 +55,12 @@ export class WhatsAppClientManager {
   private readonly lastRenovarAt = new Map<string, number>();
   private static readonly RENOVAR_COOLDOWN_MS = 60_000; // mínimo 60s entre renovações
 
+  // Limite de QR codes recebidos por tenant para evitar loop infinito de reconexão
+  private readonly qrCount = new Map<string, number>();
+  private static readonly MAX_QR_ATTEMPTS = 3;
+  private static readonly QR_COUNT_RESET_MS = 5 * 60_000; // reseta contador após 5 min sem QR
+  private readonly lastQrAt = new Map<string, number>();
+
   private readonly baseUrl: string;
   private readonly apiKey: string;
 
@@ -364,6 +370,9 @@ export class WhatsAppClientManager {
         'WhatsApp já está conectado. Para trocar o aparelho, use encerrar sessão.',
       );
     }
+    // Reseta contador de QR ao atualizar manualmente
+    this.qrCount.delete(tenantId);
+    this.lastQrAt.delete(tenantId);
     if (!(await this.instanceExists(tenantId))) {
       return this.iniciar(tenantId);
     }
@@ -394,6 +403,9 @@ export class WhatsAppClientManager {
       );
     }
     this.lastRenovarAt.set(tenantId, now);
+    // Reseta contador de QR ao renovar manualmente
+    this.qrCount.delete(tenantId);
+    this.lastQrAt.delete(tenantId);
     this.logger.log(`[RENOVAR_QR] tenant=${tenantId.slice(0, 8)}…`);
     await this.deleteInstance(tenantId);
     this.cache.delete(tenantId);
@@ -419,6 +431,8 @@ export class WhatsAppClientManager {
     this.webhookConfigured.delete(tenantId);
     this.lastConnectAt.delete(tenantId);
     this.connectionStateCache.delete(tenantId);
+    this.qrCount.delete(tenantId);
+    this.lastQrAt.delete(tenantId);
     this.logger.log(`Sessão WhatsApp encerrada para tenant ${tenantId}`);
   }
 
@@ -548,8 +562,27 @@ export class WhatsAppClientManager {
   }
 
   onQrUpdated(tenantId: string, qrPayload: string): void {
+    const now = Date.now();
+    const lastQr = this.lastQrAt.get(tenantId) ?? 0;
+    
+    // Reseta contador se passou tempo suficiente desde último QR
+    if (now - lastQr > WhatsAppClientManager.QR_COUNT_RESET_MS) {
+      this.qrCount.set(tenantId, 0);
+    }
+    
+    const count = (this.qrCount.get(tenantId) ?? 0) + 1;
+    this.qrCount.set(tenantId, count);
+    this.lastQrAt.set(tenantId, now);
+    
+    if (count > WhatsAppClientManager.MAX_QR_ATTEMPTS) {
+      this.logger.warn(
+        `[CACHE] Limite de ${WhatsAppClientManager.MAX_QR_ATTEMPTS} QR codes atingido para tenant=${tenantId.slice(0,8)}… — ignorando para evitar loop`,
+      );
+      return;
+    }
+    
     const qrCode = this.normalizeQrPayload(qrPayload);
-    this.logger.log(`[CACHE] onQrUpdated tenant=${tenantId.slice(0,8)}... qrLen=${qrCode.length}`);
+    this.logger.log(`[CACHE] onQrUpdated tenant=${tenantId.slice(0,8)}... qrLen=${qrCode.length} tentativa=${count}/${WhatsAppClientManager.MAX_QR_ATTEMPTS}`);
     this.cache.set(tenantId, { status: 'AGUARDANDO_QR', qrCode });
     this.logger.log(`[CACHE] → AGUARDANDO_QR`);
   }

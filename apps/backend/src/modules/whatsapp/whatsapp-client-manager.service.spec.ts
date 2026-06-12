@@ -161,6 +161,22 @@ describe('WhatsAppClientManager (Evolution API)', () => {
     expect(manager.getStatus(TENANT_ID).qrCode).toMatch(/^data:image\/png;base64,/);
   });
 
+  it('onQrUpdated ignora após 3 tentativas para evitar loop', () => {
+    // Primeiras 3 tentativas devem ser aceitas
+    manager.onQrUpdated(TENANT_ID, 'qr-1');
+    expect(manager.getStatus(TENANT_ID).qrCode).toBe('qr-1');
+    
+    manager.onQrUpdated(TENANT_ID, 'qr-2');
+    expect(manager.getStatus(TENANT_ID).qrCode).toBe('qr-2');
+    
+    manager.onQrUpdated(TENANT_ID, 'qr-3');
+    expect(manager.getStatus(TENANT_ID).qrCode).toBe('qr-3');
+    
+    // 4ª tentativa deve ser ignorada (mantém QR anterior)
+    manager.onQrUpdated(TENANT_ID, 'qr-4');
+    expect(manager.getStatus(TENANT_ID).qrCode).toBe('qr-3');
+  });
+
   it('renovarQr rejeita quando já está CONECTADO', async () => {
     manager.onConnectionUpdate(TENANT_ID, 'open', '5511999999999');
     await expect(manager.renovarQr(TENANT_ID)).rejects.toBeInstanceOf(BusinessException);

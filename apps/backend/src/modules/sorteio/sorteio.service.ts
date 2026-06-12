@@ -295,13 +295,42 @@ export class SorteioService {
     return [ultimo, ...anteriores.filter((r): r is NonNullable<typeof r> => r !== null)];
   }
 
+  /** Popula o cache mega_resultados com os últimos N concursos da Caixa. */
+  async popularCache(qtd: number): Promise<void> {
+    const resultados = await this.buscarMegaSenaComMeta(undefined, qtd);
+    for (const r of resultados) {
+      await this.prisma.megaResultado.upsert({
+        where: { numeroConcurso: r.numeroConcurso },
+        create: {
+          numeroConcurso:        r.numeroConcurso,
+          dataSorteio:           new Date(r.dataSorteio),
+          bolasSorteadas:        r.bolasSorteadas,
+          ganhadores:            r.ganhadoresSena,
+          acumulado:             r.acumulado,
+          valorArrecadado:       r.valorArrecadado ?? null,
+          estimativaProximo:     r.estimativaProximoConcurso ?? null,
+          dataProximoConcurso:   r.dataProximoConcurso ?? null,
+          numeroConcursoProximo: r.numeroConcursoProximo ? Number(r.numeroConcursoProximo) : null,
+        },
+        update: {
+          ganhadores:            r.ganhadoresSena,
+          acumulado:             r.acumulado,
+          valorArrecadado:       r.valorArrecadado ?? null,
+          estimativaProximo:     r.estimativaProximoConcurso ?? null,
+          dataProximoConcurso:   r.dataProximoConcurso ?? null,
+          numeroConcursoProximo: r.numeroConcursoProximo ? Number(r.numeroConcursoProximo) : null,
+        },
+      });
+    }
+  }
+
   /**
    * Painel admin: lê do cache local (megaResultado) — zero chamadas à API da Caixa por request.
    * O cache é populado/atualizado pelo CheckMegaSenaProcessor nas janelas de sorteio.
    */
   async buscarMegaSenaPainel(tenantId: string | null, ultimos = 10): Promise<MegaSenaPainelResponseDto> {
     const consultadoEm = new Date().toISOString();
-    const qtd = Math.min(Math.max(ultimos, 1), 10);
+    const qtd = Math.min(Math.max(ultimos, 1), 20);
 
     const cached = await this.prisma.megaResultado.findMany({
       orderBy: { numeroConcurso: 'desc' },
@@ -311,6 +340,11 @@ export class SorteioService {
     // Cache vazio: fallback único para popular (não bloqueia, só log)
     if (cached.length === 0) {
       return this.buscarMegaSenaPainelFallback(tenantId, consultadoEm);
+    }
+
+    // Cache incompleto: repopula em background (não bloqueia a resposta)
+    if (cached.length < qtd) {
+      this.popularCache(qtd).catch(() => {});
     }
 
     const numeros = cached.map((c) => c.numeroConcurso);
