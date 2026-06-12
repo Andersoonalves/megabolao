@@ -1,6 +1,7 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
+    "rootDir": ".",
     "outDir": "../../dist/libs/shared-utils",
     "declaration": true,
     "types": ["node"]
