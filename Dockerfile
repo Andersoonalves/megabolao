@@ -42,4 +42,4 @@ RUN mkdir -p /app/node_modules/@nossobolao && \
 EXPOSE 3000
 
 # Roda migrations antes de subir o servidor
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/apps/backend/src/main.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/src/main.js"]
