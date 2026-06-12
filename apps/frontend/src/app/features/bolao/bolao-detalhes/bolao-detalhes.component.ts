@@ -1,4 +1,4 @@
-import { Component, signal, computed, input, OnInit, ChangeDetectionStrategy, inject, effect } from '@angular/core';
+import { Component, signal, computed, input, ChangeDetectionStrategy, inject, effect } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { DecimalPipe, CurrencyPipe, DatePipe } from '@angular/common';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
@@ -53,7 +53,7 @@ const TIPO_CHIP: Record<CategoriaTipo, string> = {
   imports: [BackButtonComponent, RouterLink, DecimalPipe, CurrencyPipe, DatePipe, BolasGridComponent, BadgeComponent, TranslatePipe],
   templateUrl: './bolao-detalhes.component.html',
 })
-export class BolaoDetalhesComponent implements OnInit {
+export class BolaoDetalhesComponent {
   readonly id  = input<string>('');
   private readonly api       = inject(ApiService);
   private readonly router    = inject(Router);
