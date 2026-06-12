@@ -10,7 +10,13 @@ if (missing.length) {
   process.exit(1);
 }
 
-const { SUPABASE_URL, SUPABASE_ANON_KEY } = process.env;
+const { SUPABASE_ANON_KEY } = process.env;
+
+// Strip accidental path suffix (e.g. /rest/v1 or /auth/v1) and trailing slash.
+// supabase-js needs the bare project URL; it appends /auth/v1, /rest/v1 itself.
+const SUPABASE_URL = process.env.SUPABASE_URL
+  .replace(/\/(rest|auth|realtime|storage)\/v1\/?$/, '')
+  .replace(/\/$/, '');
 
 const content = `export const environment = {
   production: true,
