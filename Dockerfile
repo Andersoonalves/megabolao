@@ -10,7 +10,9 @@ RUN npm ci --ignore-scripts --legacy-peer-deps
 
 COPY . .
 RUN npx prisma generate
-# Build direto via tsc (nx build falha com rootDir em monorepo)
+# Build shared libs primeiro (backend depende delas)
+RUN npx nx run-many -t build --projects=shared-types,shared-utils
+# Build backend via tsc
 RUN npx tsc --project apps/backend/tsconfig.app.json
 
 # Remove devDependencies
