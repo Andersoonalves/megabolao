@@ -10,9 +10,10 @@ RUN npm ci --ignore-scripts --legacy-peer-deps
 
 COPY . .
 RUN npx prisma generate
-# Build shared libs primeiro (backend depende delas)
-RUN npx nx run-many -t build --projects=shared-types,shared-utils
-# Build backend via tsc
+# Build shared libs (backend depende delas)
+RUN npx tsc --project libs/shared-types/tsconfig.lib.json && \
+    npx tsc --project libs/shared-utils/tsconfig.lib.json
+# Build backend
 RUN npx tsc --project apps/backend/tsconfig.app.json
 
 # Remove devDependencies
