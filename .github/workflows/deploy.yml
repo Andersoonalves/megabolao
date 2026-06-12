@@ -40,6 +40,9 @@ jobs:
 
       - run: npx prisma generate
 
+      - name: Build shared libs
+        run: npx nx run-many -t build --projects=shared-types,shared-utils
+
       - run: npx tsc --project apps/backend/tsconfig.app.json
       - run: npm run build:frontend
 
