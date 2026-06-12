@@ -26,6 +26,7 @@ import { UsuarioModule } from './modules/usuario/usuario.module';
 import { AuditoriaModule } from './modules/auditoria/auditoria.module';
 import { PortalModule } from './modules/portal/portal.module';
 import { CrmModule } from './modules/crm/crm.module';
+import { KeepAliveModule } from './modules/keep-alive/keep-alive.module';
 
 @Module({
   controllers: [HealthController],
@@ -54,6 +55,7 @@ import { CrmModule } from './modules/crm/crm.module';
     AuditoriaModule,
     PortalModule,
     CrmModule,
+    KeepAliveModule,
   ],
   providers: [
     // Ordem: throttle → autenticação → 2FA → role → permissões
