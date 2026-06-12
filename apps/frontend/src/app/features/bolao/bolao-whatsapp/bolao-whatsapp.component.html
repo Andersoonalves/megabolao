@@ -158,7 +158,7 @@
                               [class]="estaSelecionado(g.id) ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-500'">👥</span>
                         <div class="min-w-0 flex-1">
                           <span class="font-semibold text-slate-900 truncate block">{{ g.nome }}</span>
-                          @if (g.qtdParticipantes != null) {
+                          @if (g.qtdParticipantes !== null) {
                             <span class="text-[11px] text-slate-500 truncate block">{{ 'whatsapp.groupMembers' | translate: { n: g.qtdParticipantes } }}</span>
                           }
                         </div>
@@ -199,7 +199,7 @@
                          [checked]="estaSelecionado(g.id)" (change)="toggleGrupo(g)" />
                   <div class="flex-1 min-w-0">
                     <div class="font-semibold text-slate-900">{{ g.nome }}</div>
-                    @if (g.qtdParticipantes != null) {
+                    @if (g.qtdParticipantes !== null) {
                       <div class="text-[11px] text-slate-500 mt-0.5">{{ 'whatsapp.groupMembers' | translate: { n: g.qtdParticipantes } }}</div>
                     }
                     <div class="font-mono text-[10px] text-slate-400 break-all mt-1">{{ g.id }}</div>
@@ -293,7 +293,7 @@
                              class="w-4 h-4 accent-green-700 mt-1 shrink-0" />
                       <div class="min-w-0 flex-1 flex flex-col gap-0.5">
                         <span class="text-[13.5px] font-semibold">{{ g.nome }}</span>
-                        @if (g.qtdParticipantes != null) {
+                        @if (g.qtdParticipantes !== null) {
                           <span class="text-[11.5px] text-slate-500">{{ 'whatsapp.groupMembers' | translate: { n: g.qtdParticipantes } }}</span>
                         }
                       </div>

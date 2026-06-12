@@ -111,7 +111,6 @@ export class BolaoDetalhesComponent implements OnInit {
     effect(() => { if (this.id()) this.load(); });
   }
 
-  ngOnInit(): void {}
 
   private async load(): Promise<void> {
     this.loading.set(true);

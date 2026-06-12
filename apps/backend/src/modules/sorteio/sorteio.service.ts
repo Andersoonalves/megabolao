@@ -344,7 +344,7 @@ export class SorteioService {
 
     // Cache incompleto: repopula em background (não bloqueia a resposta)
     if (cached.length < qtd) {
-      this.popularCache(qtd).catch(() => {});
+      this.popularCache(qtd).catch(() => { /* noop: cache background */ });
     }
 
     const numeros = cached.map((c) => c.numeroConcurso);

@@ -92,7 +92,7 @@ import { LangToggleComponent } from '../../../shared/components/lang-toggle/lang
                        class="w-full pl-3 pr-10 py-2.5 border border-slate-200 rounded-[10px] text-sm focus:outline-none focus:border-green-700 transition-all"
                        placeholder="••••••••" required />
                 <button type="button"
-                        (click)="showPassword.update(v => !v)"
+                        (click)="togglePassword()"
                         class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-0.5"
                         [title]="(showPassword() ? 'auth.hidePassword' : 'auth.showPassword') | translate">
                   @if (showPassword()) {
@@ -159,6 +159,10 @@ export class LoginComponent implements OnInit {
   password     = '';
   showPassword = signal(false);
   loading      = signal(false);
+
+  togglePassword(): void {
+    this.showPassword.update(v => !v);
+  }
   error        = signal('');
   sessionExpired = signal(false);
 
