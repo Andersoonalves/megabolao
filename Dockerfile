@@ -29,7 +29,8 @@ ENV NODE_ENV=production
 
 # Copia apenas o necessário
 COPY --from=builder /app/node_modules  ./node_modules
-COPY --from=builder /app/dist/apps/backend ./dist
+COPY --from=builder /app/dist/apps/backend ./dist/apps/backend
+COPY --from=builder /app/dist/libs     ./dist/libs
 COPY --from=builder /app/prisma        ./prisma
 
 # Resolve @nossobolao/* path aliases: tsc compila libs em dist/libs/
