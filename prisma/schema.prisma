@@ -95,9 +95,10 @@ model Tenant {
   status                TenantStatus @default(ATIVO)
   taxaAdministrativaPct Decimal      @default(15.00) @db.Decimal(5, 2) @map("taxa_administrativa_pct")
   branding              Json         @default("{}")
-  sorteioAutoApply      Boolean      @default(false) @map("sorteio_auto_apply")
-  sorteioUltimoIgnorado Int?         @map("sorteio_ultimo_ignorado")
-  criadoEm              DateTime     @default(now()) @db.Timestamptz() @map("criado_em")
+  sorteioAutoApply        Boolean  @default(false) @map("sorteio_auto_apply")
+  sorteioUltimoIgnorado   Int?     @map("sorteio_ultimo_ignorado")
+  whatsappPhoneNumberId   String?  @unique @map("whatsapp_phone_number_id")
+  criadoEm                DateTime @default(now()) @db.Timestamptz() @map("criado_em")
   atualizadoEm          DateTime     @default(now()) @db.Timestamptz() @map("atualizado_em")
 
   userProfiles        UserProfile[]
@@ -142,7 +143,7 @@ model Bolao {
   dataInicio   DateTime?   @db.Date @map("data_inicio")
   dataTermino  DateTime?   @db.Date @map("data_termino")
   qtdNumerosCota Int @default(10) @map("qtd_numeros_cota")
-  whatsappGrupos    Json      @default("[]") @map("whatsapp_grupos")
+  whatsappGrupos      Json      @default("[]") @map("whatsapp_grupos")
   sheetsSpreadsheetId String?   @map("sheets_spreadsheet_id")
   sheetsAtivo         Boolean   @default(false) @map("sheets_ativo")
   sheetsUltimaSyncAt  DateTime? @db.Timestamptz() @map("sheets_ultima_sync_at")
@@ -308,6 +309,7 @@ model MensagemWhatsapp {
   tipo         MensagemTipo
   conteudo     String
   grupoId      String?        @map("grupo_id")
+  celular      String?        @map("celular")
   status       MensagemStatus @default(PENDENTE)
   tentativas   Int            @default(0)
   erro         String?

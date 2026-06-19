@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { Job, Worker } from 'bullmq';
 import { PrismaService } from '../../prisma/prisma.service';
 import { WhatsAppClientManager } from '../whatsapp-client-manager.service';
+import { MetaCloudApiService } from '../whatsapp-meta.service';
 import { ENVIAR_MENSAGEM_WA_QUEUE_NAME, EnviarMensagemJobData } from './enviar-mensagem.types';
 
 // Delays anti-ban — ver docs/runbooks/whatsapp-anti-ban.md
@@ -18,6 +19,7 @@ export class EnviarMensagemProcessor implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly prisma: PrismaService,
     private readonly clientManager: WhatsAppClientManager,
+    private readonly metaApi: MetaCloudApiService,
     private readonly config: ConfigService,
   ) {}
 
@@ -67,7 +69,15 @@ export class EnviarMensagemProcessor implements OnModuleInit, OnModuleDestroy {
       // detecta mensagens 100% idênticas enviadas em sequência como spam
       const conteudo = this.varyContent(mensagem.conteudo);
 
-      await this.clientManager.enviarParaGrupo(tenantId, mensagem.grupoId!, conteudo);
+      if (mensagem.grupoId) {
+        // Grupo → Evolution API (mantém sessão Baileys existente)
+        await this.clientManager.enviarParaGrupo(tenantId, mensagem.grupoId, conteudo);
+      } else if (mensagem.celular) {
+        // Individual → Meta Cloud API oficial
+        await this.metaApi.enviarTexto(mensagem.celular, conteudo);
+      } else {
+        throw new Error(`Mensagem ${mensagemId} sem destino (grupoId e celular nulos)`);
+      }
 
       await this.prisma.mensagemWhatsapp.update({
         where: { id: mensagemId },

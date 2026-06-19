@@ -8,6 +8,8 @@ import { WhatsAppMensagemController } from './whatsapp-mensagem.controller';
 import { WhatsAppTemplateController } from './whatsapp-template.controller';
 import { WhatsAppWebhookController } from './whatsapp-webhook.controller';
 import { WhatsAppTemplateService } from './whatsapp-template.service';
+import { MetaCloudApiService } from './whatsapp-meta.service';
+import { WhatsAppMetaWebhookController } from './whatsapp-meta-webhook.controller';
 import { EnviarMensagemProcessor } from './jobs/enviar-mensagem.processor';
 import { ENVIAR_MENSAGEM_WA_QUEUE, ENVIAR_MENSAGEM_WA_QUEUE_NAME } from './jobs/enviar-mensagem.types';
 
@@ -17,6 +19,7 @@ import { ENVIAR_MENSAGEM_WA_QUEUE, ENVIAR_MENSAGEM_WA_QUEUE_NAME } from './jobs/
     WhatsAppMensagemController,
     WhatsAppTemplateController,
     WhatsAppWebhookController,
+    WhatsAppMetaWebhookController,
   ],
   providers: [
     {
@@ -31,8 +34,9 @@ import { ENVIAR_MENSAGEM_WA_QUEUE, ENVIAR_MENSAGEM_WA_QUEUE_NAME } from './jobs/
     WhatsAppClientManager,
     WhatsAppMensagemService,
     WhatsAppTemplateService,
+    MetaCloudApiService,
     EnviarMensagemProcessor,
   ],
-  exports: [WhatsAppMensagemService, WhatsAppClientManager, WhatsAppTemplateService],
+  exports: [WhatsAppMensagemService, WhatsAppClientManager, WhatsAppTemplateService, MetaCloudApiService],
 })
 export class WhatsAppModule {}
